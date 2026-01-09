@@ -182,7 +182,7 @@
     static uint16_t par_nvm_get_per_par (void);
 
     static void     par_nvm_build_new_nvm_lut(void);
-    static uint16_t par_nvm_get_nvm_lut_addr (const uint16_t id);
+    static uint32_t par_nvm_get_nvm_lut_addr (const uint16_t id);
     static bool     par_nvm_is_in_nvm_lut    (const uint16_t id );
 
     #if ( 1 == PAR_CFG_TABLE_ID_CHECK_EN )
@@ -487,7 +487,7 @@
         par_status_t       status      = ePAR_OK;
         par_num_t          par_num     = 0;
         uint16_t           i           = 0;
-        uint16_t           obj_addr    = 0;
+        uint32_t           obj_addr    = 0;
         par_nvm_data_obj_t obj_data    = {0};
         nvm_status_t       nvm_status  = eNVM_OK;
         uint8_t            crc_calc    = 0;
@@ -581,7 +581,7 @@
                     {
                         // Is persistant and not jet in NVM lut -> Add to LUT
                         g_par_nvm_data_obj_addr[per_par_nb].id    = par_cfg.id;
-                        g_par_nvm_data_obj_addr[per_par_nb].addr  = obj_addr + ( 8 * ( new_par_cnt + 1 ));
+                        g_par_nvm_data_obj_addr[per_par_nb].addr  = obj_addr + ( 8U * ( new_par_cnt + 1U ));
                         g_par_nvm_data_obj_addr[per_par_nb].valid = true;
 
                         // Write new par to NVM
@@ -695,9 +695,9 @@
     * @return       obj_addr - NVM address of object with ID
     */
     ////////////////////////////////////////////////////////////////////////////////
-    static uint16_t par_nvm_get_nvm_lut_addr(const uint16_t id)
+    static uint32_t par_nvm_get_nvm_lut_addr(const uint16_t id)
     {
-        uint16_t    obj_addr    = 0;
+        uint32_t    obj_addr    = 0;
         par_num_t    par_num        = 0;
 
         for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
