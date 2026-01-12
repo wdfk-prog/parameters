@@ -248,25 +248,21 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
 ////////////////////////////////////////////////////////////////////////////////
 static par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
 {
-    par_status_t status = ePAR_OK;
-
-    if ( ePAR_OK == status )
+    if ( u8_val > ( gp_par_table[ par_num ].max.u8 ))
     {
-        if ( u8_val > ( gp_par_table[ par_num ].max.u8 ))
-        {
-            *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u8;
-        }
-        else if ( u8_val < ( gp_par_table[ par_num ].min.u8 ))
-        {
-            *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.u8;
-        }
-        else
-        {
-            *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (uint8_t) ( u8_val );
-        }
+        *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u8;
+        return ePAR_WAR_LIMITED;
     }
-
-    return status;
+    else if ( u8_val < ( gp_par_table[ par_num ].min.u8 ))
+    {
+        *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.u8;
+        return ePAR_WAR_LIMITED;
+    }
+    else
+    {
+        *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (uint8_t) ( u8_val );
+        return ePAR_OK;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,29 +276,21 @@ static par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
 ////////////////////////////////////////////////////////////////////////////////
 static par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
 {
-    par_status_t status = ePAR_OK;
-
-    if ( ePAR_OK == status )
+    if ( i8_val > ( gp_par_table[ par_num ].max.i8 ))
     {
-        if ( i8_val > ( gp_par_table[ par_num ].max.i8 ))
-        {
-            *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i8;
-
-            // TODO: Check if makes sense to return "WARNING LIMITED" status
-        }
-        else if ( i8_val < ( gp_par_table[ par_num ].min.i8 ))
-        {
-            *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.i8;
-
-            // TODO: Check if makes sense to return "WARNING LIMITED" status
-        }
-        else
-        {
-            *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (int8_t) ( i8_val );
-        }
+        *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i8;
+        return ePAR_WAR_LIMITED;
     }
-
-    return status;
+    else if ( i8_val < ( gp_par_table[ par_num ].min.i8 ))
+    {
+        *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.i8;
+        return ePAR_WAR_LIMITED;
+    }
+    else
+    {
+        *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (int8_t) ( i8_val );
+        return ePAR_OK;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,29 +304,21 @@ static par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
 ////////////////////////////////////////////////////////////////////////////////
 static par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
 {
-    par_status_t status = ePAR_OK;
-
-    if ( ePAR_OK == status )
+    if ( u16_val > ( gp_par_table[ par_num ].max.u16 ))
     {
-        if ( u16_val > ( gp_par_table[ par_num ].max.u16 ))
-        {
-            *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u16;
-
-            // TODO: Check if makes sense to return "WARNING LIMITED" status
-        }
-        else if ( u16_val < ( gp_par_table[ par_num ].min.u16 ))
-        {
-            *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.u16;
-
-            // TODO: Check if makes sense to return "WARNING LIMITED" status
-        }
-        else
-        {
-            *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (uint16_t) ( u16_val );
-        }
+        *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u16;
+        return ePAR_WAR_LIMITED;
     }
-
-    return status;
+    else if ( u16_val < ( gp_par_table[ par_num ].min.u16 ))
+    {
+        *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.u16;
+        return ePAR_WAR_LIMITED;
+    }
+    else
+    {
+        *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (uint16_t) ( u16_val );
+        return ePAR_OK;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -352,25 +332,21 @@ static par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
 ////////////////////////////////////////////////////////////////////////////////
 static par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
 {
-    par_status_t status = ePAR_OK;
-
-    if ( ePAR_OK == status )
+    if ( i16_val > ( gp_par_table[ par_num ].max.i16 ))
     {
-        if ( i16_val > ( gp_par_table[ par_num ].max.i16 ))
-        {
-            *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i16;
-        }
-        else if ( i16_val < ( gp_par_table[ par_num ].min.i16 ))
-        {
-            *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.i16;
-        }
-        else
-        {
-            *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (int16_t) ( i16_val );
-        }
+        *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i16;
+        return ePAR_WAR_LIMITED;
     }
-
-    return status;
+    else if ( i16_val < ( gp_par_table[ par_num ].min.i16 ))
+    {
+        *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.i16;
+        return ePAR_WAR_LIMITED;
+    }
+    else
+    {
+        *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (int16_t) ( i16_val );
+        return ePAR_OK;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,25 +360,21 @@ static par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
 ////////////////////////////////////////////////////////////////////////////////
 static par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
 {
-    par_status_t status = ePAR_OK;
-
-    if ( ePAR_OK == status )
+    if ( u32_val > ( gp_par_table[ par_num ].max.u32 ))
     {
-        if ( u32_val > ( gp_par_table[ par_num ].max.u32 ))
-        {
-            *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u32;
-        }
-        else if ( u32_val < ( gp_par_table[ par_num ].min.u32 ))
-        {
-            *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.u32;
-        }
-        else
-        {
-            *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (uint32_t) ( u32_val );
-        }
+        *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u32;
+        return ePAR_WAR_LIMITED;
     }
-
-    return status;
+    else if ( u32_val < ( gp_par_table[ par_num ].min.u32 ))
+    {
+        *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.u32;
+        return ePAR_WAR_LIMITED;
+    }
+    else
+    {
+        *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (uint32_t) ( u32_val );
+        return ePAR_OK;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -416,25 +388,21 @@ static par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
 ////////////////////////////////////////////////////////////////////////////////
 static par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
 {
-    par_status_t status = ePAR_OK;
-
-    if ( ePAR_OK == status )
+    if ( i32_val > ( gp_par_table[ par_num ].max.i32 ))
     {
-        if ( i32_val > ( gp_par_table[ par_num ].max.i32 ))
-        {
-            *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i32;
-        }
-        else if ( i32_val < ( gp_par_table[ par_num ].min.i32 ))
-        {
-            *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.i32;
-        }
-        else
-        {
-            *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (int32_t) ( i32_val );
-        }
+        *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i32;
+        return ePAR_WAR_LIMITED;
     }
-
-    return status;
+    else if ( i32_val < ( gp_par_table[ par_num ].min.i32 ))
+    {
+        *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.i32;
+        return ePAR_WAR_LIMITED;
+    }
+    else
+    {
+        *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (int32_t) ( i32_val );
+        return ePAR_OK;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -448,25 +416,21 @@ static par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
 ////////////////////////////////////////////////////////////////////////////////
 static par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
 {
-    par_status_t status = ePAR_OK;
-
-    if ( ePAR_OK == status )
+    if ( f32_val > ( gp_par_table[ par_num ].max.f32 ))
     {
-        if ( f32_val > ( gp_par_table[ par_num ].max.f32 ))
-        {
-            *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.f32;
-        }
-        else if ( f32_val < ( gp_par_table[ par_num ].min.f32 ))
-        {
-            *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.f32;
-        }
-        else
-        {
-            *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (float32_t) ( f32_val );
-        }
+        *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.f32;
+        return ePAR_WAR_LIMITED;
     }
-
-    return status;
+    else if ( f32_val < ( gp_par_table[ par_num ].min.f32 ))
+    {
+        *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].min.f32;
+        return ePAR_WAR_LIMITED;
+    }
+    else
+    {
+        *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = (float32_t) ( f32_val );
+        return ePAR_OK;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

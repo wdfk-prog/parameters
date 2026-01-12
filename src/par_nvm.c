@@ -853,9 +853,7 @@
                     if ( ePAR_ERROR_CRC == status )
                     {
                         status = par_nvm_reset_all();
-
-                        status |= ePAR_WARN_SET_TO_DEF;
-                        status |= ePAR_WARN_NVM_REWRITTEN;
+                        status |= ( ePAR_WAR_SET_TO_DEF | ePAR_WAR_NVM_REWRITTEN );
                     }
 
                     // NVM error
@@ -870,8 +868,7 @@
                          *          default and some modified parameter values!
                          */
                         par_set_all_to_default();
-
-                        status |= ePAR_WARN_SET_TO_DEF;
+                        status |= ePAR_WAR_SET_TO_DEF;
                     }
                     else
                     {
@@ -885,9 +882,7 @@
                         ||  ( ePAR_ERROR_CRC == status ))
                 {
                     status = par_nvm_reset_all();
-
-                    status |= ePAR_WARN_SET_TO_DEF;
-                    status |= ePAR_WARN_NVM_REWRITTEN;
+                    status |= ( ePAR_WAR_SET_TO_DEF | ePAR_WAR_NVM_REWRITTEN );
                 }
 
                 // NVM Error
@@ -900,7 +895,7 @@
             // No persistent parameters
             else
             {
-                status |= ePAR_WARN_NO_PERSISTANT;
+                status |= ePAR_WAR_NO_PERSISTANT;
                 PAR_DBG_PRINT( "PAR_NVM: No persistent parameters... Nothing to do..." );
             }
         }

@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## V3.0.0 - xx.xx.2026
+
+### Added
+ - Introduce new warning when seting parameter value out of range - *WAR_LIMITED*
+
+### Changed
+ - Cleaning up code
+
+
+---
 ## V2.2.0 - 06.12.2024
 
 ### Added

@@ -45,22 +45,23 @@
 /**
  *   Parameter status
  */
-typedef enum
+enum
 {
-    ePAR_OK                     = 0x00,        /**<Normal operation */
+    ePAR_OK                     = 0x00,     /**<Normal operation */
 
     // Errors
-    ePAR_ERROR                  = 0x01,        /**<General parameter error */
-    ePAR_ERROR_INIT             = 0x02,        /**<Parameter initialization error or usage before initialization */
-    ePAR_ERROR_NVM              = 0x04,        /**<Parameter storage to NVM error */
-    ePAR_ERROR_CRC              = 0x08,        /**<Parameter CRC corrupted */
+    ePAR_ERROR                  = 0x01,     /**<General parameter error */
+    ePAR_ERROR_INIT             = 0x02,     /**<Parameter initialization error or usage before initialization */
+    ePAR_ERROR_NVM              = 0x04,     /**<Parameter storage to NVM error */
+    ePAR_ERROR_CRC              = 0x08,     /**<Parameter CRC corrupted */
 
     // Warnings
-    ePAR_WARN_SET_TO_DEF        = 0x10,        /**<Parameters set to default */
-    ePAR_WARN_NVM_REWRITTEN     = 0x20,        /**<NVM parameters area completely re-written */
-    ePAR_WARN_NO_PERSISTANT     = 0x40,        /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
-
-} par_status_t;
+    ePAR_WAR_SET_TO_DEF         = 0x10,     /**<Parameters set to default */
+    ePAR_WAR_NVM_REWRITTEN      = 0x20,     /**<NVM parameters area completely re-written */
+    ePAR_WAR_NO_PERSISTANT      = 0x40,     /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
+    ePAR_WAR_LIMITED            = 0x80,     /**<Parameter value limited within [min,max] */
+};
+typedef uint8_t par_status_t;
 
 /**
  *     Parameters type enumeration
@@ -75,7 +76,7 @@ typedef enum
     ePAR_TYPE_I32,      /**<Signed 32-bit value */
     ePAR_TYPE_F32,      /**<32-bit floating value */
     ePAR_TYPE_NUM_OF
-}par_type_list_t;
+} par_type_list_t;
 
 /**
  *     Parameter R/W access
@@ -84,7 +85,7 @@ typedef enum
 {
     ePAR_ACCESS_RO = 0,     /**<Parameter read only */
     ePAR_ACCESS_RW          /**<Parameter read/write */
-}par_io_acess_t;
+} par_io_acess_t;
 
 /**
  *  32-bit floating data type definition
