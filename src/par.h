@@ -145,7 +145,6 @@ bool         par_is_init (void);
 par_status_t par_set                (const par_num_t par_num, const void * p_val);
 par_status_t par_set_to_default     (const par_num_t par_num);
 par_status_t par_set_all_to_default (void);
-par_status_t par_has_changed        (const par_num_t par_num, bool *const p_has_changed);
 
 par_status_t par_get            (const par_num_t par_num, void * const p_val);
 par_status_t par_get_id         (const par_num_t par_num, uint16_t * const p_id);
@@ -154,6 +153,7 @@ par_status_t par_get_config     (const par_num_t par_num, par_cfg_t * const p_pa
 par_status_t par_get_type_size  (const par_type_list_t type, uint8_t * const p_size);
 par_status_t par_get_type       (const par_num_t par_num, par_type_list_t *const p_type);
 par_status_t par_get_range      (const par_num_t par_num, par_range_t *const p_range);
+bool         par_is_changed     (const par_num_t par_num);
 
 #if ( 1 == PAR_CFG_NVM_EN )
     par_status_t par_set_n_save (const par_num_t par_num, const void * p_val);

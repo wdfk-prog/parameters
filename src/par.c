@@ -556,44 +556,38 @@ par_status_t par_init(void)
 {
     par_status_t status = ePAR_OK;
 
-    if ( false == par_is_init())
+    PAR_ASSERT( false == par_is_init());
+    if ( false != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Get parameter table
+    gp_par_table = par_cfg_get_table();
+    PAR_ASSERT( NULL != gp_par_table );
+
+    // Check if par table is defined correctly
+    status |= par_check_table_validy( gp_par_table );
+
+    // Allocate space in RAM
+    status |= par_allocate_ram_space( &gpu8_par_value );
+    PAR_ASSERT( NULL != gpu8_par_value );
+
+    // Initialize parameter interface
+    status |= par_if_init();
+
+    // Init succeed
+    if ( ePAR_OK == status )
     {
-        // Get parameter table
-        gp_par_table = par_cfg_get_table();
-        PAR_ASSERT( NULL != gp_par_table );
-
-        // Check if par table is defined correctly
-        status |= par_check_table_validy( gp_par_table );
-
-        // Allocate space in RAM
-        status |= par_allocate_ram_space( &gpu8_par_value );
-        PAR_ASSERT( NULL != gpu8_par_value );
-
-        // Initialize parameter interface
-        status |= par_if_init();
-
-        // Init succeed
-        if ( ePAR_OK == status )
-        {
-            gb_is_init = true;
-        }
-
-        // Set all parameters to default
-        par_set_all_to_default();
-
-        #if ( 1 == PAR_CFG_NVM_EN )
-
-            // Init and load parameters from NVM
-            status |= par_nvm_init();
-
-        #endif
-
-        PAR_DBG_PRINT( "PAR: Parameters initialized with status: %s", par_get_status_str( status ));
+        gb_is_init = true;
     }
-    else
-    {
-        status = ePAR_ERROR_INIT;
-    }
+
+    // Set all parameters to default
+    par_set_all_to_default();
+
+    #if ( 1 == PAR_CFG_NVM_EN )
+        // Init and load parameters from NVM
+        status |= par_nvm_init();
+    #endif
+
+    PAR_DBG_PRINT( "PAR: Parameters initialized with status: %s", par_get_status_str( status ));
 
     return status;
 }
@@ -609,22 +603,16 @@ par_status_t par_deinit(void)
 {
     par_status_t status = ePAR_OK;
 
-    if ( true == par_is_init())
-    {
-        #if ( 1 == PAR_CFG_NVM_EN )
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
 
-            // Init and load parameters from NVM
-            status |= par_nvm_deinit();
+    #if ( 1 == PAR_CFG_NVM_EN )
+        // Init and load parameters from NVM
+        status = par_nvm_deinit();
+    #endif
 
-        #endif
-        
-        // Module de-initialized
-        gb_is_init = false;
-    }
-    else
-    {
-        status = ePAR_ERROR_INIT;
-    }
+    // Module de-initialized
+    gb_is_init = false;
 
     return status;
 }
@@ -663,6 +651,8 @@ bool par_is_init(void)
 par_status_t par_set(const par_num_t par_num, const void * p_val)
 {
     par_status_t status = ePAR_OK;
+
+    // TODO: Change fundamentaly this function!!! API might probably change
 
     // Is init
     PAR_ASSERT( true == par_is_init());
@@ -750,28 +740,15 @@ par_status_t par_set(const par_num_t par_num, const void * p_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_to_default(const par_num_t par_num)
 {
-    par_status_t status = ePAR_OK;
-
+    // Module not initialized
     PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Invalid parameter
     PAR_ASSERT( par_num < ePAR_NUM_OF );
+    if ( par_num >= ePAR_NUM_OF ) return ePAR_ERROR;
 
-    if ( true == par_is_init())
-    {
-        if ( par_num < ePAR_NUM_OF )
-        {
-            status |= par_set(par_num, &gp_par_table[par_num].def);
-        }
-        else
-        {
-            status = ePAR_ERROR;
-        }
-    }
-    else
-    {
-        status = ePAR_ERROR_INIT;
-    }
-
-    return status;
+    return par_set(par_num, &gp_par_table[par_num].def);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -785,91 +762,18 @@ par_status_t par_set_to_default(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_all_to_default(void)
 {
-    par_status_t status  = ePAR_OK;
-    uint32_t     par_num = 0U;
-
+    // Module not initialized
     PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
 
-    if ( true == par_is_init())
+    for ( uint32_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
     {
-        for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-        {
-            par_set_to_default( par_num );
-        }
-
-        PAR_DBG_PRINT( "PAR: Setting all parameters to default" );
-    }
-    else
-    {
-        status = ePAR_ERROR_INIT;
+        // Ignore return as it is not possible to return other that OK
+        (void) par_set_to_default( par_num );
     }
 
-    return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Check if parameter changed from its default value
-*
-* @param[in]    par_num         - Parameter number (enumeration)
-* @param[out]    p_has_changed - Pointer to changed indication
-* @return        status    - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_has_changed(const par_num_t par_num, bool *const p_has_changed)
-{
-    par_status_t status = ePAR_OK;
-
-    PAR_ASSERT( true == par_is_init());
-    PAR_ASSERT( NULL != p_has_changed );
-    PAR_ASSERT( ePAR_NUM_OF > par_num );
-
-    if (     ( true == par_is_init())
-        &&    ( NULL != p_has_changed )
-        &&  ( ePAR_NUM_OF > par_num ))
-    {
-        switch ( gp_par_table[par_num].type )
-        {
-            case ePAR_TYPE_U8:
-                *p_has_changed = (par_get_u8(par_num) != gp_par_table[par_num].def.u8);
-                break;
-
-            case ePAR_TYPE_I8:
-                *p_has_changed = (par_get_i8(par_num) != gp_par_table[par_num].def.i8);
-                break;
-
-            case ePAR_TYPE_U16:
-                *p_has_changed = (par_get_u16(par_num) != gp_par_table[par_num].def.u16);
-                break;
-
-            case ePAR_TYPE_I16:
-                *p_has_changed = (par_get_i16(par_num) != gp_par_table[par_num].def.i16);
-                break;
-
-            case ePAR_TYPE_U32:
-                *p_has_changed = (par_get_u32(par_num) != gp_par_table[par_num].def.u32);
-                break;
-
-            case ePAR_TYPE_I32:
-                *p_has_changed = (par_get_i32(par_num) != gp_par_table[par_num].def.i32);
-                break;
-
-            case ePAR_TYPE_F32:
-                *p_has_changed = (par_get_f32(par_num) != gp_par_table[par_num].def.f32);
-                break;
-
-            case ePAR_TYPE_NUM_OF:
-            default:
-                PAR_ASSERT( 0 );
-                break;
-        }
-    }
-    else
-    {
-        status = ePAR_ERROR;
-    }
-
-    return status;
+    PAR_DBG_PRINT( "PAR: Setting all parameters to default" );
+    return ePAR_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1201,6 +1105,54 @@ par_status_t par_get_range(const par_num_t par_num, par_range_t *const p_range)
     }
 
     return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Check if parameter changed from its default value
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @return       true if parameter value has been changed
+*/
+////////////////////////////////////////////////////////////////////////////////
+bool par_is_changed(const par_num_t par_num)
+{
+    // Module not initialized
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return false;
+
+    // Invalid parameter
+    PAR_ASSERT( par_num < ePAR_NUM_OF );
+    if ( par_num >= ePAR_NUM_OF ) return false;
+
+    switch ( gp_par_table[par_num].type )
+    {
+        case ePAR_TYPE_U8:
+            return (bool) (par_get_u8(par_num) != gp_par_table[par_num].def.u8);
+
+        case ePAR_TYPE_I8:
+            return (bool) (par_get_i8(par_num) != gp_par_table[par_num].def.i8);
+
+        case ePAR_TYPE_U16:
+            return (bool) (par_get_u16(par_num) != gp_par_table[par_num].def.u16);
+
+        case ePAR_TYPE_I16:
+            return (bool) (par_get_i16(par_num) != gp_par_table[par_num].def.i16);
+
+        case ePAR_TYPE_U32:
+            return (bool) (par_get_u32(par_num) != gp_par_table[par_num].def.u32);
+
+        case ePAR_TYPE_I32:
+            return (bool) (par_get_i32(par_num) != gp_par_table[par_num].def.i32);
+
+        case ePAR_TYPE_F32:
+            return (bool) (par_get_f32(par_num) != gp_par_table[par_num].def.f32);
+
+        case ePAR_TYPE_NUM_OF:
+        default:
+            PAR_ASSERT( 0 );
+            return false;
+    }
 }
 
 #if ( 1 == PAR_CFG_NVM_EN )
