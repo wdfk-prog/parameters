@@ -151,7 +151,9 @@ par_status_t par_get_id         (const par_num_t par_num, uint16_t * const p_id)
 par_status_t par_get_num_by_id  (const uint16_t id, par_num_t * const p_par_num);
 par_status_t par_get_config     (const par_num_t par_num, par_cfg_t * const p_par_cfg);
 par_status_t par_get_type_size  (const par_type_list_t type, uint8_t * const p_size);
-par_status_t par_get_type       (const par_num_t par_num, par_type_list_t *const p_type);
+
+par_type_list_t par_get_type(const par_num_t par_num);
+
 par_status_t par_get_range      (const par_num_t par_num, par_range_t *const p_range);
 bool         par_is_changed     (const par_num_t par_num);
 
@@ -165,6 +167,72 @@ bool         par_is_changed     (const par_num_t par_num);
 
 #if ( PAR_CFG_DEBUG_EN )
     const char * par_get_status_str(const par_status_t status);
+#endif
+
+
+
+
+par_status_t par_set_u8              (const par_num_t par_num, const uint8_t u8_val);
+par_status_t par_set_i8              (const par_num_t par_num, const int8_t i8_val);
+par_status_t par_set_u16             (const par_num_t par_num, const uint16_t u16_val);
+par_status_t par_set_i16             (const par_num_t par_num, const int16_t i16_val);
+par_status_t par_set_u32             (const par_num_t par_num, const uint32_t u32_val);
+par_status_t par_set_i32             (const par_num_t par_num, const int32_t i32_val);
+par_status_t par_set_f32             (const par_num_t par_num, const float32_t f32_val);
+
+uint8_t      par_get_u8              (const par_num_t par_num);
+int8_t       par_get_i8              (const par_num_t par_num);
+uint16_t     par_get_u16             (const par_num_t par_num);
+int16_t      par_get_i16             (const par_num_t par_num);
+uint32_t     par_get_u32             (const par_num_t par_num);
+int32_t      par_get_i32             (const par_num_t par_num);
+float32_t    par_get_f32             (const par_num_t par_num);
+
+par_status_t par_set__type_error(void);   // compile-time error if selected
+
+// Adjusted macro to handle two arguments: an enum and a value
+#define PAR_SET(par_num, value) _Generic((value), \
+    uint8_t:  par_set_u8(par_num, value),   \
+    uint16_t: par_set_u16(par_num, value),  \
+    uint32_t: par_set_u32(par_num, value),  \
+    int8_t:   par_set_i8(par_num, value),   \
+    int16_t:  par_set_i16(par_num, value),  \
+    int32_t:  par_set_i32(par_num, value),  \
+    float:    par_set_f32(par_num, value),  \
+    default:  par_set_i32(par_num, value)   \
+    )(par_num, value)
+
+
+// IMPORTANT: In C, integer literals (like 10) are treated as int. On STM32, int is typically 32-bit (int32_t). So when using
+//            "par_set" always cast the value like: par_set( ePAR_MY, (uint8_t) value);
+
+/**
+ * @brief Type-generic macro to get parameters into a destination variable.
+ * @param num The parameter ID.
+ * @param dest The variable where the value will be stored.
+ */
+#define PAR_GET(par_num, dest) _Generic((dest), \
+    uint8_t:   dest = par_get_u8(par_num),      \
+    uint16_t:  dest = par_get_u16(par_num),     \
+    uint32_t:  dest = par_get_u32(par_num),     \
+    int8_t:    dest = par_get_i8(par_num),      \
+    int16_t:   dest = par_get_i16(par_num),     \
+    int32_t:   dest = par_get_i32(par_num),     \
+    float:     dest = par_get_f32(par_num),     \
+    default:   dest = par_get_i32(par_num)      \
+)
+
+
+#if 0
+#define par_set(par_num, value) \
+    ((ePAR_TYPE_U8  == par_get_type(par_num)) ? par_set_u8(par_num, value)  : \
+    ((ePAR_TYPE_U16 == par_get_type(par_num)) ? par_set_u16(par_num, value) : \
+    ((ePAR_TYPE_U32 == par_get_type(par_num)) ? par_set_u32(par_num, value) : \
+    ((ePAR_TYPE_I8  == par_get_type(par_num)) ? par_set_i8(par_num, value)  : \
+    ((ePAR_TYPE_I16 == par_get_type(par_num)) ? par_set_i16(par_num, value) : \
+    ((ePAR_TYPE_I32 == par_get_type(par_num)) ? par_set_i32(par_num, value) : \
+    ((ePAR_TYPE_F32 == par_get_type(par_num)) ? par_set_f32(par_num, value) : PAR_ASSERT(0))))))))
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -535,7 +535,8 @@
                                 g_par_nvm_data_obj_addr[per_par_nb].valid = true;
 
                                 // Set parameter
-                                par_set( par_num, &obj_data.data );
+                                // TODO: Fix PAR_SET
+                                //par_set( par_num, &obj_data.data );
 
                                 // Increment current persistent parameter counter
                                 per_par_nb++;

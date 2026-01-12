@@ -82,20 +82,6 @@ static uint32_t gu32_par_addr_offset[ ePAR_NUM_OF ] = { 0 };
 static par_status_t par_allocate_ram_space  (uint8_t ** pp_ram_space);
 static uint32_t     par_calc_ram_usage      (void);
 static par_status_t par_check_table_validy  (const par_cfg_t * const p_par_cfg);
-static par_status_t par_set_u8              (const par_num_t par_num, const uint8_t u8_val);
-static par_status_t par_set_i8              (const par_num_t par_num, const int8_t i8_val);
-static par_status_t par_set_u16             (const par_num_t par_num, const uint16_t u16_val);
-static par_status_t par_set_i16             (const par_num_t par_num, const int16_t i16_val);
-static par_status_t par_set_u32             (const par_num_t par_num, const uint32_t u32_val);
-static par_status_t par_set_i32             (const par_num_t par_num, const int32_t i32_val);
-static par_status_t par_set_f32             (const par_num_t par_num, const float32_t f32_val);
-static uint8_t      par_get_u8              (const par_num_t par_num);
-static int8_t       par_get_i8              (const par_num_t par_num);
-static uint16_t     par_get_u16             (const par_num_t par_num);
-static int16_t      par_get_i16             (const par_num_t par_num);
-static uint32_t     par_get_u32             (const par_num_t par_num);
-static int32_t      par_get_i32             (const par_num_t par_num);
-static float32_t    par_get_f32             (const par_num_t par_num);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -246,8 +232,11 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
+par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     if ( u8_val > ( gp_par_table[ par_num ].max.u8 ))
     {
         *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u8;
@@ -274,8 +263,11 @@ static par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
+par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     if ( i8_val > ( gp_par_table[ par_num ].max.i8 ))
     {
         *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i8;
@@ -302,8 +294,11 @@ static par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
 * @return        status - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
+par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     if ( u16_val > ( gp_par_table[ par_num ].max.u16 ))
     {
         *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u16;
@@ -330,8 +325,11 @@ static par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
 * @return        status - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
+par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     if ( i16_val > ( gp_par_table[ par_num ].max.i16 ))
     {
         *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i16;
@@ -358,8 +356,11 @@ static par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
 * @return        status - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
+par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     if ( u32_val > ( gp_par_table[ par_num ].max.u32 ))
     {
         *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u32;
@@ -386,8 +387,11 @@ static par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
 * @return        status - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
+par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     if ( i32_val > ( gp_par_table[ par_num ].max.i32 ))
     {
         *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.i32;
@@ -414,8 +418,11 @@ static par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
 * @return        status - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
+par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     if ( f32_val > ( gp_par_table[ par_num ].max.f32 ))
     {
         *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.f32;
@@ -441,8 +448,11 @@ static par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val
 * @return       value   - Value of parameter
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint8_t par_get_u8(const par_num_t par_num)
+uint8_t par_get_u8(const par_num_t par_num)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     return *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
 
@@ -454,8 +464,11 @@ static uint8_t par_get_u8(const par_num_t par_num)
 * @return       value   - Value of parameter
 */
 ////////////////////////////////////////////////////////////////////////////////
-static int8_t par_get_i8(const par_num_t par_num)
+int8_t par_get_i8(const par_num_t par_num)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     return *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
 
@@ -467,8 +480,11 @@ static int8_t par_get_i8(const par_num_t par_num)
 * @return       value   - Value of parameter
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint16_t par_get_u16(const par_num_t par_num)
+uint16_t par_get_u16(const par_num_t par_num)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     return *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
 
@@ -480,8 +496,11 @@ static uint16_t par_get_u16(const par_num_t par_num)
 * @return       value   - Value of parameter
 */
 ////////////////////////////////////////////////////////////////////////////////
-static int16_t par_get_i16(const par_num_t par_num)
+int16_t par_get_i16(const par_num_t par_num)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     return *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
 
@@ -493,8 +512,11 @@ static int16_t par_get_i16(const par_num_t par_num)
 * @return       value   - Value of parameter
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint32_t par_get_u32(const par_num_t par_num)
+uint32_t par_get_u32(const par_num_t par_num)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     return *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
 
@@ -506,8 +528,11 @@ static uint32_t par_get_u32(const par_num_t par_num)
 * @return       value   - Value of parameter
 */
 ////////////////////////////////////////////////////////////////////////////////
-static int32_t par_get_i32(const par_num_t par_num)
+int32_t par_get_i32(const par_num_t par_num)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     return *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
 
@@ -519,8 +544,11 @@ static int32_t par_get_i32(const par_num_t par_num)
 * @return       value   - Value of parameter
 */
 ////////////////////////////////////////////////////////////////////////////////
-static float32_t par_get_f32(const par_num_t par_num)
+float32_t par_get_f32(const par_num_t par_num)
 {
+    // TODO: Check for correct type!
+    // TODO: Add generic asserts here...
+
     return *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
 
@@ -748,7 +776,10 @@ par_status_t par_set_to_default(const par_num_t par_num)
     PAR_ASSERT( par_num < ePAR_NUM_OF );
     if ( par_num >= ePAR_NUM_OF ) return ePAR_ERROR;
 
-    return par_set(par_num, &gp_par_table[par_num].def);
+    // TODO: Fix PAR_SET
+    //return par_set(par_num, gp_par_table[par_num].def);
+    //return par_set( par_num, 0);
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1045,32 +1076,20 @@ par_status_t par_get_type_size(const par_type_list_t type, uint8_t * const p_siz
 *        Get parameter type
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @param[out]   p_type  - Pointer to parameter type
-* @return       status  - Status of operation
+* @return       Parameter data type
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_get_type(const par_num_t par_num, par_type_list_t *const p_type)
+par_type_list_t par_get_type(const par_num_t par_num)
 {
-    par_status_t status = ePAR_OK;
-
-    // TODO: Change API to return directly!
-
+    // Module not initialized
     PAR_ASSERT( true == par_is_init());
-    PAR_ASSERT( NULL != p_type );
-    PAR_ASSERT( ePAR_NUM_OF > par_num );
+    if ( true != par_is_init()) return false;
 
-    if  (   ( true == par_is_init())
-        &&  ( NULL != p_type )
-        &&  ( ePAR_NUM_OF > par_num ))
-    {
-        *p_type = gp_par_table[par_num].type;
-    }
-    else
-    {
-        status = ePAR_ERROR;
-    }
+    // Invalid parameter
+    PAR_ASSERT( par_num < ePAR_NUM_OF );
+    if ( par_num >= ePAR_NUM_OF ) return false;
 
-    return status;
+    return gp_par_table[par_num].type;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1224,7 +1243,9 @@ bool par_is_changed(const par_num_t par_num)
                 break;
         }
 
-        status |= par_set(par_num, p_val);
+
+        // TODO: Fix PAR_SET
+        //status |= par_set(par_num, p_val);
         if ((ePAR_OK == status) && has_value_changed)
         {
             status |= par_save(par_num);
