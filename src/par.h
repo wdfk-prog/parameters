@@ -47,21 +47,22 @@
  */
 enum
 {
-    ePAR_OK                     = 0x00,     /**<Normal operation */
+    ePAR_OK                     = 0U,     /**<Normal operation */
 
     // Errors
-    ePAR_ERROR                  = 0x01,     /**<General parameter error */
-    ePAR_ERROR_INIT             = 0x02,     /**<Parameter initialization error or usage before initialization */
-    ePAR_ERROR_NVM              = 0x04,     /**<Parameter storage to NVM error */
-    ePAR_ERROR_CRC              = 0x08,     /**<Parameter CRC corrupted */
+    ePAR_ERROR                  = 0x0001U,     /**<General parameter error */
+    ePAR_ERROR_INIT             = 0x0002U,     /**<Parameter initialization error or usage before initialization */
+    ePAR_ERROR_NVM              = 0x0004U,     /**<Parameter storage to NVM error */
+    ePAR_ERROR_CRC              = 0x0008U,     /**<Parameter CRC corrupted */
+    ePAR_ERROR_TYPE             = 0x0010U,     /**<Using invalid API function for given parameter data type */
 
     // Warnings
-    ePAR_WAR_SET_TO_DEF         = 0x10,     /**<Parameters set to default */
-    ePAR_WAR_NVM_REWRITTEN      = 0x20,     /**<NVM parameters area completely re-written */
-    ePAR_WAR_NO_PERSISTANT      = 0x40,     /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
-    ePAR_WAR_LIMITED            = 0x80,     /**<Parameter value limited within [min,max] */
+    ePAR_WAR_SET_TO_DEF         = 0x0100U,     /**<Parameters set to default */
+    ePAR_WAR_NVM_REWRITTEN      = 0x0200U,     /**<NVM parameters area completely re-written */
+    ePAR_WAR_NO_PERSISTANT      = 0x0400U,     /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
+    ePAR_WAR_LIMITED            = 0x0800U,     /**<Parameter value limited within [min,max] */
 };
-typedef uint8_t par_status_t;
+typedef uint16_t par_status_t;
 
 /**
  *     Parameters type enumeration
@@ -198,8 +199,9 @@ float32_t    par_get_f32             (const par_num_t par_num);
     int8_t:   	par_set_i8(par_num, value),   \
     int16_t:  	par_set_i16(par_num, value),  \
     int32_t:  	par_set_i32(par_num, value),  \
-    float32_t:	par_set_f32(par_num, value),  \
-    default:  	par_set_i32(par_num, value)   \
+    float:	    par_set_f32(par_num, value),  \
+    double:	    par_set_f32(par_num, value),  \
+    default:  	par_set_f32(par_num, value)   \
     ))
 
 
@@ -220,7 +222,8 @@ float32_t    par_get_f32             (const par_num_t par_num);
     int16_t:   dest = par_get_i16(par_num),     \
     int32_t:   dest = par_get_i32(par_num),     \
     float:     dest = par_get_f32(par_num),     \
-    default:   dest = par_get_i32(par_num)      \
+    double:    dest = par_get_f32(par_num),     \
+    default:   dest = par_get_f32(par_num)      \
 )
 
 

@@ -234,8 +234,10 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_U8 == par_get_type(par_num));
+    if( ePAR_TYPE_U8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
     // TODO: Add mutex
 
@@ -267,8 +269,12 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_I8 == par_get_type(par_num));
+    if( ePAR_TYPE_I8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     if ( i8_val > ( gp_par_table[ par_num ].max.i8 ))
     {
@@ -298,8 +304,12 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_U16 == par_get_type(par_num));
+    if( ePAR_TYPE_U16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     if ( u16_val > ( gp_par_table[ par_num ].max.u16 ))
     {
@@ -329,8 +339,12 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_I16 == par_get_type(par_num));
+    if( ePAR_TYPE_I16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     if ( i16_val > ( gp_par_table[ par_num ].max.i16 ))
     {
@@ -360,8 +374,12 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_U32 == par_get_type(par_num));
+    if( ePAR_TYPE_U32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     if ( u32_val > ( gp_par_table[ par_num ].max.u32 ))
     {
@@ -391,8 +409,12 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_I32 == par_get_type(par_num));
+    if( ePAR_TYPE_I32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     if ( i32_val > ( gp_par_table[ par_num ].max.i32 ))
     {
@@ -422,8 +444,12 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_F32 == par_get_type(par_num));
+    if( ePAR_TYPE_F32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     if ( f32_val > ( gp_par_table[ par_num ].max.f32 ))
     {
@@ -452,8 +478,12 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
 ////////////////////////////////////////////////////////////////////////////////
 uint8_t par_get_u8(const par_num_t par_num)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_U8 == par_get_type(par_num));
+    if( ePAR_TYPE_U8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     return *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
@@ -468,8 +498,12 @@ uint8_t par_get_u8(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 int8_t par_get_i8(const par_num_t par_num)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_I8 == par_get_type(par_num));
+    if( ePAR_TYPE_I8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     return *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
@@ -484,8 +518,12 @@ int8_t par_get_i8(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 uint16_t par_get_u16(const par_num_t par_num)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_U16 == par_get_type(par_num));
+    if( ePAR_TYPE_U16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     return *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
@@ -500,8 +538,12 @@ uint16_t par_get_u16(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 int16_t par_get_i16(const par_num_t par_num)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_I16 == par_get_type(par_num));
+    if( ePAR_TYPE_I16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     return *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
@@ -516,8 +558,12 @@ int16_t par_get_i16(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 uint32_t par_get_u32(const par_num_t par_num)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_U32 == par_get_type(par_num));
+    if( ePAR_TYPE_U32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     return *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
@@ -532,8 +578,12 @@ uint32_t par_get_u32(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 int32_t par_get_i32(const par_num_t par_num)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_I32 == par_get_type(par_num));
+    if( ePAR_TYPE_I32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     return *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
@@ -548,8 +598,12 @@ int32_t par_get_i32(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 float32_t par_get_f32(const par_num_t par_num)
 {
-    // TODO: Check for correct type!
-    // TODO: Add generic asserts here...
+    // Invalid type
+    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    PAR_ASSERT( ePAR_TYPE_F32 == par_get_type(par_num));
+    if( ePAR_TYPE_F32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
+
+    // TODO: Add mutex
 
     return *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
 }
@@ -694,6 +748,9 @@ par_status_t par_set(const par_num_t par_num, const void * p_val)
     {
         if ( par_num < ePAR_NUM_OF )
         {
+
+            // TODO: Remove mutex here as it will be implemented in par_set_X function!
+
             #if ( 1 == PAR_CFG_MUTEX_EN )
                 if ( ePAR_OK == par_if_aquire_mutex())
                 {
@@ -778,10 +835,7 @@ par_status_t par_set_to_default(const par_num_t par_num)
     PAR_ASSERT( par_num < ePAR_NUM_OF );
     if ( par_num >= ePAR_NUM_OF ) return ePAR_ERROR;
 
-    // TODO: Fix PAR_SET
-    //return par_set(par_num, gp_par_table[par_num].def);
-    //return par_set( par_num, 0);
-    return 0;
+    return par_set(par_num, &gp_par_table[par_num].def);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -837,6 +891,9 @@ par_status_t par_get(const par_num_t par_num, void * const p_val)
 
     // Check input
     PAR_ASSERT( par_num < ePAR_NUM_OF );
+
+
+    // TODO: Remove mutex here as it will be implemented in par_set_X function!
 
     #if ( 1 == PAR_CFG_MUTEX_EN )
         if ( ePAR_OK == par_if_aquire_mutex())
