@@ -227,17 +227,6 @@ float32_t    par_get_f32             (const par_num_t par_num);
 )
 
 
-#if 0
-#define par_set(par_num, value) \
-    ((ePAR_TYPE_U8  == par_get_type(par_num)) ? par_set_u8(par_num, value)  : \
-    ((ePAR_TYPE_U16 == par_get_type(par_num)) ? par_set_u16(par_num, value) : \
-    ((ePAR_TYPE_U32 == par_get_type(par_num)) ? par_set_u32(par_num, value) : \
-    ((ePAR_TYPE_I8  == par_get_type(par_num)) ? par_set_i8(par_num, value)  : \
-    ((ePAR_TYPE_I16 == par_get_type(par_num)) ? par_set_i16(par_num, value) : \
-    ((ePAR_TYPE_I32 == par_get_type(par_num)) ? par_set_i32(par_num, value) : \
-    ((ePAR_TYPE_F32 == par_get_type(par_num)) ? par_set_f32(par_num, value) : PAR_ASSERT(0))))))))
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
