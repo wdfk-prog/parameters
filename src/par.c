@@ -237,6 +237,8 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
     // TODO: Check for correct type!
     // TODO: Add generic asserts here...
 
+    // TODO: Add mutex
+
     if ( u8_val > ( gp_par_table[ par_num ].max.u8 ))
     {
         *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ] = gp_par_table[ par_num ].max.u8;
@@ -989,15 +991,21 @@ par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_get_config(const par_num_t par_num, par_cfg_t * const p_par_cfg)
 {
-    par_status_t status = ePAR_OK;
 
-    PAR_ASSERT( true == par_is_init());
+    // TODO: Get rid of that function!!!
+
+    par_status_t    status      = ePAR_OK;
+    const   par_cfg_t *     p_cfg_table = par_cfg_get_table();
+
+    PAR_ASSERT( NULL != p_cfg_table );
+    PAR_ASSERT( NULL != p_par_cfg );
     PAR_ASSERT( par_num < ePAR_NUM_OF );
 
-    if  (   ( true == par_is_init())
+    if (    ( NULL != p_par_cfg )
+        &&  ( NULL != p_cfg_table )
         &&  ( par_num < ePAR_NUM_OF ))
     {
-        *p_par_cfg = gp_par_table[ par_num ];
+        *p_par_cfg = p_cfg_table[ par_num ];
     }
     else
     {

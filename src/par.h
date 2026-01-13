@@ -188,19 +188,19 @@ uint32_t     par_get_u32             (const par_num_t par_num);
 int32_t      par_get_i32             (const par_num_t par_num);
 float32_t    par_get_f32             (const par_num_t par_num);
 
-par_status_t par_set__type_error(void);   // compile-time error if selected
 
 // Adjusted macro to handle two arguments: an enum and a value
-#define PAR_SET(par_num, value) _Generic((value), \
-    uint8_t:  par_set_u8(par_num, value),   \
-    uint16_t: par_set_u16(par_num, value),  \
-    uint32_t: par_set_u32(par_num, value),  \
-    int8_t:   par_set_i8(par_num, value),   \
-    int16_t:  par_set_i16(par_num, value),  \
-    int32_t:  par_set_i32(par_num, value),  \
-    float:    par_set_f32(par_num, value),  \
-    default:  par_set_i32(par_num, value)   \
-    )(par_num, value)
+#define PAR_SET(par_num, value) (_Generic((value), \
+    uint8_t:  	par_set_u8(par_num, value),   \
+    bool:  	    par_set_u8(par_num, value),   \
+    uint16_t: 	par_set_u16(par_num, value),  \
+    uint32_t: 	par_set_u32(par_num, value),  \
+    int8_t:   	par_set_i8(par_num, value),   \
+    int16_t:  	par_set_i16(par_num, value),  \
+    int32_t:  	par_set_i32(par_num, value),  \
+    float32_t:	par_set_f32(par_num, value),  \
+    default:  	par_set_i32(par_num, value)   \
+    ))
 
 
 // IMPORTANT: In C, integer literals (like 10) are treated as int. On STM32, int is typically 32-bit (int32_t). So when using
@@ -213,6 +213,7 @@ par_status_t par_set__type_error(void);   // compile-time error if selected
  */
 #define PAR_GET(par_num, dest) _Generic((dest), \
     uint8_t:   dest = par_get_u8(par_num),      \
+    bool:      dest = par_get_u8(par_num),      \
     uint16_t:  dest = par_get_u16(par_num),     \
     uint32_t:  dest = par_get_u32(par_num),     \
     int8_t:    dest = par_get_i8(par_num),      \
