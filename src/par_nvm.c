@@ -492,7 +492,6 @@
         nvm_status_t       nvm_status  = eNVM_OK;
         uint8_t            crc_calc    = 0;
         uint16_t           per_par_nb  = 0;
-        par_cfg_t          par_cfg     = {0};
         uint16_t           new_par_cnt = 0;
 
         // Loop thru stored NVM object
@@ -517,14 +516,12 @@
                     // Is that parameter in current table
                     if ( ePAR_OK == par_get_num_by_id( obj_data.id, &par_num ))
                     {
-                        par_get_config( par_num, &par_cfg );
-
                         /**
                          *     Parameter found in device and stored in NVM
                          *
                          *     Check if that parameter is still persistent!
                          */
-                        if ( true == par_cfg.persistant )
+                        if ( true == par_get_config(par_num)->persistant )
                         {
                             // Check if already in LUT
                             if ( false == par_nvm_is_in_nvm_lut( obj_data.id ))
@@ -573,14 +570,14 @@
         {
             for ( i = 0; i < ePAR_NUM_OF; i++ )
             {
-                par_get_config( i, &par_cfg );
+                const par_cfg_t * const par_cfg = par_get_config(par_num);
 
-                if ( true == par_cfg.persistant )
+                if ( true == par_cfg->persistant )
                 {
-                    if ( false == par_nvm_is_in_nvm_lut( par_cfg.id ))
+                    if ( false == par_nvm_is_in_nvm_lut( par_cfg->id ))
                     {
                         // Is persistant and not jet in NVM lut -> Add to LUT
-                        g_par_nvm_data_obj_addr[per_par_nb].id    = par_cfg.id;
+                        g_par_nvm_data_obj_addr[per_par_nb].id    = par_cfg->id;
                         g_par_nvm_data_obj_addr[per_par_nb].addr  = obj_addr + ( 8U * ( new_par_cnt + 1U ));
                         g_par_nvm_data_obj_addr[per_par_nb].valid = true;
 
@@ -623,13 +620,10 @@
     {
         uint16_t  num_of_per_par = 0U;
         uint16_t  par_num        = 0U;
-        par_cfg_t par_cfg        = {0};
 
         for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
         {
-            par_get_config( par_num, &par_cfg );
-
-            if ( true == par_cfg.persistant )
+            if ( true == par_get_config(par_num)->persistant )
             {
                 num_of_per_par++;
             }
@@ -649,14 +643,13 @@
     {
         uint16_t  per_par_nb = 0U;
         par_num_t par_num    = 0U;
-        par_cfg_t par_cfg    = {0};
 
         // Loop thru all parameters
         for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
         {
-            par_get_config( par_num, &par_cfg );
+            const par_cfg_t * const par_cfg = par_get_config( par_num );
 
-            if ( true == par_cfg.persistant )
+            if ( true == par_cfg->persistant )
             {
                 // First parameter
                 if ( 0 == per_par_nb )
@@ -673,7 +666,7 @@
                 }
 
                 // Store parameter ID
-                g_par_nvm_data_obj_addr[per_par_nb].id = par_cfg.id;
+                g_par_nvm_data_obj_addr[per_par_nb].id = par_cfg->id;
 
                 // Next persistent parameter
                 per_par_nb++;
@@ -950,7 +943,7 @@
         par_status_t       status   = ePAR_OK;
         par_nvm_data_obj_t obj_data = { 0 };
         uint32_t           par_addr = 0UL;
-        par_cfg_t          par_cfg  = {0};
+
 
         PAR_ASSERT( true == gb_is_init );
         PAR_ASSERT( par_num < ePAR_NUM_OF );
@@ -960,16 +953,16 @@
             if ( par_num < ePAR_NUM_OF )
             {
                 // Get configuration
-                par_get_config( par_num, &par_cfg );
+                const par_cfg_t * const par_cfg = par_get_config( par_num );
 
                 // Is that parameter persistent
-                if ( true == par_cfg.persistant )
+                if ( true == par_cfg->persistant )
                 {
                     // Get current par value
                     par_get( par_num, (uint32_t*) &obj_data.data );
 
                     // Get parameter ID
-                    obj_data.id = par_cfg.id;
+                    obj_data.id = par_cfg->id;
 
                     // Get parameter type size
                     // NOTE: For know fixed!
@@ -1024,7 +1017,6 @@
     {
         par_status_t status  = ePAR_OK;
         uint16_t     par_num = 0;
-        par_cfg_t    par_cfg = { 0 };
 
         PAR_ASSERT( true == gb_is_init );
 
@@ -1036,11 +1028,8 @@
             // Got thru all parameters
             for ( par_num = 0UL; par_num < ePAR_NUM_OF; par_num++ )
             {
-                // Get parameter configuration
-                par_get_config( par_num, &par_cfg );
-
                 // Store only persistant one
-                if ( true == par_cfg.persistant )
+                if ( true == par_get_config(par_num)->persistant )
                 {
                     // Sync will be done later
                     status |= par_nvm_write( par_num, false );
