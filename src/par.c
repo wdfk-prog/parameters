@@ -351,20 +351,21 @@ par_status_t par_init(void)
     status |= par_if_init();
 
     // Init succeed
+    PAR_ASSERT(ePAR_OK == status);
     if ( ePAR_OK == status )
     {
         gb_is_init = true;
+
+        // Set all parameters to default
+        par_set_all_to_default();
+
+        #if ( 1 == PAR_CFG_NVM_EN )
+            // Init and load parameters from NVM
+            status |= par_nvm_init();
+        #endif
     }
 
-    // Set all parameters to default
-    par_set_all_to_default();
-
-    #if ( 1 == PAR_CFG_NVM_EN )
-        // Init and load parameters from NVM
-        status |= par_nvm_init();
-    #endif
-
-    PAR_DBG_PRINT( "PAR: Parameters initialized with status: %s", par_get_status_str( status ));
+ 	PAR_DBG_PRINT( "PAR: Parameters initialized with status: %s", par_get_status_str( status ));
 
     return status;
 }
@@ -790,17 +791,17 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
         if ( val > range.max.i32 )
         {
             *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.i32;
-            return ePAR_WAR_LIMITED;
+            status = ePAR_WAR_LIMITED;
         }
         else if ( val < range.min.i32 )
         {
             *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.i32;
-            return ePAR_WAR_LIMITED;
+            status = ePAR_WAR_LIMITED;
         }
         else
         {
             *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int32_t) val;
-            return ePAR_OK;
+            status = ePAR_OK;
         }
 
         (void) par_if_release_mutex();
@@ -844,17 +845,17 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
         if ( val > range.max.f32 )
         {
             *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.f32;
-            return ePAR_WAR_LIMITED;
+            status = ePAR_WAR_LIMITED;
         }
         else if ( val < range.min.f32 )
         {
             *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.f32;
-            return ePAR_WAR_LIMITED;
+            status = ePAR_WAR_LIMITED;
         }
         else
         {
             *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (float32_t) val;
-            return ePAR_OK;
+            status = ePAR_OK;
         }
 
         (void) par_if_release_mutex();
