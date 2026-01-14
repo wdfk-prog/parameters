@@ -425,8 +425,11 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
 {
     par_status_t status = ePAR_OK;
 
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
     // Check for invalid type
-    // NOTE: Module init and par_num is checked in "par_get_type()" func!
     PAR_ASSERT( ePAR_TYPE_U8 == par_get_type(par_num));
     if( ePAR_TYPE_U8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
@@ -476,8 +479,11 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
 {
     par_status_t status = ePAR_OK;
 
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
     // Check for invalid type
-    // NOTE: Module init and par_num is checked in "par_get_type()" func!
     PAR_ASSERT( ePAR_TYPE_I8 == par_get_type(par_num));
     if( ePAR_TYPE_I8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
@@ -527,8 +533,11 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
 {
     par_status_t status = ePAR_OK;
 
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
     // Check for invalid type
-    // NOTE: Module init and par_num is checked in "par_get_type()" func!
     PAR_ASSERT( ePAR_TYPE_U16 == par_get_type(par_num));
     if( ePAR_TYPE_U16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
@@ -578,8 +587,11 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
 {
     par_status_t status = ePAR_OK;
 
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
     // Check for invalid type
-    // NOTE: Module init and par_num is checked in "par_get_type()" func!
     PAR_ASSERT( ePAR_TYPE_I16 == par_get_type(par_num));
     if( ePAR_TYPE_I16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
@@ -629,8 +641,11 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
 {
     par_status_t status = ePAR_OK;
 
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
     // Check for invalid type
-    // NOTE: Module init and par_num is checked in "par_get_type()" func!
     PAR_ASSERT( ePAR_TYPE_U32 == par_get_type(par_num));
     if( ePAR_TYPE_U32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
@@ -680,8 +695,11 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
 {
     par_status_t status = ePAR_OK;
 
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
     // Check for invalid type
-    // NOTE: Module init and par_num is checked in "par_get_type()" func!
     PAR_ASSERT( ePAR_TYPE_I32 == par_get_type(par_num));
     if( ePAR_TYPE_I32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
@@ -731,8 +749,11 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
 {
     par_status_t status = ePAR_OK;
 
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
     // Check for invalid type
-    // NOTE: Module init and par_num is checked in "par_get_type()" func!
     PAR_ASSERT( ePAR_TYPE_F32 == par_get_type(par_num));
     if( ePAR_TYPE_F32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
@@ -781,7 +802,58 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_to_default(const par_num_t par_num)
 {
-    return par_set(par_num, &par_get_config(par_num)->def);
+    // TODO: Check how to make that simpler!
+    //return par_set(par_num, &(par_get_config(par_num)->def));
+
+    par_status_t status = ePAR_OK;
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
+
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Check parameter
+    PAR_ASSERT( NULL != par_cfg );
+    if ( NULL == par_cfg ) return ePAR_ERROR;
+
+    switch ( par_cfg->type )
+    {
+        case ePAR_TYPE_U8:
+            status = par_set_u8( par_num, par_cfg->def.u8 );
+            break;
+
+        case ePAR_TYPE_I8:
+            status = par_set_i8( par_num, par_cfg->def.i8 );
+            break;
+
+        case ePAR_TYPE_U16:
+            status = par_set_u16( par_num, par_cfg->def.u16 );
+            break;
+
+        case ePAR_TYPE_I16:
+            status = par_set_i16( par_num, par_cfg->def.i16 );
+            break;
+
+        case ePAR_TYPE_U32:
+            status = par_set_u32( par_num, par_cfg->def.u32 );
+            break;
+
+        case ePAR_TYPE_I32:
+            status = par_set_i32( par_num, par_cfg->def.i32 );
+            break;
+
+        case ePAR_TYPE_F32:
+            status = par_set_f32( par_num, par_cfg->def.f32 );
+            break;
+
+        case ePAR_TYPE_NUM_OF:
+        default:
+            PAR_ASSERT( 0 );
+            status = ePAR_ERROR_TYPE;
+            break;
+    }
+
+    return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
