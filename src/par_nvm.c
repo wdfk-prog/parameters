@@ -18,36 +18,35 @@
 *     Parameter storage to non-volatile memory handling.
 *
 *
-* @pre        NVM module shall have memory region called "Parameters".
+* @pre      NVM module shall have memory region called "Parameters".
 *
-*             NVM module must be initialized before calling any of following
-*             functions.
+*           NVM module must be initialized before calling any of following
+*           functions.
 *
 * @brief    This module is responsible for parameter NVM object creation and
-*             storage manipulation. NVM parameter object consist of it's value
-*             and a CRC value for validation purposes.
+*           storage manipulation. NVM parameter object consist of it's value
+*           and a CRC value for validation purposes.
 *
-*             Parameter storage is reserved in "Parameters" region of NVM. Look
-*             at the nvm_cfg.h/c module for NVM region descriptions.
+*           Parameter storage is reserved in "Parameters" region of NVM. Look
+*           at the nvm_cfg.h/c module for NVM region descriptions.
 *
-*            Parameters stored into NVM in little endianness format.
+*           Parameters stored into NVM in little endianness format.
 *
-*            For details how parameters are handled in NVM go look at the
-*            documentation.
+*           For details how parameters are handled in NVM go look at the
+*           documentation.
 *
-* @note        RULES OF "PAR_CFG_TABLE_ID_CHECK_EN" SETTINGS:
+* @note    RULES OF "PAR_CFG_TABLE_ID_CHECK_EN" SETTINGS:
 *
-*             It is normal that parameter table will change during development
-*             and therefore code will detect table change between "RAM" and "NVM"
-*             (detection of par table change enable/disable with
-*             "PAR_CFG_TABLE_ID_CHECK_EN" setting).
+*          It is normal that parameter table will change during development
+*          and therefore code will detect table change between "RAM" and "NVM"
+*          (detection of par table change enable/disable with
+*          "PAR_CFG_TABLE_ID_CHECK_EN" setting).
 *
-*             But as SW is released and potential at customer, developer must not
-*             change the pre-existing parameter table as it will loose all values
-*             stored inside NVM. Therefore it is recommended to disable table ID
-*             detection after first release of SW. Adding new parameters to pre-existing
-*             table has no harm at all nor does it have any side effects.
-*
+*          But as SW is released and potential at customer, developer must not
+*          change the pre-existing parameter table as it will loose all values
+*          stored inside NVM. Therefore it is recommended to disable table ID
+*          detection after first release of SW. Adding new parameters to pre-existing
+*          table has no harm at all nor does it have any side effects.
 */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -424,9 +423,9 @@
     ////////////////////////////////////////////////////////////////////////////////
     static uint16_t par_nvm_calc_crc(const uint8_t * const p_data, const uint8_t size)
     {
-        const     uint16_t poly     = 0x1021U;    // CRC-16-CCITT
-        const     uint16_t seed     = 0x1234U;    // Custom seed
-                uint16_t crc16     = seed;
+        const uint16_t poly  = 0x1021U;    // CRC-16-CCITT
+        const uint16_t seed  = 0x1234U;    // Custom seed
+              uint16_t crc16 = seed;
 
         // Check input
         PAR_ASSERT( NULL != p_data );
@@ -617,10 +616,9 @@
     ////////////////////////////////////////////////////////////////////////////////
     static uint16_t par_nvm_get_per_par(void)
     {
-        uint16_t  num_of_per_par = 0U;
-        uint16_t  par_num        = 0U;
+        uint16_t num_of_per_par = 0U;
 
-        for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+        for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
         {
             if ( true == par_get_config(par_num)->persistant )
             {
@@ -640,11 +638,10 @@
     ////////////////////////////////////////////////////////////////////////////////
     static void par_nvm_build_new_nvm_lut(void)
     {
-        uint16_t  per_par_nb = 0U;
-        par_num_t par_num    = 0U;
+        uint16_t per_par_nb = 0U;
 
         // Loop thru all parameters
-        for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+        for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
         {
             const par_cfg_t * const par_cfg = par_get_config( par_num );
 
@@ -661,7 +658,7 @@
                 else
                 {
                     // Calculate and add address of next parameter
-                    g_par_nvm_data_obj_addr[per_par_nb].addr = ( g_par_nvm_data_obj_addr[per_par_nb-1].addr + 8 );
+                    g_par_nvm_data_obj_addr[per_par_nb].addr = ( g_par_nvm_data_obj_addr[per_par_nb-1].addr + 8U );
                 }
 
                 // Store parameter ID
@@ -689,19 +686,15 @@
     ////////////////////////////////////////////////////////////////////////////////
     static uint32_t par_nvm_get_nvm_lut_addr(const uint16_t id)
     {
-        uint32_t    obj_addr    = 0;
-        par_num_t    par_num        = 0;
-
-        for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+        for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
         {
             if ( id == g_par_nvm_data_obj_addr[par_num].id )
             {
-                obj_addr = g_par_nvm_data_obj_addr[par_num].addr;
-                break;
+                return g_par_nvm_data_obj_addr[par_num].addr;
             }
         }
 
-        return obj_addr;
+        return 0;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -714,20 +707,16 @@
     ////////////////////////////////////////////////////////////////////////////////
     static bool par_nvm_is_in_nvm_lut(const uint16_t id )
     {
-        bool      is_in_lut = false;
-        par_num_t par_num   = 0;
-
-        for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+        for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
         {
             if  (   ( id == g_par_nvm_data_obj_addr[par_num].id )
                 &&  ( true == g_par_nvm_data_obj_addr[par_num].valid ))
             {
-                is_in_lut = true;
-                break;
+                return true;
             }
         }
 
-        return is_in_lut;
+        return false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1009,8 +998,7 @@
     ////////////////////////////////////////////////////////////////////////////////
     par_status_t par_nvm_write_all(void)
     {
-        par_status_t status  = ePAR_OK;
-        uint16_t     par_num = 0;
+        par_status_t status = ePAR_OK;
 
         PAR_ASSERT( true == gb_is_init );
 
@@ -1020,7 +1008,7 @@
             status |= par_nvm_corrupt_signature();
 
             // Got thru all parameters
-            for ( par_num = 0UL; par_num < ePAR_NUM_OF; par_num++ )
+            for ( par_num_t par_num = 0U; par_num < ePAR_NUM_OF; par_num++ )
             {
                 // Store only persistant one
                 if ( true == par_is_persistant( par_num ))
@@ -1094,13 +1082,11 @@
         par_status_t status = ePAR_OK;
 
         #if ( PAR_CFG_DEBUG_EN )
-            uint16_t par_num = 0;
-
             PAR_DBG_PRINT( "PAR_NVM: Parameter NVM look-up table:" );
             PAR_DBG_PRINT( " %s\t%s\t%s\t\t%s", "#", "ID", "Addr", "Valid" );
             PAR_DBG_PRINT( "===============================" );
 
-            for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+            for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
             {
                 PAR_DBG_PRINT( " %d\t%d\t0x%04X\t%d", par_num,     g_par_nvm_data_obj_addr[par_num].id,
                                                                 g_par_nvm_data_obj_addr[par_num].addr,
