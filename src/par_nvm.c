@@ -75,7 +75,6 @@
     // Definitions
     ////////////////////////////////////////////////////////////////////////////////
 
-
     /**
      *     Parameter signature and size in bytes
      */
@@ -702,8 +701,6 @@
             }
         }
 
-        // ZIGA: TODO: Validate if address is found correctly!!!
-
         return obj_addr;
     }
 
@@ -944,7 +941,6 @@
         par_nvm_data_obj_t obj_data = { 0 };
         uint32_t           par_addr = 0UL;
 
-
         PAR_ASSERT( true == gb_is_init );
         PAR_ASSERT( par_num < ePAR_NUM_OF );
 
@@ -966,14 +962,12 @@
 
                     // Get parameter type size
                     // NOTE: For know fixed!
-                    //par_get_type_size( par_cfg.type, &obj_data.size );
-                    obj_data.size = 4;
+                    obj_data.size = 4U;
 
                     // Calculate CRC
                     obj_data.crc = par_nvm_calc_obj_crc( &obj_data );
 
                     // Get address from NVM lut
-                    //par_addr = g_par_nvm_data_obj_addr[par_num].addr;
                     par_addr = par_nvm_get_nvm_lut_addr( obj_data.id );
 
                     // Write to NVM
@@ -1029,7 +1023,7 @@
             for ( par_num = 0UL; par_num < ePAR_NUM_OF; par_num++ )
             {
                 // Store only persistant one
-                if ( true == par_get_config(par_num)->persistant )
+                if ( true == par_is_persistant( par_num ))
                 {
                     // Sync will be done later
                     status |= par_nvm_write( par_num, false );
@@ -1077,16 +1071,6 @@
 
             // Write all data object
             status |= par_nvm_write_all();
-
-            // Re-write header as reseting whole NVM parameter memory
-
-            // ZIGA: Redundant TODO:
-            //status |= par_nvm_write_header( par_nvm_get_per_par() );
-
-            // Sync NVM
-
-            // ZIGA: Redundant TODO:
-            //status |= par_nvm_sync();
         }
         else
         {
