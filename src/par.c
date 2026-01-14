@@ -803,8 +803,9 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
 par_status_t par_set_to_default(const par_num_t par_num)
 {
     // TODO: Check how to make that simpler!
-    //return par_set(par_num, &(par_get_config(par_num)->def));
+    return par_set(par_num, &(par_get_config(par_num)->def));
 
+#if 0
     par_status_t status = ePAR_OK;
     const par_cfg_t * const par_cfg = par_get_config(par_num);
 
@@ -854,6 +855,8 @@ par_status_t par_set_to_default(const par_num_t par_num)
     }
 
     return status;
+
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1375,6 +1378,34 @@ bool par_is_changed_from_default(const par_num_t par_num)
 
     return false;
 }
+
+
+
+const char * par_get_name(const par_num_t par_num)
+{
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
+
+    if ( NULL != par_cfg )
+    {
+        return par_cfg->name;
+    }
+
+    return NULL;
+}
+
+par_access_t par_get_access(const par_num_t par_num)
+{
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
+
+    if ( NULL != par_cfg )
+    {
+        return par_cfg->access;
+    }
+
+    return ePAR_ACCESS_RO;
+}
+
+
 
 #if ( 1 == PAR_CFG_NVM_EN )
     ////////////////////////////////////////////////////////////////////////////////

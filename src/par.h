@@ -89,7 +89,7 @@ enum
     ePAR_ACCESS_RO = 0, /**<Parameter read only */
     ePAR_ACCESS_RW      /**<Parameter read/write */
 };
-typedef uint8_t par_io_acess_t;
+typedef uint8_t par_access_t;
 
 /**
  *  32-bit floating data type definition
@@ -135,7 +135,7 @@ typedef struct
     const char *    desc;       /**<Parameter description */
     uint16_t        id;         /**<Variable ID */
     par_type_list_t type;       /**<Parameter type */
-    par_io_acess_t  access;     /**<Parameter access from external device point-of-view */
+    par_access_t    access;     /**<Parameter access from external device point-of-view */
     bool            persistant; /**<Parameter persistence flag */
 } par_cfg_t;
 
@@ -225,14 +225,21 @@ par_status_t par_get_num_by_id  (const uint16_t id, par_num_t * const p_par_num)
 par_status_t par_get_id_by_num  (const par_num_t par_num, uint16_t * const p_id);
 //const par_cfg_t * par_get_cfg(const par_num_t par_num);
 
-const par_cfg_t * par_get_config     (const par_num_t par_num);
 
+
+// TODO: Make that static
 par_status_t par_get_type_size  (const par_type_list_t type, uint8_t * const p_size);
 
-par_type_list_t par_get_type    (const par_num_t par_num);
-par_range_t     par_get_range   (const par_num_t par_num);
+
 
 bool            par_is_changed_from_default  (const par_num_t par_num);
+
+
+const par_cfg_t *   par_get_config  (const par_num_t par_num);
+const char *        par_get_name    (const par_num_t par_num);
+par_access_t        par_get_access  (const par_num_t par_num);
+par_type_list_t     par_get_type    (const par_num_t par_num);
+par_range_t         par_get_range   (const par_num_t par_num);
 
 // Parameter NVM storage API
 #if ( 1 == PAR_CFG_NVM_EN )
