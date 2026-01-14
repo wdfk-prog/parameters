@@ -147,7 +147,7 @@ par_status_t par_init    (void);
 par_status_t par_deinit  (void);
 bool         par_is_init (void);
 
-// Setting parameter value API
+// Setting parameter value API (module must be first initialized before using those func)
 par_status_t par_set                (const par_num_t par_num, const void * p_val);
 par_status_t par_set_by_id          (const uint16_t id, const void * p_val);
 par_status_t par_set_u8             (const par_num_t par_num, const uint8_t val);
@@ -182,7 +182,7 @@ par_status_t par_set_all_to_default (void);
     default:    par_set_f32(par_num, value)   		\
 )
 
-// Getting parameter value API
+// Getting parameter value API (module must be first initialized before using those func)
 par_status_t par_get            (const par_num_t par_num, void * const p_val);
 par_status_t par_get_by_id      (const uint16_t id, void * const p_val);
 uint8_t      par_get_u8         (const par_num_t par_num);
@@ -193,6 +193,8 @@ uint32_t     par_get_u32        (const par_num_t par_num);
 int32_t      par_get_i32        (const par_num_t par_num);
 float32_t    par_get_f32        (const par_num_t par_num);
 par_status_t par_get_default    (const par_num_t par_num, void * const p_val);
+bool         par_is_changed     (const par_num_t par_num);
+
 /**
  *  @brief   Type-generic macro to retrieve a parameter value.
  *
@@ -216,30 +218,17 @@ par_status_t par_get_default    (const par_num_t par_num, void * const p_val);
     default:   dest = par_get_f32(par_num)      	\
 )
 
-
-
-
-
-
-par_status_t par_get_num_by_id  (const uint16_t id, par_num_t * const p_par_num);
-par_status_t par_get_id_by_num  (const par_num_t par_num, uint16_t * const p_id);
-//const par_cfg_t * par_get_cfg(const par_num_t par_num);
-
-
-
-// TODO: Make that static
-par_status_t par_get_type_size  (const par_type_list_t type, uint8_t * const p_size);
-
-
-
-bool            par_is_changed_from_default  (const par_num_t par_num);
-
-
-const par_cfg_t *   par_get_config  (const par_num_t par_num);
-const char *        par_get_name    (const par_num_t par_num);
-par_access_t        par_get_access  (const par_num_t par_num);
-par_type_list_t     par_get_type    (const par_num_t par_num);
-par_range_t         par_get_range   (const par_num_t par_num);
+// Parameter configurations API (usage without module init pre-step)
+const par_cfg_t *   par_get_config      (const par_num_t par_num);
+const char *        par_get_name        (const par_num_t par_num);
+par_range_t         par_get_range       (const par_num_t par_num);
+const char *        par_get_unit        (const par_num_t par_num);
+const char *        par_get_desc        (const par_num_t par_num);
+par_type_list_t     par_get_type        (const par_num_t par_num);
+par_access_t        par_get_access      (const par_num_t par_num);
+bool                par_is_persistant   (const par_num_t par_num);
+par_status_t        par_get_num_by_id   (const uint16_t id, par_num_t * const p_par_num);
+par_status_t        par_get_id_by_num   (const par_num_t par_num, uint16_t * const p_id);
 
 // Parameter NVM storage API
 #if ( 1 == PAR_CFG_NVM_EN )
@@ -253,17 +242,6 @@ par_range_t         par_get_range   (const par_num_t par_num);
 #if ( PAR_CFG_DEBUG_EN )
     const char * par_get_status_str(const par_status_t status);
 #endif
-
-
-
-
-
-
-
-
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**

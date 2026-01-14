@@ -81,6 +81,8 @@ static uint32_t gu32_par_addr_offset[ ePAR_NUM_OF ] = { 0 };
 static par_status_t par_allocate_ram_space  (uint8_t ** pp_ram_space);
 static uint32_t     par_calc_ram_usage      (void);
 static par_status_t par_check_table_validy  (const par_cfg_t * const p_par_cfg);
+static uint32_t     par_get_type_size       (const par_type_list_t type);
+static bool         par_is_value_changed    (const par_num_t par_num, const void * p_val);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -123,7 +125,6 @@ static uint32_t par_calc_ram_usage(void)
 {
     uint32_t  par_num       = 0U;
     uint32_t  total_size    = 0U;
-    uint8_t   par_type_size = 0;
 
     // For every parameter
     for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
@@ -161,11 +162,8 @@ static uint32_t par_calc_ram_usage(void)
         // Store par RAM address offset
         gu32_par_addr_offset[par_num] = total_size;
 
-        // Get size of data type
-        par_get_type_size( par_cfg->type, &par_type_size );
-
         // Accumulate total RAM space
-        total_size += par_type_size;
+        total_size += par_get_type_size( par_cfg->type );
     }
 
     return total_size;
@@ -221,8 +219,98 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
     return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter type size
+*
+* @param[in]    type    - Data type of parameter
+* @return       Parameter data type size
+*/
+////////////////////////////////////////////////////////////////////////////////
+static uint32_t par_get_type_size(const par_type_list_t type)
+{
+    switch ( type )
+    {
+        case ePAR_TYPE_U8:
+            return sizeof( uint8_t );
 
+        case ePAR_TYPE_I8:
+            return sizeof( int8_t );
 
+        case ePAR_TYPE_U16:
+            return sizeof( uint16_t );
+
+        case ePAR_TYPE_I16:
+            return sizeof( int16_t );
+
+        case ePAR_TYPE_U32:
+            return sizeof( uint32_t );
+
+        case ePAR_TYPE_I32:
+            return sizeof( int32_t );
+
+        case ePAR_TYPE_F32:
+            return sizeof( float32_t );
+            break;
+
+        case ePAR_TYPE_NUM_OF:
+        default:
+            PAR_ASSERT(0);
+            return 0;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Is parameter value changed
+*
+* @param[in]    par_num - Parameter number
+* @param[in]    p_val   - Parameter value
+* @return       True if parameter value is different from current
+*/
+////////////////////////////////////////////////////////////////////////////////
+static bool par_is_value_changed(const par_num_t par_num, const void * p_val)
+{
+    bool value_changed = false;
+
+    switch ( par_get_type(par_num))
+    {
+        case ePAR_TYPE_U8:
+            value_changed = (par_get_u8(par_num) != *(uint8_t*)p_val);
+            break;
+
+        case ePAR_TYPE_I8:
+            value_changed = (par_get_i8(par_num) != *(int8_t*)p_val);
+            break;
+
+        case ePAR_TYPE_U16:
+            value_changed = (par_get_u16(par_num) != *(uint16_t*)p_val);
+            break;
+
+        case ePAR_TYPE_I16:
+            value_changed = (par_get_i16(par_num) != *(int16_t*)p_val);
+            break;
+
+        case ePAR_TYPE_U32:
+            value_changed = (par_get_u32(par_num) != *(uint32_t*)p_val);
+            break;
+
+        case ePAR_TYPE_I32:
+            value_changed = (par_get_i32(par_num) != *(int32_t*)p_val);
+            break;
+
+        case ePAR_TYPE_F32:
+            value_changed = (par_get_f32(par_num) != *(float32_t*)p_val);
+            break;
+
+        case ePAR_TYPE_NUM_OF:
+        default:
+            PAR_ASSERT( 0 );
+            break;
+    }
+
+    return value_changed;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -385,7 +473,7 @@ par_status_t par_set(const par_num_t par_num, const void * p_val)
         case ePAR_TYPE_NUM_OF:
         default:
             PAR_ASSERT( 0 );
-            break;
+            return ePAR_ERROR_TYPE;
     }
 
     return status;
@@ -393,23 +481,25 @@ par_status_t par_set(const par_num_t par_num, const void * p_val)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Set parameter by ID
+*        Set parameter value by ID
 *
-* @param[in]     id     - Parameter ID number
+* @param[in]    id      - Parameter ID number
 * @param[in]    p_val   - Pointer to value
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_by_id(const uint16_t id, const void * p_val)
 {
-    par_status_t status = ePAR_OK;
+    par_num_t par_num;
 
-    UNUSED( id );
-    UNUSED( p_val );
-
-    // TODO: Implement this
-
-    return status;
+    if ( ePAR_OK == par_get_num_by_id( id, &par_num ))
+    {
+        return par_set( par_num, p_val );
+    }
+    else
+    {
+        return ePAR_ERROR;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,11 +507,11 @@ par_status_t par_set_by_id(const uint16_t id, const void * p_val)
 *        Set unsigned 8-bit parameter
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    u8_val  - Value of parameter
+* @param[in]    val     - Value of parameter
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
+par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
 {
     par_status_t status = ePAR_OK;
 
@@ -438,19 +528,19 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
     {
         const par_range_t range = par_get_range(par_num);
 
-        if ( u8_val > range.max.u8 )
+        if ( val > range.max.u8 )
         {
             *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.u8;
             status = ePAR_WAR_LIMITED;
         }
-        else if ( u8_val < range.min.u8 )
+        else if ( val < range.min.u8 )
         {
             *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.u8;
             status = ePAR_WAR_LIMITED;
         }
         else
         {
-            *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint8_t) u8_val;
+            *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint8_t) val;
             status = ePAR_OK;
         }
 
@@ -471,11 +561,11 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t u8_val)
 *        Set signed 8-bit parameter
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    i8_val  - Value of parameter
+* @param[in]    val     - Value of parameter
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
+par_status_t par_set_i8(const par_num_t par_num, const int8_t val)
 {
     par_status_t status = ePAR_OK;
 
@@ -492,19 +582,19 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
     {
         const par_range_t range = par_get_range(par_num);
 
-        if ( i8_val > range.max.i8 )
+        if ( val > range.max.i8 )
         {
             *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.i8;
             status = ePAR_WAR_LIMITED;
         }
-        else if ( i8_val < range.min.i8 )
+        else if ( val < range.min.i8 )
         {
             *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.i8;
             status = ePAR_WAR_LIMITED;
         }
         else
         {
-            *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int8_t) i8_val;
+            *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int8_t) val;
             status = ePAR_OK;
         }
 
@@ -525,11 +615,11 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t i8_val)
 *        Set unsigned 16-bit parameter
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    u16_val - Value of parameter
-* @return        status - Status of operation
+* @param[in]    val     - Value of parameter
+* @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
+par_status_t par_set_u16(const par_num_t par_num, const uint16_t val)
 {
     par_status_t status = ePAR_OK;
 
@@ -546,19 +636,19 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
     {
         const par_range_t range = par_get_range(par_num);
 
-        if ( u16_val > range.max.u16 )
+        if ( val > range.max.u16 )
         {
             *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.u16;
             status = ePAR_WAR_LIMITED;
         }
-        else if ( u16_val < range.min.u16 )
+        else if ( val < range.min.u16 )
         {
             *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.u16;
             status = ePAR_WAR_LIMITED;
         }
         else
         {
-            *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint16_t) u16_val;
+            *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint16_t) val;
             status = ePAR_OK;
         }
 
@@ -579,11 +669,11 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t u16_val)
 *        Set signed 16-bit parameter
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    i16_val - Value of parameter
-* @return        status - Status of operation
+* @param[in]    val     - Value of parameter
+* @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
+par_status_t par_set_i16(const par_num_t par_num, const int16_t val)
 {
     par_status_t status = ePAR_OK;
 
@@ -600,19 +690,19 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
     {
         const par_range_t range = par_get_range(par_num);
 
-        if ( i16_val > range.max.i16 )
+        if ( val > range.max.i16 )
         {
             *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.i16;
             status = ePAR_WAR_LIMITED;
         }
-        else if ( i16_val < range.min.i16 )
+        else if ( val < range.min.i16 )
         {
             *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.i16;
             status = ePAR_WAR_LIMITED;
         }
         else
         {
-            *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int16_t) i16_val;
+            *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int16_t) val;
             status = ePAR_OK;
         }
 
@@ -633,11 +723,11 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t i16_val)
 *        Set unsigned 32-bit parameter
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    u32_val - Value of parameter
-* @return        status - Status of operation
+* @param[in]    val     - Value of parameter
+* @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
+par_status_t par_set_u32(const par_num_t par_num, const uint32_t val)
 {
     par_status_t status = ePAR_OK;
 
@@ -654,19 +744,19 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
     {
         const par_range_t range = par_get_range(par_num);
 
-        if ( u32_val > range.max.u32 )
+        if ( val > range.max.u32 )
         {
             *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.u32;
             status = ePAR_WAR_LIMITED;
         }
-        else if ( u32_val < range.min.u32 )
+        else if ( val < range.min.u32 )
         {
             *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.u32;
             status = ePAR_WAR_LIMITED;
         }
         else
         {
-            *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint32_t) u32_val;
+            *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint32_t) val;
             status = ePAR_OK;
         }
 
@@ -687,11 +777,11 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t u32_val)
 *        Set signed 32-bit parameter
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    i32_val - Value of parameter
-* @return        status - Status of operation
+* @param[in]    val     - Value of parameter
+* @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
+par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
 {
     par_status_t status = ePAR_OK;
 
@@ -708,19 +798,19 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
     {
         const par_range_t range = par_get_range(par_num);
 
-        if ( i32_val > range.max.i32 )
+        if ( val > range.max.i32 )
         {
             *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.i32;
             return ePAR_WAR_LIMITED;
         }
-        else if ( i32_val < range.min.i32 )
+        else if ( val < range.min.i32 )
         {
             *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.i32;
             return ePAR_WAR_LIMITED;
         }
         else
         {
-            *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int32_t) i32_val;
+            *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int32_t) val;
             return ePAR_OK;
         }
 
@@ -741,11 +831,11 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t i32_val)
 *        Set floating value parameter
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    f32_val - Value of parameter
-* @return        status - Status of operation
+* @param[in]    val     - Value of parameter
+* @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
+par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
 {
     par_status_t status = ePAR_OK;
 
@@ -762,19 +852,19 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
     {
         const par_range_t range = par_get_range(par_num);
 
-        if ( f32_val > range.max.f32 )
+        if ( val > range.max.f32 )
         {
             *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.max.f32;
             return ePAR_WAR_LIMITED;
         }
-        else if ( f32_val < range.min.f32 )
+        else if ( val < range.min.f32 )
         {
             *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = range.min.f32;
             return ePAR_WAR_LIMITED;
         }
         else
         {
-            *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (float32_t) f32_val;
+            *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (float32_t) val;
             return ePAR_OK;
         }
 
@@ -802,61 +892,7 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t f32_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_to_default(const par_num_t par_num)
 {
-    // TODO: Check how to make that simpler!
     return par_set(par_num, &(par_get_config(par_num)->def));
-
-#if 0
-    par_status_t status = ePAR_OK;
-    const par_cfg_t * const par_cfg = par_get_config(par_num);
-
-    // Check initialization
-    PAR_ASSERT( true == par_is_init());
-    if ( true != par_is_init()) return ePAR_ERROR_INIT;
-
-    // Check parameter
-    PAR_ASSERT( NULL != par_cfg );
-    if ( NULL == par_cfg ) return ePAR_ERROR;
-
-    switch ( par_cfg->type )
-    {
-        case ePAR_TYPE_U8:
-            status = par_set_u8( par_num, par_cfg->def.u8 );
-            break;
-
-        case ePAR_TYPE_I8:
-            status = par_set_i8( par_num, par_cfg->def.i8 );
-            break;
-
-        case ePAR_TYPE_U16:
-            status = par_set_u16( par_num, par_cfg->def.u16 );
-            break;
-
-        case ePAR_TYPE_I16:
-            status = par_set_i16( par_num, par_cfg->def.i16 );
-            break;
-
-        case ePAR_TYPE_U32:
-            status = par_set_u32( par_num, par_cfg->def.u32 );
-            break;
-
-        case ePAR_TYPE_I32:
-            status = par_set_i32( par_num, par_cfg->def.i32 );
-            break;
-
-        case ePAR_TYPE_F32:
-            status = par_set_f32( par_num, par_cfg->def.f32 );
-            break;
-
-        case ePAR_TYPE_NUM_OF:
-        default:
-            PAR_ASSERT( 0 );
-            status = ePAR_ERROR_TYPE;
-            break;
-    }
-
-    return status;
-
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -934,26 +970,38 @@ par_status_t par_get(const par_num_t par_num, void * const p_val)
         case ePAR_TYPE_NUM_OF:
         default:
             PAR_ASSERT( 0 );
-            break;
+            return ePAR_ERROR_TYPE;
     }
-
-    return ePAR_OK;
-}
-
-par_status_t par_get_by_id(const uint16_t id, void * const p_val)
-{
-    UNUSED(id);
-    UNUSED(p_val);
-
-    // TODO: Implement
-
 
     return ePAR_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Get unsigned 8-bit parameter
+*        Get parameter value by ID
+*
+* @param[in]    id      - Parameter ID number
+* @param[out]   p_val   - Pointer to value
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_status_t par_get_by_id(const uint16_t id, void * const p_val)
+{
+    par_num_t par_num;
+
+    if ( ePAR_OK == par_get_num_by_id( id, &par_num ))
+    {
+        return par_get( par_num, p_val );
+    }
+    else
+    {
+        return ePAR_ERROR;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get unsigned 8-bit parameter value
 *
 * @param[in]    par_num - Parameter number (enumeration)
 * @return       value   - Value of parameter
@@ -961,19 +1009,30 @@ par_status_t par_get_by_id(const uint16_t id, void * const p_val)
 ////////////////////////////////////////////////////////////////////////////////
 uint8_t par_get_u8(const par_num_t par_num)
 {
-    // Invalid type
-    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    uint8_t val = 0;
+
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Check for invalid type
     PAR_ASSERT( ePAR_TYPE_U8 == par_get_type(par_num));
     if( ePAR_TYPE_U8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
-    // TODO: Add mutex
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
+    {
+        val = *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]];
 
-    return *(uint8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
+        (void) par_if_release_mutex();
+    }
+
+    return val;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Get signed 8-bit parameter
+*        Get signed 8-bit parameter value
 *
 * @param[in]    par_num - Parameter number (enumeration)
 * @return       value   - Value of parameter
@@ -981,19 +1040,30 @@ uint8_t par_get_u8(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 int8_t par_get_i8(const par_num_t par_num)
 {
-    // Invalid type
-    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    int8_t val = 0;
+
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Check for invalid type
     PAR_ASSERT( ePAR_TYPE_I8 == par_get_type(par_num));
     if( ePAR_TYPE_I8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
-    // TODO: Add mutex
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
+    {
+        val = *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]];
 
-    return *(int8_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
+        (void) par_if_release_mutex();
+    }
+
+    return val;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Get unsigned 16-bit parameter
+*        Get unsigned 16-bit parameter value
 *
 * @param[in]    par_num - Parameter number (enumeration)
 * @return       value   - Value of parameter
@@ -1001,19 +1071,30 @@ int8_t par_get_i8(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 uint16_t par_get_u16(const par_num_t par_num)
 {
-    // Invalid type
-    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    uint16_t val = 0;
+
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Check for invalid type
     PAR_ASSERT( ePAR_TYPE_U16 == par_get_type(par_num));
     if( ePAR_TYPE_U16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
-    // TODO: Add mutex
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
+    {
+        val = *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]];
 
-    return *(uint16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
+        (void) par_if_release_mutex();
+    }
+
+    return val;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Get signed 16-bit parameter
+*        Get signed 16-bit parameter value
 *
 * @param[in]    par_num - Parameter number (enumeration)
 * @return       value   - Value of parameter
@@ -1021,19 +1102,30 @@ uint16_t par_get_u16(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 int16_t par_get_i16(const par_num_t par_num)
 {
-    // Invalid type
-    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    int16_t val = 0;
+
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Check for invalid type
     PAR_ASSERT( ePAR_TYPE_I16 == par_get_type(par_num));
     if( ePAR_TYPE_I16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
-    // TODO: Add mutex
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
+    {
+        val = *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]];
 
-    return *(int16_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
+        (void) par_if_release_mutex();
+    }
+
+    return val;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Get unsigned 32-bit parameter
+*        Get unsigned 32-bit parameter value
 *
 * @param[in]    par_num - Parameter number (enumeration)
 * @return       value   - Value of parameter
@@ -1041,19 +1133,30 @@ int16_t par_get_i16(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 uint32_t par_get_u32(const par_num_t par_num)
 {
-    // Invalid type
-    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    uint32_t val = 0;
+
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Check for invalid type
     PAR_ASSERT( ePAR_TYPE_U32 == par_get_type(par_num));
     if( ePAR_TYPE_U32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
-    // TODO: Add mutex
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
+    {
+        val = *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]];
 
-    return *(uint32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
+        (void) par_if_release_mutex();
+    }
+
+    return val;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Get signed 32-bit parameter
+*        Get signed 32-bit parameter value
 *
 * @param[in]    par_num - Parameter number (enumeration)
 * @return       value   - Value of parameter
@@ -1061,19 +1164,30 @@ uint32_t par_get_u32(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 int32_t par_get_i32(const par_num_t par_num)
 {
-    // Invalid type
-    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    int32_t val = 0;
+
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Check for invalid type
     PAR_ASSERT( ePAR_TYPE_I32 == par_get_type(par_num));
     if( ePAR_TYPE_I32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
-    // TODO: Add mutex
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
+    {
+        val = *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]];
 
-    return *(int32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
+        (void) par_if_release_mutex();
+    }
+
+    return val;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Get floating value parameter
+*        Get floating value parameter value
 *
 * @param[in]    par_num - Parameter number (enumeration)
 * @return       value   - Value of parameter
@@ -1081,71 +1195,283 @@ int32_t par_get_i32(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 float32_t par_get_f32(const par_num_t par_num)
 {
-    // Invalid type
-    // NOTE: Module init and par_num is checkd in "par_get_type()" func!
+    float32_t val = 0.0f;
+
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    // Check for invalid type
     PAR_ASSERT( ePAR_TYPE_F32 == par_get_type(par_num));
     if( ePAR_TYPE_F32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
-    // TODO: Add mutex
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
+    {
+        val = *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]];
 
-    return *(float32_t*)&gpu8_par_value[ gu32_par_addr_offset[par_num] ];
+        (void) par_if_release_mutex();
+    }
+
+    return val;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter default value
+**
+* @param[in]    par_num - Parameter number (enumeration)
+* @param[out]   p_val   - Parameter default value
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 par_status_t par_get_default(const par_num_t par_num, void * const p_val)
+{
+    // Check initialization
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    switch ( par_get_type( par_num ))
+    {
+        case ePAR_TYPE_U8:
+            *(uint8_t*) p_val = (uint8_t) par_get_config(par_num)->def.u8;
+            break;
+
+        case ePAR_TYPE_I8:
+            *(int8_t*) p_val = (int8_t) par_get_config(par_num)->def.i8;
+            break;
+
+        case ePAR_TYPE_U16:
+            *(uint16_t*) p_val = (uint16_t) par_get_config(par_num)->def.u16;
+            break;
+
+        case ePAR_TYPE_I16:
+            *(int16_t*) p_val = (int16_t) par_get_config(par_num)->def.i16;
+            break;
+
+        case ePAR_TYPE_U32:
+            *(uint32_t*) p_val = (uint32_t) par_get_config(par_num)->def.u32;
+            break;
+
+        case ePAR_TYPE_I32:
+            *(int32_t*) p_val = (int32_t) par_get_config(par_num)->def.i32;
+            break;
+
+        case ePAR_TYPE_F32:
+            *(float32_t*) p_val = (float32_t) par_get_config(par_num)->def.f32;
+            break;
+
+        case ePAR_TYPE_NUM_OF:
+        default:
+            PAR_ASSERT( 0 );
+            return ePAR_ERROR_TYPE;
+    }
+
+    return ePAR_OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Check if parameter changed from its default value
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @return       true if parameter value has been changed
+*/
+////////////////////////////////////////////////////////////////////////////////
+bool par_is_changed(const par_num_t par_num)
+{
+    switch ( par_get_type(par_num))
+    {
+        case ePAR_TYPE_U8:
+            return (bool) (par_get_u8(par_num) != par_get_config(par_num)->def.u8);
+
+        case ePAR_TYPE_I8:
+            return (bool) (par_get_i8(par_num) != par_get_config(par_num)->def.i8);
+
+        case ePAR_TYPE_U16:
+            return (bool) (par_get_u16(par_num) != par_get_config(par_num)->def.u16);
+
+        case ePAR_TYPE_I16:
+            return (bool) (par_get_i16(par_num) != par_get_config(par_num)->def.i16);
+
+        case ePAR_TYPE_U32:
+            return (bool) (par_get_u32(par_num) != par_get_config(par_num)->def.u32);
+
+        case ePAR_TYPE_I32:
+            return (bool) (par_get_i32(par_num) != par_get_config(par_num)->def.i32);
+
+        case ePAR_TYPE_F32:
+            return (bool) (par_get_f32(par_num) != par_get_config(par_num)->def.f32);
+
+        case ePAR_TYPE_NUM_OF:
+        default:
+            PAR_ASSERT( 0 );
+            return false;
+    }
+
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter configurations
+*
+* @note  In case parameter is not found it return NULL!
+*
+* @param[in]    par_num  - Parameter number (enumeration)
+* @return       Parameter configuration
+*/
+////////////////////////////////////////////////////////////////////////////////
+const par_cfg_t * par_get_config(const par_num_t par_num)
+{
+    // Invalid parameter
+    PAR_ASSERT( par_num < ePAR_NUM_OF );
+    if ( par_num >= ePAR_NUM_OF ) return NULL;
+
+    return (const par_cfg_t*) par_cfg_get(par_num);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter name
+*
+* @param[in]    par_num  - Parameter number (enumeration)
+* @return       Parameter name
+*/
+////////////////////////////////////////////////////////////////////////////////
+const char * par_get_name(const par_num_t par_num)
 {
     const par_cfg_t * const par_cfg = par_get_config(par_num);
 
     if ( NULL != par_cfg )
     {
-        switch ( par_cfg->type )
-        {
-            case ePAR_TYPE_U8:
-                *(uint8_t*) p_val = (uint8_t) par_cfg->def.u8;
-                break;
-
-            case ePAR_TYPE_I8:
-                *(int8_t*) p_val = (int8_t) par_cfg->def.i8;
-                break;
-
-            case ePAR_TYPE_U16:
-                *(uint16_t*) p_val = (uint16_t) par_cfg->def.u16;
-                break;
-
-            case ePAR_TYPE_I16:
-                *(int16_t*) p_val = (int16_t) par_cfg->def.i16;
-                break;
-
-            case ePAR_TYPE_U32:
-                *(uint32_t*) p_val = (uint32_t) par_cfg->def.u32;
-                break;
-
-            case ePAR_TYPE_I32:
-                *(int32_t*) p_val = (int32_t) par_cfg->def.i32;
-                break;
-
-            case ePAR_TYPE_F32:
-                *(float32_t*) p_val = (float32_t) par_cfg->def.f32;
-                break;
-
-            case ePAR_TYPE_NUM_OF:
-            default:
-                PAR_ASSERT( 0 );
-                break;
-        }
-
-        return ePAR_OK;
+        return par_cfg->name;
     }
 
-    return ePAR_ERROR;
+    return NULL;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter value range
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @return       Parameter min/max range
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_range_t par_get_range(const par_num_t par_num)
+{
+    par_range_t range = {0};
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
 
+    if ( NULL != par_cfg )
+    {
+        range.min = par_cfg->min;
+        range.max = par_cfg->max;
+    }
 
+    return range;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter unit
+*
+* @param[in]    par_num  - Parameter number (enumeration)
+* @return       Parameter unit
+*/
+////////////////////////////////////////////////////////////////////////////////
+const char * par_get_unit(const par_num_t par_num)
+{
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
 
+    if ( NULL != par_cfg )
+    {
+        return par_cfg->unit;
+    }
 
+    return NULL;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter description
+*
+* @param[in]    par_num  - Parameter number (enumeration)
+* @return       Parameter description
+*/
+////////////////////////////////////////////////////////////////////////////////
+const char * par_get_desc(const par_num_t par_num)
+{
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
 
+    if ( NULL != par_cfg )
+    {
+        return par_cfg->desc;
+    }
+
+    return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter type
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @return       Parameter data type
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_type_list_t par_get_type(const par_num_t par_num)
+{
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
+
+    if ( NULL != par_cfg )
+    {
+        return par_cfg->type;
+    }
+
+    return ePAR_TYPE_NUM_OF;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Get parameter access (RO, RW)
+*
+* @param[in]    par_num  - Parameter number (enumeration)
+* @return       Parameter access
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_access_t par_get_access(const par_num_t par_num)
+{
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
+
+    if ( NULL != par_cfg )
+    {
+        return par_cfg->access;
+    }
+
+    return ePAR_ACCESS_RO;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Is parameter persistant (does it stores to NVM)
+*
+* @param[in]    par_num  - Parameter number (enumeration)
+* @return       True if parameter persistant
+*/
+////////////////////////////////////////////////////////////////////////////////
+bool par_is_persistant(const par_num_t par_num)
+{
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
+
+    if ( NULL != par_cfg )
+    {
+        return par_cfg->persistant;
+    }
+
+    return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1200,213 +1526,6 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
     return ePAR_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Get parameter configurations
-*
-* @note  In case parameter is not found it return NULL!
-*
-* @param[in]    par_num  - Parameter number (enumeration)
-* @return       Parameter configuration
-*/
-////////////////////////////////////////////////////////////////////////////////
-const par_cfg_t * par_get_config(const par_num_t par_num)
-{
-    // Invalid parameter
-    PAR_ASSERT( par_num < ePAR_NUM_OF );
-    if ( par_num >= ePAR_NUM_OF ) return NULL;
-
-    return (const par_cfg_t*) par_cfg_get(par_num);
-}
-
-
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Get parameter type size
-*
-* @param[in]    type    - Data type of parameter
-* @param[out]   p_size  - Pointer to parameter data type size
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_get_type_size(const par_type_list_t type, uint8_t * const p_size)
-{
-    // TODO: Change API to return size directly!
-    par_status_t status = ePAR_OK;
-
-    // TODO: Make that function static!
-
-    PAR_ASSERT( type < ePAR_TYPE_NUM_OF );
-    PAR_ASSERT( NULL != p_size );
-
-    if (     ( type < ePAR_TYPE_NUM_OF )
-        &&    ( NULL != p_size ))
-    {
-        switch ( type )
-        {
-            case ePAR_TYPE_U8:
-                *p_size = sizeof( uint8_t );
-                break;
-
-            case ePAR_TYPE_I8:
-                *p_size = sizeof( int8_t );
-                break;
-
-            case ePAR_TYPE_U16:
-                *p_size = sizeof( uint16_t );
-                break;
-
-            case ePAR_TYPE_I16:
-                *p_size = sizeof( int16_t );
-                break;
-
-            case ePAR_TYPE_U32:
-                *p_size = sizeof( uint32_t );
-                break;
-
-            case ePAR_TYPE_I32:
-                *p_size = sizeof( int32_t );
-                break;
-
-            case ePAR_TYPE_F32:
-                *p_size = sizeof( float32_t );
-                break;
-
-            case ePAR_TYPE_NUM_OF:
-            default:
-                status = ePAR_ERROR;
-                break;
-        }
-    }
-    else
-    {
-        status = ePAR_ERROR;
-    }
-
-    return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Get parameter type
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @return       Parameter data type
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_type_list_t par_get_type(const par_num_t par_num)
-{
-    const par_cfg_t * const par_cfg = par_get_config(par_num);
-
-    if ( NULL != par_cfg )
-    {
-        return par_cfg->type;
-    }
-
-    return ePAR_TYPE_NUM_OF;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Get parameter value range
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @return       Parameter min/max range
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_range_t par_get_range(const par_num_t par_num)
-{
-    par_range_t range = {0};
-    const par_cfg_t * const par_cfg = par_get_config(par_num);
-
-    if ( NULL != par_cfg )
-    {
-        range.min = par_cfg->min;
-        range.max = par_cfg->max;
-    }
-
-    return range;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Check if parameter changed from its default value
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @return       true if parameter value has been changed
-*/
-////////////////////////////////////////////////////////////////////////////////
-bool par_is_changed_from_default(const par_num_t par_num)
-{
-    const par_cfg_t * const par_cfg = par_get_config(par_num);
-
-    if ( NULL != par_cfg )
-    {
-        switch ( par_cfg->type )
-        {
-            case ePAR_TYPE_U8:
-                return (bool) (par_get_u8(par_num) != par_cfg->def.u8);
-
-            case ePAR_TYPE_I8:
-                return (bool) (par_get_i8(par_num) != par_cfg->def.i8);
-
-            case ePAR_TYPE_U16:
-                return (bool) (par_get_u16(par_num) != par_cfg->def.u16);
-
-            case ePAR_TYPE_I16:
-                return (bool) (par_get_i16(par_num) != par_cfg->def.i16);
-
-            case ePAR_TYPE_U32:
-                return (bool) (par_get_u32(par_num) != par_cfg->def.u32);
-
-            case ePAR_TYPE_I32:
-                return (bool) (par_get_i32(par_num) != par_cfg->def.i32);
-
-            case ePAR_TYPE_F32:
-                return (bool) (par_get_f32(par_num) != par_cfg->def.f32);
-
-            case ePAR_TYPE_NUM_OF:
-            default:
-                PAR_ASSERT( 0 );
-                return false;
-        }
-    }
-
-    return false;
-}
-
-
-
-const char * par_get_name(const par_num_t par_num)
-{
-    const par_cfg_t * const par_cfg = par_get_config(par_num);
-
-    if ( NULL != par_cfg )
-    {
-        return par_cfg->name;
-    }
-
-    return NULL;
-}
-
-par_access_t par_get_access(const par_num_t par_num)
-{
-    const par_cfg_t * const par_cfg = par_get_config(par_num);
-
-    if ( NULL != par_cfg )
-    {
-        return par_cfg->access;
-    }
-
-    return ePAR_ACCESS_RO;
-}
-
-
-
 #if ( 1 == PAR_CFG_NVM_EN )
     ////////////////////////////////////////////////////////////////////////////////
     /**
@@ -1429,56 +1548,14 @@ par_access_t par_get_access(const par_num_t par_num)
     ////////////////////////////////////////////////////////////////////////////////
     par_status_t par_set_n_save(const par_num_t par_num, const void * p_val)
     {
-        par_status_t status = ePAR_OK;
+        // Check if parameter value is about to change
+        const bool value_change = par_is_value_changed( par_num, p_val );
 
-        // Is init
-        PAR_ASSERT( true == par_is_init());
+        // Set parameter
+        par_status_t status = par_set(par_num, p_val);
 
-        // Check input
-        PAR_ASSERT( par_num < ePAR_NUM_OF );
-
-        // TODO: Missing IFs for invalid inputs
-
-        bool has_value_changed = false;
-        switch ( par_get_type(par_num))
-        {
-            case ePAR_TYPE_U8:
-                has_value_changed = (par_get_u8(par_num) != *(uint8_t*)p_val);
-                break;
-
-            case ePAR_TYPE_I8:
-                has_value_changed = (par_get_i8(par_num) != *(int8_t*)p_val);
-                break;
-
-            case ePAR_TYPE_U16:
-                has_value_changed = (par_get_u16(par_num) != *(uint16_t*)p_val);
-                break;
-
-            case ePAR_TYPE_I16:
-                has_value_changed = (par_get_i16(par_num) != *(int16_t*)p_val);
-                break;
-
-            case ePAR_TYPE_U32:
-                has_value_changed = (par_get_u32(par_num) != *(uint32_t*)p_val);
-                break;
-
-            case ePAR_TYPE_I32:
-                has_value_changed = (par_get_i32(par_num) != *(int32_t*)p_val);
-                break;
-
-            case ePAR_TYPE_F32:
-                has_value_changed = (par_get_f32(par_num) != *(float32_t*)p_val);
-                break;
-
-            case ePAR_TYPE_NUM_OF:
-            default:
-                PAR_ASSERT( 0 );
-                break;
-        }
-
-
-        status |= par_set(par_num, p_val);
-        if ((ePAR_OK == status) && has_value_changed)
+        // Parameter set OK and value has been changed -> makes sense to store to NVM
+        if (( ePAR_OK == status ) && value_change )
         {
             status |= par_save(par_num);
         }
@@ -1498,20 +1575,11 @@ par_access_t par_get_access(const par_num_t par_num)
     ////////////////////////////////////////////////////////////////////////////////
     par_status_t par_save_all(void)
     {
-        par_status_t status = ePAR_OK;
-
+        // Check initialization
         PAR_ASSERT( true == par_is_init());
+        if ( true != par_is_init()) return ePAR_ERROR_INIT;
 
-        if ( true == par_is_init())
-        {
-            status = par_nvm_write_all();
-        }
-        else
-        {
-            status = ePAR_ERROR_INIT;
-        }
-
-        return status;
+        return par_nvm_write_all();
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1527,20 +1595,11 @@ par_access_t par_get_access(const par_num_t par_num)
     ////////////////////////////////////////////////////////////////////////////////
     par_status_t par_save(const par_num_t par_num)
     {
-        par_status_t status = ePAR_OK;
-
+        // Check initialization
         PAR_ASSERT( true == par_is_init());
+        if ( true != par_is_init()) return ePAR_ERROR_INIT;
 
-        if ( true == par_is_init())
-        {
-            status = par_nvm_write( par_num, true );
-        }
-        else
-        {
-            status = ePAR_ERROR_INIT;
-        }
-
-        return status;
+        return par_nvm_write( par_num, true );
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1568,26 +1627,18 @@ par_access_t par_get_access(const par_num_t par_num)
     ////////////////////////////////////////////////////////////////////////////////
     par_status_t par_save_by_id(const uint16_t par_id)
     {
-        par_status_t status  = ePAR_OK;
-        par_num_t    par_num = 0;
+        par_num_t par_num = 0;
 
+        // Check initialization
         PAR_ASSERT( true == par_is_init());
+        if ( true != par_is_init()) return ePAR_ERROR_INIT;
 
-        if ( true == par_is_init())
+        if ( ePAR_OK == par_get_num_by_id( par_id, &par_num ))
         {
-            status = par_get_num_by_id( par_id, &par_num );
-
-            if ( ePAR_OK == status )
-            {
-                status = par_save( par_num );
-            }
-        }
-        else
-        {
-            status = ePAR_ERROR_INIT;
+            return par_save( par_num );
         }
 
-        return status;
+        return ePAR_ERROR;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1605,20 +1656,11 @@ par_access_t par_get_access(const par_num_t par_num)
     ////////////////////////////////////////////////////////////////////////////////
     par_status_t par_save_clean(void)
     {
-        par_status_t status = ePAR_OK;
-
+        // Check initialization
         PAR_ASSERT( true == par_is_init());
+        if ( true != par_is_init()) return ePAR_ERROR_INIT;
 
-        if ( true == par_is_init())
-        {
-            status = par_nvm_reset_all();
-        }
-        else
-        {
-            status = ePAR_ERROR_INIT;
-        }
-
-        return status;
+        return par_nvm_reset_all();
     }
 
 #endif
