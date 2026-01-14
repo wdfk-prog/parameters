@@ -38,8 +38,8 @@
 /**
  *     Module version
  */
-#define PAR_VER_MAJOR       ( 2 )
-#define PAR_VER_MINOR       ( 2 )
+#define PAR_VER_MAJOR       ( 3 )
+#define PAR_VER_MINOR       ( 0 )
 #define PAR_VER_DEVELOP     ( 0 )
 
 /**
@@ -235,6 +235,12 @@ par_status_t        par_get_id_by_num   (const par_num_t par_num, uint16_t * con
     par_status_t par_save_by_id (const uint16_t par_id);
     par_status_t par_save_clean (void);
 #endif
+
+// OnChange callback
+
+typedef void (*pf_par_on_change_cb)(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
+
+void par_on_change_cb(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
 #if ( PAR_CFG_DEBUG_EN )
     const char * par_get_status_str(const par_status_t status);

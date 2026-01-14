@@ -517,6 +517,8 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
     if ( ePAR_OK == par_if_aquire_mutex())
     {
         const par_range_t range = par_get_range(par_num);
+        const par_type_t old_val = {.u8 = *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
+        const par_type_t new_val = {.u8 = val};
 
         if ( val > range.max.u8 )
         {
@@ -537,6 +539,10 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
         (void) par_if_release_mutex();
 
         // TODO: Raise onChange callbacks here...
+
+
+
+        par_on_change_cb( par_num, new_val, old_val );
     }
     else
     {
@@ -1654,6 +1660,26 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
     }
 
 #endif
+
+
+
+/**
+ *  Weak compiler directive
+ */
+#define __PAR_CFG_WEAK__                        __attribute__((weak))
+
+// TOOD:
+__PAR_CFG_WEAK__ void par_on_change_cb(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val)
+{
+    UNUSED(par_num);
+    UNUSED(new_val);
+    UNUSED(old_val);
+
+    /**
+     *  Leave empty for user application purposes...
+     */
+}
+
 
 #if ( PAR_CFG_DEBUG_EN )
 
