@@ -139,7 +139,6 @@ typedef struct
     bool            persistant; /**<Parameter persistence flag */
 } par_cfg_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Functions Prototypes
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,8 +177,7 @@ par_status_t par_set_all_to_default (void);
     int16_t:    par_set_i16(par_num, value),  		\
     int32_t:    par_set_i32(par_num, value),  		\
     float:      par_set_f32(par_num, value),  		\
-    double:     par_set_f32(par_num, value),  		\
-    default:    par_set_f32(par_num, value)   		\
+    default:    par_set_f32(par_num, value)  		\
 )
 
 // Getting parameter value API (module must be first initialized before using those func)
@@ -214,8 +212,7 @@ bool         par_is_changed     (const par_num_t par_num);
     int16_t:   dest = par_get_i16(par_num),     	\
     int32_t:   dest = par_get_i32(par_num),     	\
     float:     dest = par_get_f32(par_num),     	\
-    double:    dest = par_get_f32(par_num),     	\
-    default:   dest = par_get_f32(par_num)      	\
+    default:   dest = par_get_f32(par_num)     	    \
 )
 
 // Parameter configurations API (usage without module init pre-step)

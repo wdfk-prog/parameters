@@ -39,11 +39,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- *     Pointer to parameter table
- */
-//static const par_cfg_t * gp_par_table = NULL;
-
-/**
  *     Initialization guard
  */
 static bool gb_is_init = false;
@@ -335,8 +330,6 @@ static bool par_is_value_changed(const par_num_t par_num, const void * p_val)
 *    in RAM space for parameters live values and additionaly interface to
 *    platform is being done.
 *
-*    TODO: Enchance this describtion...
-*
 * @return   status - Status of initialization
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,10 +339,6 @@ par_status_t par_init(void)
 
     PAR_ASSERT( false == par_is_init());
     if ( false != par_is_init()) return ePAR_ERROR_INIT;
-
-    // Get parameter table
-    //gp_par_table = par_cfg_get_table();
-    //PAR_ASSERT( NULL != gp_par_table );
 
     // Check if par table is defined correctly
     status |= par_check_table_validy( par_cfg_get_table());
