@@ -518,7 +518,6 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
     {
         const par_range_t range = par_get_range(par_num);
         const par_type_t old_val = {.u8 = *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        const par_type_t new_val = {.u8 = val};
 
         if ( val > range.max.u8 )
         {
@@ -538,10 +537,8 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
 
         (void) par_if_release_mutex();
 
-        // TODO: Raise onChange callbacks here...
-
-
-
+        // Raise on change callback
+        const par_type_t new_val = {.u8 = *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
         par_on_change_cb( par_num, new_val, old_val );
     }
     else
@@ -1661,14 +1658,16 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
 
 #endif
 
-
-
+////////////////////////////////////////////////////////////////////////////////
 /**
- *  Weak compiler directive
- */
-#define __PAR_CFG_WEAK__                        __attribute__((weak))
-
-// TOOD:
+*        Parameter value change callback
+*
+* @param[out]   par_num - Parameter number
+* @param[out]   new_val - Parameter new value
+* @param[out]   new_val - Parameter old value
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 __PAR_CFG_WEAK__ void par_on_change_cb(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val)
 {
     UNUSED(par_num);
@@ -1679,6 +1678,79 @@ __PAR_CFG_WEAK__ void par_on_change_cb(const par_num_t par_num, const par_type_t
      *  Leave empty for user application purposes...
      */
 }
+
+
+
+static par_cb_t * gp_par_start_cb = NULL;
+
+
+par_status_t par_callback_register(par_cb_t * cb)
+{
+    static par_cb_t * prev_cb = NULL;
+
+    // First registration -> store the start of the callback linked list
+    if ( NULL == gp_par_start_cb )
+    {
+        gp_par_start_cb = cb;
+    }
+    else
+    {
+        cb->next = prev_cb;
+    }
+
+    // Store previous callback
+    prev_cb = cb;
+
+    return ePAR_OK;
+}
+
+par_status_t par_cb_set_on_change(par_cb_t * cb, const bool on_change)
+{
+    // Iterate thru parameter callback
+    for (par_cb_t * it = gp_par_start_cb; it != NULL; it=it->next)
+    {
+        if ( it == cb )
+        {
+            cb->on_change = on_change;
+            return ePAR_OK;
+        }
+    }
+
+    return ePAR_ERROR;
+}
+
+par_status_t par_cb_set_value(par_cb_t * cb, const par_type_t value)
+{
+    // Iterate thru parameter callback
+    for (par_cb_t * it = gp_par_start_cb; it != NULL; it=it->next)
+    {
+        if ( it == cb )
+        {
+            cb->value = value;
+            return ePAR_OK;
+        }
+    }
+
+    return ePAR_ERROR;
+}
+
+par_status_t par_cb_set_on_value_match(par_cb_t * cb, const bool on_value_match)
+{
+    // Iterate thru parameter callback
+    for (par_cb_t * it = gp_par_start_cb; it != NULL; it=it->next)
+    {
+        if ( it == cb )
+        {
+            cb->on_value_match = on_value_match;
+            return ePAR_OK;
+        }
+    }
+
+    return ePAR_ERROR;
+}
+
+
+
 
 
 #if ( PAR_CFG_DEBUG_EN )

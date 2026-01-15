@@ -237,10 +237,28 @@ par_status_t        par_get_id_by_num   (const par_num_t par_num, uint16_t * con
 #endif
 
 // OnChange callback
-
-typedef void (*pf_par_on_change_cb)(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
-
 void par_on_change_cb(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
+
+
+
+typedef void (*pf_par_on_change_cb_t)(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
+
+
+typedef struct par_cb
+{
+    struct par_cb *         next;           /**<Pointer to next callback block */
+    pf_par_on_change_cb_t   callback;       /**<Callback function pointer */
+    par_type_t              value;          /**<Match value */
+    par_num_t               par_num;        /**<Parameter number */
+    bool                    on_change;      /**<Enable/Disable callback raised on parameter value change */
+    bool                    on_value_match; /**<Enable/Disable callback raised on value match */
+} par_cb_t;
+
+par_status_t par_callback_register      (par_cb_t * cb);
+par_status_t par_cb_set_on_change       (par_cb_t * cb, const bool on_change);
+par_status_t par_cb_set_value           (par_cb_t * cb, const par_type_t value);
+par_status_t par_cb_set_on_value_match  (par_cb_t * cb, const bool on_value_match);
+
 
 #if ( PAR_CFG_DEBUG_EN )
     const char * par_get_status_str(const par_status_t status);
