@@ -9,9 +9,11 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
 
 ### Added
  - Introduce new warning when seting parameter value out of range - *WAR_LIMITED*
-
-### Changed
- - Cleaning up code
+ - Introduce new error for mutex when failing to obtain mutex
+ - Added generic *PAR_GET* and *PAR_SET* macros
+ - Improved RAM consumption space for parameter values
+ - On parameter value change callbacks
+ - Added new API for getting parameter configurations
 
 
 ---

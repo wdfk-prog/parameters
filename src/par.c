@@ -124,11 +124,13 @@ static par_status_t par_allocate_ram_space(uint8_t ** pp_ram_space)
 ////////////////////////////////////////////////////////////////////////////////
 static uint32_t par_calc_ram_usage(void)
 {
-    uint32_t  par_num       = 0U;
-    uint32_t  total_size    = 0U;
+    uint32_t total_size = 0U;
 
+
+    // RAM space used with this method: 284bytes
+#if 0
     // For every parameter
-    for ( par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
     {
         // Get parameter configs
         const par_cfg_t * const par_cfg = par_get_config( par_num );
@@ -164,6 +166,57 @@ static uint32_t par_calc_ram_usage(void)
         // Accumulate total RAM space
         total_size += par_get_type_size( par_cfg->type );
     }
+#endif
+
+    // With this method we consume 276 bytes as no padding accurs
+
+    // First fit u32, i32 and f32 into RAM
+    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+    {
+        if  (   ( ePAR_TYPE_U32 == par_get_type(par_num))
+            ||  ( ePAR_TYPE_I32 == par_get_type(par_num))
+            ||  ( ePAR_TYPE_F32 == par_get_type(par_num)))
+        {
+            // Store par RAM address offset
+            gu32_par_addr_offset[par_num] = total_size;
+
+            // Accumulate total RAM space
+            total_size += par_get_type_size(par_get_type(par_num));
+        }
+    }
+
+    // Then fit u16 and i16 into RAM
+    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+    {
+        if  (   ( ePAR_TYPE_U16 == par_get_type(par_num))
+            ||  ( ePAR_TYPE_I16 == par_get_type(par_num)))
+        {
+            // Store par RAM address offset
+            gu32_par_addr_offset[par_num] = total_size;
+
+            // Accumulate total RAM space
+            total_size += par_get_type_size(par_get_type(par_num));
+        }
+    }
+
+    // Finally fit u8 and i8 into RAM
+    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+    {
+        if  (   ( ePAR_TYPE_U8 == par_get_type(par_num))
+            ||  ( ePAR_TYPE_I8 == par_get_type(par_num)))
+        {
+            // Store par RAM address offset
+            gu32_par_addr_offset[par_num] = total_size;
+
+            // Accumulate total RAM space
+            total_size += par_get_type_size(par_get_type(par_num));
+        }
+    }
+
+
+
+
+    PAR_DBG_PRINT( "Total RAM consumption for param value: %d bytes", total_size );
 
     return total_size;
 }
