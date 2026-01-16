@@ -68,22 +68,25 @@ static uint32_t gu32_par_addr_offset[ ePAR_NUM_OF ] = { 0 };
         "ERROR INIT",
         "ERROR NVM",
         "ERROR CRC",
+        "ERROR TYPE",
+        "ERROR MUTEX",
 
         "WARN SET TO DEF",
         "WARN NVM REWRITTEN",
         "NO PERSISTENT",
+        "LIMITED",
     };
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Prototypes
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_allocate_ram_space  (uint8_t ** pp_ram_space);
-static uint32_t     par_calc_ram_usage      (void);
-static par_status_t par_check_table_validy  (const par_cfg_t * const p_par_cfg);
-static uint32_t     par_get_type_size       (const par_type_list_t type);
-static bool         par_is_value_changed    (const par_num_t par_num, const void * p_val);
-static void         par_raise_on_change_callback      (const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
+static const uint8_t *  par_allocate_ram_space          (void);
+static uint32_t         par_calc_ram_usage              (void);
+static par_status_t     par_check_table_validy          (const par_cfg_t * const p_par_cfg);
+static uint32_t         par_get_type_size               (const par_type_list_t type);
+static bool             par_is_value_changed            (const par_num_t par_num, const void * p_val);
+static void             par_raise_on_change_callback    (const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -93,82 +96,30 @@ static void         par_raise_on_change_callback      (const par_num_t par_num, 
 /**
 *        Allocate space for live parameter values
 *
-* @param[in]    pp_ram_space - Pointer to pointer allocated space
-* @return       status       - Status of operation
+* @return       Pointer to allocated RAM space for parameter values
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_allocate_ram_space(uint8_t ** pp_ram_space)
+static const uint8_t * par_allocate_ram_space(void)
 {
-    par_status_t     status         = ePAR_OK;
-    uint32_t        ram_size    = 0UL;
-
     // Calculate total size of RAM
-    ram_size = par_calc_ram_usage();
+    const uint32_t ram_size = par_calc_ram_usage();
 
     // Allocate space in RAM
-    *pp_ram_space = malloc( ram_size );
-    PAR_ASSERT( NULL != *pp_ram_space );
+    const uint8_t * par_val_space = malloc( ram_size );
 
-    return status;
+    return par_val_space;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *        Calculate total size for parameter live values
 *
-* @note     This function may not be compatible with other microcontroller
-*           architectures as it is based on STM32 with its data alignment policy!
-*
-* @return        total_size - Size of all parameters in bytes
+* @return   Size of RAM space for parameters value in bytes
 */
 ////////////////////////////////////////////////////////////////////////////////
 static uint32_t par_calc_ram_usage(void)
 {
     uint32_t total_size = 0U;
-
-
-    // RAM space used with this method: 284bytes
-#if 0
-    // For every parameter
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        // Get parameter configs
-        const par_cfg_t * const par_cfg = par_get_config( par_num );
-
-        // Align addresses
-        if  (  ( par_cfg->type == ePAR_TYPE_U16 )
-            || ( par_cfg->type == ePAR_TYPE_I16 ))
-        {
-            // 2 bytes alignment
-            while(( total_size % 2 ) != 0 )
-            {
-                total_size++;
-            }
-        }
-        else if (  ( par_cfg->type == ePAR_TYPE_U32 )
-                || ( par_cfg->type == ePAR_TYPE_I32 )
-                || ( par_cfg->type == ePAR_TYPE_F32 ))
-        {
-            // 4 bytes alignment
-            while(( total_size % 4 ) != 0 )
-            {
-                total_size++;
-            }
-        }
-        else
-        {
-            // No actions...
-        }
-
-        // Store par RAM address offset
-        gu32_par_addr_offset[par_num] = total_size;
-
-        // Accumulate total RAM space
-        total_size += par_get_type_size( par_cfg->type );
-    }
-#endif
-
-    // With this method we consume 276 bytes as no padding accurs
 
     // First fit u32, i32 and f32 into RAM
     for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
@@ -213,10 +164,7 @@ static uint32_t par_calc_ram_usage(void)
         }
     }
 
-
-
-
-    PAR_DBG_PRINT( "Total RAM consumption for param value: %d bytes", total_size );
+    PAR_DBG_PRINT( "Total RAM consumption for parameters value: %d bytes", total_size );
 
     return total_size;
 }
@@ -427,7 +375,7 @@ par_status_t par_init(void)
     status |= par_check_table_validy( par_cfg_get_table());
 
     // Allocate space in RAM
-    status |= par_allocate_ram_space( &gpu8_par_value );
+    gpu8_par_value = (uint8_t*) par_allocate_ram_space();
     PAR_ASSERT( NULL != gpu8_par_value );
 
     // Initialize parameter interface
