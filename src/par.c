@@ -44,6 +44,11 @@
 static bool gb_is_init = false;
 
 /**
+ *      Parameter callback functions
+ */
+static par_cb_t * gp_par_cb = NULL;
+
+/**
  *     Parameter active value that is stored in RAM and its
  *     address offsets
  */
@@ -78,6 +83,7 @@ static uint32_t     par_calc_ram_usage      (void);
 static par_status_t par_check_table_validy  (const par_cfg_t * const p_par_cfg);
 static uint32_t     par_get_type_size       (const par_type_list_t type);
 static bool         par_is_value_changed    (const par_num_t par_num, const void * p_val);
+static void         par_raise_callback      (const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -137,7 +143,6 @@ static uint32_t par_calc_ram_usage(void)
                 total_size++;
             }
         }
-
         else if (  ( par_cfg->type == ePAR_TYPE_U32 )
                 || ( par_cfg->type == ePAR_TYPE_I32 )
                 || ( par_cfg->type == ePAR_TYPE_F32 ))
@@ -148,7 +153,6 @@ static uint32_t par_calc_ram_usage(void)
                 total_size++;
             }
         }
-
         else
         {
             // No actions...
@@ -305,6 +309,28 @@ static bool par_is_value_changed(const par_num_t par_num, const void * p_val)
     }
 
     return value_changed;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Check and raise callback
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @param[in]    new_val - New parameter value
+* @param[in]    old_val - Old parameter value
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static void par_raise_callback(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val)
+{
+    for (const par_cb_t * cb = gp_par_cb; NULL != cb; cb=(*cb->next))
+    {
+        // Parameter number matches
+        if ( par_num == cb->par_num )
+        {
+            cb->callback( par_num, new_val, old_val );
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -539,7 +565,7 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.u8 = *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        par_on_change_cb( par_num, new_val, old_val );
+        par_raise_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -574,6 +600,7 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t val)
     if ( ePAR_OK == par_if_aquire_mutex())
     {
         const par_range_t range = par_get_range(par_num);
+        const par_type_t old_val = {.i8 = *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
 
         if ( val > range.max.i8 )
         {
@@ -593,7 +620,9 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t val)
 
         (void) par_if_release_mutex();
 
-        // TODO: Raise onChange callbacks here...
+        // Raise on change callback
+        const par_type_t new_val = {.i8 = *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
+        par_raise_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -628,6 +657,7 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t val)
     if ( ePAR_OK == par_if_aquire_mutex())
     {
         const par_range_t range = par_get_range(par_num);
+        const par_type_t old_val = {.u16 = *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
 
         if ( val > range.max.u16 )
         {
@@ -647,7 +677,9 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t val)
 
         (void) par_if_release_mutex();
 
-        // TODO: Raise onChange callbacks here...
+        // Raise on change callback
+        const par_type_t new_val = {.u16 = *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
+        par_raise_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -682,6 +714,7 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t val)
     if ( ePAR_OK == par_if_aquire_mutex())
     {
         const par_range_t range = par_get_range(par_num);
+        const par_type_t old_val = {.i16 = *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
 
         if ( val > range.max.i16 )
         {
@@ -701,7 +734,9 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t val)
 
         (void) par_if_release_mutex();
 
-        // TODO: Raise onChange callbacks here...
+        // Raise on change callback
+        const par_type_t new_val = {.i16 = *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
+        par_raise_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -736,6 +771,7 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t val)
     if ( ePAR_OK == par_if_aquire_mutex())
     {
         const par_range_t range = par_get_range(par_num);
+        const par_type_t old_val = {.u32 = *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
 
         if ( val > range.max.u32 )
         {
@@ -755,7 +791,9 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t val)
 
         (void) par_if_release_mutex();
 
-        // TODO: Raise onChange callbacks here...
+        // Raise on change callback
+        const par_type_t new_val = {.u32 = *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
+        par_raise_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -790,6 +828,7 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
     if ( ePAR_OK == par_if_aquire_mutex())
     {
         const par_range_t range = par_get_range(par_num);
+        const par_type_t old_val = {.i32 = *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
 
         if ( val > range.max.i32 )
         {
@@ -809,7 +848,9 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
 
         (void) par_if_release_mutex();
 
-        // TODO: Raise onChange callbacks here...
+        // Raise on change callback
+        const par_type_t new_val = {.i32 = *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
+        par_raise_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -844,6 +885,7 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
     if ( ePAR_OK == par_if_aquire_mutex())
     {
         const par_range_t range = par_get_range(par_num);
+        const par_type_t old_val = {.f32 = *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
 
         if ( val > range.max.f32 )
         {
@@ -863,7 +905,9 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
 
         (void) par_if_release_mutex();
 
-        // TODO: Raise onChange callbacks here...
+        // Raise on change callback
+        const par_type_t new_val = {.f32 = *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
+        par_raise_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -1679,79 +1723,40 @@ __PAR_CFG_WEAK__ void par_on_change_cb(const par_num_t par_num, const par_type_t
      */
 }
 
-
-
-static par_cb_t * gp_par_start_cb = NULL;
-
-
-par_status_t par_callback_register(par_cb_t * cb)
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Register parameter on change callback
+*
+* @param[cb]    cb      - Callback
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_status_t par_register_on_change_cb(const par_cb_t * const cb)
 {
     static par_cb_t * prev_cb = NULL;
 
+    PAR_ASSERT( NULL != cb );
+    PAR_ASSERT( NULL != cb->callback );
+    if ( NULL == cb ) return ePAR_ERROR;
+    if ( NULL == cb->callback) return ePAR_ERROR;
+
+    // TODO: Add mutex
+
     // First registration -> store the start of the callback linked list
-    if ( NULL == gp_par_start_cb )
+    if ( NULL == gp_par_cb )
     {
-        gp_par_start_cb = cb;
+        gp_par_cb = (par_cb_t*) cb;
     }
     else
     {
-        cb->next = prev_cb;
+        (*prev_cb->next) = (par_cb_t*) cb;
     }
 
     // Store previous callback
-    prev_cb = cb;
+    prev_cb = (par_cb_t*) cb;
 
     return ePAR_OK;
 }
-
-par_status_t par_cb_set_on_change(par_cb_t * cb, const bool on_change)
-{
-    // Iterate thru parameter callback
-    for (par_cb_t * it = gp_par_start_cb; it != NULL; it=it->next)
-    {
-        if ( it == cb )
-        {
-            cb->on_change = on_change;
-            return ePAR_OK;
-        }
-    }
-
-    return ePAR_ERROR;
-}
-
-par_status_t par_cb_set_value(par_cb_t * cb, const par_type_t value)
-{
-    // Iterate thru parameter callback
-    for (par_cb_t * it = gp_par_start_cb; it != NULL; it=it->next)
-    {
-        if ( it == cb )
-        {
-            cb->value = value;
-            return ePAR_OK;
-        }
-    }
-
-    return ePAR_ERROR;
-}
-
-par_status_t par_cb_set_on_value_match(par_cb_t * cb, const bool on_value_match)
-{
-    // Iterate thru parameter callback
-    for (par_cb_t * it = gp_par_start_cb; it != NULL; it=it->next)
-    {
-        if ( it == cb )
-        {
-            cb->on_value_match = on_value_match;
-            return ePAR_OK;
-        }
-    }
-
-    return ePAR_ERROR;
-}
-
-
-
-
 
 #if ( PAR_CFG_DEBUG_EN )
 
