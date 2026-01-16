@@ -1740,20 +1740,28 @@ par_status_t par_register_on_change_cb(const par_cb_t * const cb)
     if ( NULL == cb ) return ePAR_ERROR;
     if ( NULL == cb->callback) return ePAR_ERROR;
 
-    // TODO: Add mutex
-
-    // First registration -> store the start of the callback linked list
-    if ( NULL == gp_par_cb )
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
     {
-        gp_par_cb = (par_cb_t*) cb;
+        // First registration -> store the start of the callback linked list
+        if ( NULL == gp_par_cb )
+        {
+            gp_par_cb = (par_cb_t*) cb;
+        }
+        else
+        {
+            (*prev_cb->next) = (par_cb_t*) cb;
+        }
+
+        // Store previous callback
+        prev_cb = (par_cb_t*) cb;
+
+        (void) par_if_release_mutex();
     }
     else
     {
-        (*prev_cb->next) = (par_cb_t*) cb;
+        return ePAR_ERROR_MUTEX;
     }
-
-    // Store previous callback
-    prev_cb = (par_cb_t*) cb;
 
     return ePAR_OK;
 }
