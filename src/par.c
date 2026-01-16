@@ -83,7 +83,7 @@ static uint32_t     par_calc_ram_usage      (void);
 static par_status_t par_check_table_validy  (const par_cfg_t * const p_par_cfg);
 static uint32_t     par_get_type_size       (const par_type_list_t type);
 static bool         par_is_value_changed    (const par_num_t par_num, const void * p_val);
-static void         par_raise_callback      (const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
+static void         par_raise_on_change_callback      (const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -321,14 +321,18 @@ static bool par_is_value_changed(const par_num_t par_num, const void * p_val)
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void par_raise_callback(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val)
+static void par_raise_on_change_callback(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val)
 {
-    for (const par_cb_t * cb = gp_par_cb; NULL != cb; cb=(*cb->next))
+    // Value changed
+    if ( new_val.u32 != old_val.u32 )
     {
-        // Parameter number matches
-        if ( par_num == cb->par_num )
+        for (const par_cb_t * cb = gp_par_cb; NULL != cb; cb=(*cb->next))
         {
-            cb->callback( par_num, new_val, old_val );
+            // Parameter number matches
+            if ( par_num == cb->par_num )
+            {
+                cb->callback( par_num, new_val, old_val );
+            }
         }
     }
 }
@@ -565,7 +569,7 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.u8 = *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        par_raise_callback( par_num, new_val, old_val );
+        par_raise_on_change_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -622,7 +626,7 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.i8 = *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        par_raise_callback( par_num, new_val, old_val );
+        par_raise_on_change_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -679,7 +683,7 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.u16 = *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        par_raise_callback( par_num, new_val, old_val );
+        par_raise_on_change_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -736,7 +740,7 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.i16 = *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        par_raise_callback( par_num, new_val, old_val );
+        par_raise_on_change_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -793,7 +797,7 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.u32 = *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        par_raise_callback( par_num, new_val, old_val );
+        par_raise_on_change_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -850,7 +854,7 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.i32 = *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        par_raise_callback( par_num, new_val, old_val );
+        par_raise_on_change_callback( par_num, new_val, old_val );
     }
     else
     {
@@ -907,7 +911,7 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.f32 = *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]]};
-        par_raise_callback( par_num, new_val, old_val );
+        par_raise_on_change_callback( par_num, new_val, old_val );
     }
     else
     {
