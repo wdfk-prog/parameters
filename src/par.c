@@ -343,6 +343,15 @@ static void par_raise_on_change_callback(const par_num_t par_num, const par_type
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Validated parameter value
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @param[in]    val     - Parameter value
+* @return       True if value is accepted
+*/
+////////////////////////////////////////////////////////////////////////////////
 static bool par_validate_value(const par_num_t par_num, const par_type_t val)
 {
     for (const par_validation_t * validation = gp_par_validations; NULL != validation; validation=(*validation->next))
@@ -581,7 +590,8 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
         }
         else
         {
-            if ( par_validate_value( par_num, (par_type_t){.u8 = val }))
+            // Validated parameter value
+            if ( par_validate_value( par_num, (par_type_t){.u8 = val}))
             {
                 *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint8_t) val;
                 status = ePAR_OK;
@@ -645,8 +655,16 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t val)
         }
         else
         {
-            *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int8_t) val;
-            status = ePAR_OK;
+            // Validated parameter value
+            if ( par_validate_value( par_num, (par_type_t){.i8 = val}))
+            {
+                *(int8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int8_t) val;
+                status = ePAR_OK;
+            }
+            else
+            {
+                status = ePAR_ERROR_VALUE;
+            }
         }
 
         (void) par_if_release_mutex();
@@ -702,8 +720,16 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t val)
         }
         else
         {
-            *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint16_t) val;
-            status = ePAR_OK;
+            // Validated parameter value
+            if ( par_validate_value( par_num, (par_type_t){.u16 = val}))
+            {
+                *(uint16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint16_t) val;
+                status = ePAR_OK;
+            }
+            else
+            {
+                status = ePAR_ERROR_VALUE;
+            }
         }
 
         (void) par_if_release_mutex();
@@ -759,8 +785,16 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t val)
         }
         else
         {
-            *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int16_t) val;
-            status = ePAR_OK;
+            // Validated parameter value
+            if ( par_validate_value( par_num, (par_type_t){.i16 = val}))
+            {
+                *(int16_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int16_t) val;
+                status = ePAR_OK;
+            }
+            else
+            {
+                status = ePAR_ERROR_VALUE;
+            }
         }
 
         (void) par_if_release_mutex();
@@ -816,8 +850,16 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t val)
         }
         else
         {
-            *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint32_t) val;
-            status = ePAR_OK;
+            // Validated parameter value
+            if ( par_validate_value( par_num, (par_type_t){.u32 = val}))
+            {
+                *(uint32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint32_t) val;
+                status = ePAR_OK;
+            }
+            else
+            {
+                status = ePAR_ERROR_VALUE;
+            }
         }
 
         (void) par_if_release_mutex();
@@ -873,8 +915,16 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
         }
         else
         {
-            *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int32_t) val;
-            status = ePAR_OK;
+            // Validated parameter value
+            if ( par_validate_value( par_num, (par_type_t){.i32 = val}))
+            {
+                *(int32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (int32_t) val;
+                status = ePAR_OK;
+            }
+            else
+            {
+                status = ePAR_ERROR_VALUE;
+            }
         }
 
         (void) par_if_release_mutex();
@@ -930,8 +980,16 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
         }
         else
         {
-            *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (float32_t) val;
-            status = ePAR_OK;
+            // Validated parameter value
+            if ( par_validate_value( par_num, (par_type_t){.f32 = val}))
+            {
+                *(float32_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (float32_t) val;
+                status = ePAR_OK;
+            }
+            else
+            {
+                status = ePAR_ERROR_VALUE;
+            }
         }
 
         (void) par_if_release_mutex();
