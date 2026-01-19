@@ -46,7 +46,12 @@ static bool gb_is_init = false;
 /**
  *      Parameter callback functions
  */
-static par_cb_t * gp_par_cb = NULL;
+static par_on_change_cb_t * gp_par_cb = NULL;
+
+/**
+ *      Parameter validation functions
+ */
+static par_validation_t * gp_par_validations = NULL;
 
 /**
  *     Parameter active value that is stored in RAM and its
@@ -328,15 +333,28 @@ static void par_raise_on_change_callback(const par_num_t par_num, const par_type
     // Value changed
     if ( new_val.u32 != old_val.u32 )
     {
-        for (const par_cb_t * cb = gp_par_cb; NULL != cb; cb=(*cb->next))
+        for (const par_on_change_cb_t * cb = gp_par_cb; NULL != cb; cb=(*cb->next))
         {
-            // Parameter number matches
             if ( par_num == cb->par_num )
             {
                 cb->callback( par_num, new_val, old_val );
             }
         }
     }
+}
+
+static bool par_validate_value(const par_num_t par_num, const par_type_t val)
+{
+    for (const par_validation_t * validation = gp_par_validations; NULL != validation; validation=(*validation->next))
+    {
+        if ( par_num == validation->par_num )
+        {
+            return validation->valid_func( par_num, val );
+        }
+    }
+
+    // Return true if validation function is not registered for given parameter
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,8 +581,15 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
         }
         else
         {
-            *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint8_t) val;
-            status = ePAR_OK;
+            if ( par_validate_value( par_num, (par_type_t){.u8 = val }))
+            {
+                *(uint8_t*)&gpu8_par_value[gu32_par_addr_offset[par_num]] = (uint8_t) val;
+                status = ePAR_OK;
+            }
+            else
+            {
+                status = ePAR_ERROR_VALUE;
+            }
         }
 
         (void) par_if_release_mutex();
@@ -1737,9 +1762,9 @@ __PAR_CFG_WEAK__ void par_on_change_cb(const par_num_t par_num, const par_type_t
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-par_status_t par_register_on_change_cb(const par_cb_t * const cb)
+par_status_t par_register_on_change_cb(const par_on_change_cb_t * const cb)
 {
-    static par_cb_t * prev_cb = NULL;
+    static par_on_change_cb_t * prev_cb = NULL;
 
     PAR_ASSERT( NULL != cb );
     PAR_ASSERT( NULL != cb->callback );
@@ -1752,15 +1777,58 @@ par_status_t par_register_on_change_cb(const par_cb_t * const cb)
         // First registration -> store the start of the callback linked list
         if ( NULL == gp_par_cb )
         {
-            gp_par_cb = (par_cb_t*) cb;
+            gp_par_cb = (par_on_change_cb_t*) cb;
         }
         else
         {
-            (*prev_cb->next) = (par_cb_t*) cb;
+            (*prev_cb->next) = (par_on_change_cb_t*) cb;
         }
 
         // Store previous callback
-        prev_cb = (par_cb_t*) cb;
+        prev_cb = (par_on_change_cb_t*) cb;
+
+        (void) par_if_release_mutex();
+    }
+    else
+    {
+        return ePAR_ERROR_MUTEX;
+    }
+
+    return ePAR_OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Register parameter value validation function
+*
+* @param[cb]    validation  - Validation
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_status_t par_register_validation(const par_validation_t * const validation)
+{
+    static par_validation_t * prev_validation = NULL;
+
+    PAR_ASSERT( NULL != validation );
+    PAR_ASSERT( NULL != validation->valid_func );
+    if ( NULL == validation ) return ePAR_ERROR;
+    if ( NULL == validation->valid_func) return ePAR_ERROR;
+
+    // Get mutex
+    if ( ePAR_OK == par_if_aquire_mutex())
+    {
+        // First registration -> store the start of the callback linked list
+        if ( NULL == gp_par_validations )
+        {
+            gp_par_validations = (par_validation_t*) validation;
+        }
+        else
+        {
+            (*prev_validation->next) = (par_validation_t*) validation;
+        }
+
+        // Store previous callback
+        prev_validation = (par_validation_t*) validation;
 
         (void) par_if_release_mutex();
     }

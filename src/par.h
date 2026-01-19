@@ -56,6 +56,7 @@ enum
     ePAR_ERROR_CRC          = 0x0008U,      /**<Parameter CRC corrupted */
     ePAR_ERROR_TYPE         = 0x0010U,      /**<Using invalid API function for given parameter data type */
     ePAR_ERROR_MUTEX        = 0x0020U,      /**<Acquiring mutex failed  */
+    ePAR_ERROR_VALUE        = 0x0040U,      /**<Invalid parameter value (validation failed) */
 
     // Warnings
     ePAR_WAR_SET_TO_DEF     = 0x0100U,      /**<Parameters set to default */
@@ -144,19 +145,19 @@ typedef struct
  */
 typedef void (*pf_par_on_change_cb_t)(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
-typedef struct par_cb
+typedef struct par_on_change_cb
 {
     const pf_par_on_change_cb_t callback;   /**<Callback function pointer */
     const par_num_t             par_num;    /**<Parameter number (enumeration) */
-    struct par_cb **            next;       /**<Pointer to next callback block */
-} par_cb_t;
+    struct par_on_change_cb **  next;       /**<Pointer to next callback block */
+} par_on_change_cb_t;
 
-#define PAR_DEFINE_ON_CHANGE_CB(name, par, cb)  \
-    static const par_cb_t name =                \
-    {                                           \
-        .callback = cb,                         \
-        .par_num  = par,                        \
-        .next     = &(par_cb_t*){NULL},         \
+#define PAR_DEFINE_ON_CHANGE_CB(name, par, cb)      \
+    static const par_on_change_cb_t name =          \
+    {                                               \
+        .callback = cb,                             \
+        .par_num  = par,                            \
+        .next     = &(par_on_change_cb_t*){NULL},   \
     }
 
 /**
@@ -166,10 +167,18 @@ typedef bool (*pf_par_validation_t)(const par_num_t par_num, const par_type_t va
 
 typedef struct par_validation
 {
-    const pf_par_validation_t   validation; /**<Validation function pointer */
-    const par_num_t             par_num;    /**<Parameter number (enumeration) */
-    struct par_cb **            next;       /**<Pointer to next callback block */
+    const pf_par_validation_t  valid_func; /**<Validation function pointer */
+    const par_num_t            par_num;    /**<Parameter number (enumeration) */
+    struct par_validation **   next;       /**<Pointer to next callback block */
 } par_validation_t;
+
+#define PAR_DEFINE_VALIDATION(name, par, validation)    \
+    static const par_validation_t name =                \
+    {                                                   \
+        .valid_func = validation,                       \
+        .par_num    = par,                              \
+        .next       = &(par_validation_t*){NULL},       \
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions Prototypes
@@ -269,8 +278,9 @@ par_status_t        par_get_id_by_num   (const par_num_t par_num, uint16_t * con
     par_status_t par_save_clean (void);
 #endif
 
-// Register on change callback
-par_status_t par_register_on_change_cb(const par_cb_t * const cb);
+// Registration API
+par_status_t par_register_on_change_cb  (const par_on_change_cb_t * const cb);
+par_status_t par_register_validation    (const par_validation_t * const validation);
 
 #if ( PAR_CFG_DEBUG_EN )
     const char * par_get_status_str(const par_status_t status);
