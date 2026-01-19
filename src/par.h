@@ -144,15 +144,32 @@ typedef struct
  */
 typedef void (*pf_par_on_change_cb_t)(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
-/**
- *  On change callback settings
- */
 typedef struct par_cb
 {
     const pf_par_on_change_cb_t callback;   /**<Callback function pointer */
     const par_num_t             par_num;    /**<Parameter number (enumeration) */
     struct par_cb **            next;       /**<Pointer to next callback block */
 } par_cb_t;
+
+#define PAR_DEFINE_ON_CHANGE_CB(name, par, cb)  \
+    static const par_cb_t name =                \
+    {                                           \
+        .callback = cb,                         \
+        .par_num  = par,                        \
+        .next     = &(par_cb_t*){NULL},         \
+    }
+
+/**
+ *  Device Parameters validation
+ */
+typedef bool (*pf_par_validation_t)(const par_num_t par_num, const par_type_t val);
+
+typedef struct par_validation
+{
+    const pf_par_validation_t   validation; /**<Validation function pointer */
+    const par_num_t             par_num;    /**<Parameter number (enumeration) */
+    struct par_cb **            next;       /**<Pointer to next callback block */
+} par_validation_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions Prototypes

@@ -112,7 +112,8 @@ static const uint8_t * par_allocate_ram_space(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Calculate total size for parameter live values
+*        Calculate total size for parameter live values and assign
+*        address offset in RAM
 *
 * @return   Size of RAM space for parameters value in bytes
 */
