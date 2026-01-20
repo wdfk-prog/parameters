@@ -75,6 +75,7 @@ static uint32_t gu32_par_addr_offset[ ePAR_NUM_OF ] = { 0 };
         "ERROR CRC",
         "ERROR TYPE",
         "ERROR MUTEX",
+        "ERROR_VALUE",
 
         "WARN SET TO DEF",
         "WARN NVM REWRITTEN",
