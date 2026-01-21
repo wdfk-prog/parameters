@@ -50,6 +50,7 @@ enum
     ePAR_OK                 = 0U,           /**<Normal operation */
 
     // Errors
+    ePAR_STATUS_ERROR_MASK  = 0x00FFU,
     ePAR_ERROR              = 0x0001U,      /**<General parameter error */
     ePAR_ERROR_INIT         = 0x0002U,      /**<Parameter initialization error or usage before initialization */
     ePAR_ERROR_NVM          = 0x0004U,      /**<Parameter storage to NVM error */
@@ -59,6 +60,7 @@ enum
     ePAR_ERROR_VALUE        = 0x0040U,      /**<Invalid parameter value (validation failed) */
 
     // Warnings
+    ePAR_STATUS_WAR_MASK    = 0xFF00U,
     ePAR_WAR_SET_TO_DEF     = 0x0100U,      /**<Parameters set to default */
     ePAR_WAR_NVM_REWRITTEN  = 0x0200U,      /**<NVM parameters area completely re-written */
     ePAR_WAR_NO_PERSISTANT  = 0x0400U,      /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
