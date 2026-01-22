@@ -223,7 +223,6 @@ par_status_t par_set_all_to_default (void);
     default:    par_set_f32                             \
 )(par_num, value)
 
-
 // Getting parameter value API (module must be first initialized before using those func)
 par_status_t par_get            (const par_num_t par_num, void * const p_val);
 par_status_t par_get_by_id      (const uint16_t id, void * const p_val);
