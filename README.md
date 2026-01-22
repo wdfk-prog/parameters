@@ -44,22 +44,55 @@ root/middleware/parameters/parameters/"module_space"
 | --- | ----------- | ----- |
 | **par_init** 					| Initialization of parameters module 				| par_status_t par_init(void) |****
 | **par_deinit** 				| De-initialization of parameters module 			| par_status_t par_deinit(void) |****
-| **par_is_init** 				| Get initialization flag 							| par_status par_is_init(bool * const p_is_init) |
-| **par_set** 					| Set parameter 									| par_status_t par_set (const par_num_t par_num, const void *p_val) |
+| **par_is_init** 				| Get initialization flag 							| bool par_is_init(void) |
+
+ ## **Setting parameter value API**
+| API Functions | Description | Prototype |
+| --- | ----------- | ----- |
+| **par_set** 					| Set parameter value 								| par_status_t par_set(const par_num_t par_num, const void *p_val) |
+| **par_set_by_id** 			| Set parameter value by ID 						| par_status_t par_set_by_id(const uint16_t id, const void * p_val) |
+| **par_set_u8** 				| Set u8 parameter value 							| par_status_t par_set_u8(const par_num_t par_num, const uint8_t val) |
+| **par_set_i8** 				| Set i8 parameter value 							| par_status_t par_set_i8(const par_num_t par_num, const int8_t val) |
+| **par_set_u16** 				| Set u16 parameter value 							| par_status_t par_set_u16(const par_num_t par_num, const uint16_t val) |
+| **par_set_i16** 				| Set i16 parameter value 							| par_status_t par_set_i16(const par_num_t par_num, const int16_t val) |
+| **par_set_u32** 				| Set u32 parameter value 							| par_status_t par_set_u32(const par_num_t par_num, const uint32_t val) |
+| **par_set_i32** 				| Set i32 parameter value 							| par_status_t par_set_i32(const par_num_t par_num, const int32_t val) |
+| **par_set_f32** 				| Set f32 parameter value 							| par_status_t par_set_f32(const par_num_t par_num, const float32_t val) |
 | **par_set_to_default** 		| Set parameter to default value 					| par_status_t par_set_to_default (const par_num_t par_num) |
 | **par_set_all_to_default** 	| Set all parameters to default value 				| par_status_t par_set_all_to_default (void) |
-| **par_has_changed** 			| Has parameter changed								| par_status_t par_has_changed(const par_num_t par_num, bool *const p_has_changed) |
+| **PAR_SET** 					| Set generic parameters value 						| #define PAR_SET(par_num, value) |
+
+ ## **Getting parameter value API**
+| API Functions | Description | Prototype |
+| --- | ----------- | ----- |
 | **par_get** 					| Get parameter value 								| par_status_t par_get (const par_num_t par_num, void *const p_val)|
-| **par_get_id** 				| Get parameter ID number 							| par_status_t par_get_id (const par_num_t par_num, uint16_t *const p_id) |
-| **par_get_num_by_id** 		| Get parameter number (enumeration) by its ID 		| par_status_t par_get_num_by_id (const uint16_t id, par_num_t *const p_par_num) |
-| **par_get_config** 			| Get parameter configurations 						| par_status_t par_get_config (const par_num_t par_num, par_cfg_t *const p_par_cfg) |
-| **par_get_type_size** 		| Get parameter data type size 						| par_status_t par_get_type_size (const par_type_list_t type, uint8_t *const p_size) |
-| **par_get_type** 				| Get parameter data type 							| par_status_t par_get_type(const par_num_t par_num, par_type_list_t *const p_type) |
-| **par_get_range** 			| Get parameter range 								| par_status_t par_get_range(const par_num_t par_num, par_range_t *const p_range) |
+| **par_get_id** 				| Get parameter ID number 							| par_status_t par_get_id(const par_num_t par_num, uint16_t *const p_id) |
+| **par_get_u8** 				| Get u8 parameter value  							| uint8_t par_get_u8(const par_num_t par_num) |
+| **par_get_i8** 				| Get i8 parameter value  							| uint8_t par_get_i8(const par_num_t par_num) |
+| **par_get_u16** 				| Get u16 parameter value  							| uint16_t par_get_u16(const par_num_t par_num) |
+| **par_get_i16** 				| Get i16 parameter value  							| uint16_t par_get_i16(const par_num_t par_num) |
+| **par_get_u32** 				| Get u32 parameter value  							| uint32_t par_get_u32(const par_num_t par_num) |
+| **par_get_i32** 				| Get i32 parameter value  							| uint32_t par_get_i32(const par_num_t par_num) |
+| **par_get_f32** 				| Get f32 parameter value  							| float32_t par_get_f32(const par_num_t par_num) |
+| **par_get_default** 			| Get default parameter value  						| par_status_t par_get_default(const par_num_t par_num, void * const p_val) |
+| **par_is_changed** 			| Is parameter value changed from default			| bool par_is_changed(const par_num_t par_num) |
+| **PAR_GET** 					| Get generic parameters value 						| #define PAR_GET(par_num, dest) |
 
+ ## **Parameter configurations API**
+| API Functions | Description | Prototype |
+| --- | ----------- | ----- |
+| **par_get_config** 			| Get parameter configurations 						| const par_cfg_t * par_get_config(const par_num_t par_num) |
+| **par_get_name** 				| Get parameter name 								| const char * par_get_name(const par_num_t par_num) |
+| **par_get_range** 			| Get parameter range 								| par_range_t par_get_range(const par_num_t par_num) |
+| **par_get_unit** 				| Get parameter unit 								| const char * par_get_unit(const par_num_t par_num) |
+| **par_get_desc** 				| Get parameter describtion							| const char * par_get_desc(const par_num_t par_num) |
+| **par_get_type** 				| Get parameter data type							| par_type_list_t par_get_type(const par_num_t par_num) |
+| **par_get_access**			| Get parameter access								| par_access_t par_get_access(const par_num_t par_num) |
+| **par_is_persistant**			| Get parameter persistance							| bool par_is_persistant(const par_num_t par_num) |
+| **par_get_num_by_id** 		| Get parameter number (enumeration) by its ID 		| par_status_t par_get_num_by_id(const uint16_t id, par_num_t *const p_par_num) |
+| **par_get_id_by_num** 		| Get parameter ID by number (enumeration) 			| par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id) |
 
-With enable NVM additional fuctions are available:
-
+ ## **Parameter NVM storage API**
 | API Functions | Description | Prototype |
 | --- | ----------- | ----- |
 | **par_set_n_save** 	| Set and store parameter to NVM 					| par_status_t par_set_n_save(const par_num_t par_num, const void * p_val) |
@@ -68,6 +101,11 @@ With enable NVM additional fuctions are available:
 | **par_save_by_id** 	| Store single parameter by ID 						| par_status_t par_save_by_id(const uint16_t par_id) |
 | **par_save_clean** 	| Re-Write complete NVM memory 						| par_status_t par_save_clean(void) |
 
+ ## **Parameter registrations API**
+| API Functions | Description | Prototype |
+| --- | ----------- | ----- |
+| **par_register_on_change_cb** 		| Register on value change callback			| par_status_t par_register_on_change_cb(const par_on_change_cb_t * const cb) |
+| **par_register_validation** 			| Register value validation callback		| par_status_t par_register_validation(const par_validation_t * const validation) |
 
 ## Usage
 
