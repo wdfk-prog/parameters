@@ -231,7 +231,7 @@ if ( ePAR_OK != par_init())
 (void) par_set( ePAR_BAT_VOLTAGE, (float32_t*) &g_pwr_data.bat.voltage_filt );
 (void) par_set( ePAR_SYS_CURRENT, (float32_t*) &g_pwr_data.inp.sys_cur );
 
-// Or equivalent
+// Or equivalent to "par_set"
 PAR_SET( ePAR_BAT_VOLTAGE, g_pwr_data.bat.voltage_filt );
 PAR_SET( ePAR_SYS_CURRENT, g_pwr_data.inp.sys_cur );
 
@@ -247,9 +247,19 @@ if ( ePAR_OK != par_set_n_save( ePAR_P1_10, (uint32_t) &p1_10_val ))
 (void) par_get( ePAR_BAT_VOLTAGE, (float32_t*) &g_pwr_data.bat.voltage_filt );
 (void) par_get( ePAR_SYS_CURRENT, (float32_t*) &g_pwr_data.inp.sys_cur );
 
-// Or equivalent
+// Or equivalent to "par_get"
 PAR_GET( ePAR_BAT_VOLTAGE, g_pwr_data.bat.voltage_filt );
 PAR_GET( ePAR_SYS_CURRENT, g_pwr_data.inp.sys_cur );
+```
+
+Setting direct value to parameter:
+
+```C
+par_set( ePAR_BAT_VOLTAGE, (float32_t*) &(float32_t){ 1.1234f} );
+
+// Or equivalent using "PAR_SET"
+// NOTE: When putting direct numbers using "PAR_SET" always cast to appropriate data type! 
+PAR_SET( ePAR_BAT_VOLTAGE, (float32_t) 1.1234f );	
 ```
 
 7. Store to NVM
