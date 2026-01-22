@@ -266,24 +266,68 @@ if ( ePAR_OK != par_save_all())
 8. On-change callback usage
 
 ```C
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Parameter value change callback
+*
+* @param[out]   par_num - Parameter number
+* @param[out]   new_val - Parameter new value
+* @param[out]   new_val - Parameter old value
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 void par_on_change_cb1(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val)
 {
     cli_printf("Parameter %d change from %d to %d", par_num, old_val.u8, new_val.u8 );
-
 }
 
+// Define parameter on change callback for "ePAR_CH1_TEST_MODE_EN" parameter
 PAR_DEFINE_ON_CHANGE_CB( test_par_cb, ePAR_CH1_TEST_MODE_EN, par_on_change_cb1);
 
-
-// Later at init phase
+// Register at init phase
 @init
 {
-	par_register_on_change_cb(&test_par_cb);
+	if ( ePAR_OK != par_register_on_change_cb( &test_par_cb ))
+	{
+		// Operation error...
+		// Further actions here...
+	}
 }
-
 ```
 
+9. Parameter value validation usage
 
+```C
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Validate parameter value
+*
+* @param[in]   	par_num - Parameter number
+* @param[in]	val 	- Parameter new value
+* @return       true when value valid
+*/
+////////////////////////////////////////////////////////////////////////////////
+static bool validate_par_value(const par_num_t par_num, const par_type_t val)
+{
+    UNUSED(par_num);
+
+	// Prevent parameter to take exact -10 value
+    if ( val.i8 == -10 )   	return false;
+    else                    return true;
+}
+
+// Define parameter validation for "ePAR_CH1_REF_VAL" parameter
+PAR_DEFINE_VALIDATION( par_validate, ePAR_CH1_REF_VAL, validate_par_value);
+
+// Register at init phase
+@init
+{
+	if ( ePAR_OK != par_register_validation( &par_validate ))
+	{
+		// Operation error...
+		// Further actions here...
+	}
+}
+```
 
 

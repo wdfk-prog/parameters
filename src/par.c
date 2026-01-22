@@ -1794,27 +1794,6 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Parameter value change callback
-*
-* @param[out]   par_num - Parameter number
-* @param[out]   new_val - Parameter new value
-* @param[out]   new_val - Parameter old value
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-__PAR_CFG_WEAK__ void par_on_change_cb(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val)
-{
-    UNUSED(par_num);
-    UNUSED(new_val);
-    UNUSED(old_val);
-
-    /**
-     *  Leave empty for user application purposes...
-     */
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
 *        Register parameter on change callback
 *
 * @param[cb]    cb      - Callback
@@ -1905,8 +1884,8 @@ par_status_t par_register_validation(const par_validation_t * const validation)
     /**
     *        Get status string description
     *
-    * @param[in]    status    - Parameter status
-    * @return        str        - Parameter status description
+    * @param[in]    status  - Parameter status
+    * @return       str     - Parameter status description
     */
     ////////////////////////////////////////////////////////////////////////////////
     const char * par_get_status_str(const par_status_t status)
