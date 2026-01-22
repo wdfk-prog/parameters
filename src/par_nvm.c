@@ -7,8 +7,8 @@
 *@brief     Parameter storage to non-volatile memory
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      06.12.2024
-*@version   V2.2.0
+*@date      22.01.2026
+*@version   V3.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
