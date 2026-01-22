@@ -32,8 +32,18 @@ When combined with the following modules, the **Device Parameters** module signi
 By leveraging this combination of modules, embedded firmware development becomes significantly faster and more efficient, enabling developers to focus on functionality rather than repetitive low-level implementation.  
 
 ## **Dependencies**
-### **1. Parameter persistance**
-In case of using persistant options (*PAR_CFG_NVM_EN = 1*) it is mandatory to use [NVM module](https://github.com/GeneralEmbeddedCLibraries/nvm).
+
+### **1. Utils Module**
+[Utils module](https://github.com/GeneralEmbeddedCLibraries/utils) is a mandatory dependecy when using CLI and it must take following path:
+```
+"root/common/utils/src/utils.h"
+```
+### **2. NVM Module**
+In case of using NVM module *PAR_CFG_NVM_EN = 1*, then [NVM module](https://github.com/GeneralEmbeddedCLibraries/nvm) must pe part of project. 
+NVM module must take following path:
+```
+"root/middleware/nvm/nvm/src/nvm.h"
+```
 
 ## **Limitations**
  - **Heap Usage:** The module uses malloc during par_init() to allocate RAM space for the parameters based on the configuration table. Ensure your heap is sufficiently sized.
