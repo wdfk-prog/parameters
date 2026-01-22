@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Ziga Miklosic
+// Copyright (c) 2026 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief    	Configuration for device parameters
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      06.12.2024
-*@version   V2.2.0
+*@date      15.02.2023
+*@version	V2.1.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -53,51 +53,203 @@
  *
  * 			Must be started with 0!
  */
-typedef enum
+enum
 {
 	// USER CODE START...
 
-	ePAR_TEST_I16,
-	ePAR_TEST_I16_2,
+    // Channel 1 control
+    ePAR_CH1_CTRL = 0,
+    ePAR_CH1_AFE_MEAS_EN,
+    ePAR_CH1_TEST_MODE_EN,
+    ePAR_CH1_REF_SEL,
+    ePAR_CH1_REF_VAL,
+
+    // Channel 1 status
+    ePAR_CH1_STATUS,
+    ePAR_CH1_FSM_STATE,
+
+    // Channel 1 reference values
+    ePAR_CH1_TSIM,
+    ePAR_CH1_RSIM,
+    ePAR_CH1_VOUT,
+    ePAR_CH1_ISINK,
+    ePAR_CH1_VSET,
+    ePAR_CH1_VTH,
+    ePAR_CH1_VDAC_C,
+    ePAR_CH1_VDAC_F,
+    ePAR_CH1_VDAC_C_RAW,
+    ePAR_CH1_VDAC_F_RAW,
+
+    // Channel 1 measurements
+    ePAR_CH1_CUR,
+    ePAR_CH1_VOL,
+    ePAR_CH1_CUR_RAW,
+    ePAR_CH1_VOL_RAW,
+    ePAR_CH1_AFE_VCC,
+    ePAR_CH1_AFE_RES,
+
+    // Channel 2 control
+    ePAR_CH2_CTRL,
+    ePAR_CH2_AFE_MEAS_EN,
+    ePAR_CH2_TEST_MODE_EN,
+    ePAR_CH2_REF_SEL,
+    ePAR_CH2_REF_VAL,
+
+    // Channel 2 status
+    ePAR_CH2_STATUS,
+    ePAR_CH2_FSM_STATE,
+
+    // Channel 2 reference values
+    ePAR_CH2_TSIM,
+    ePAR_CH2_RSIM,
+    ePAR_CH2_VOUT,
+    ePAR_CH2_ISINK,
+    ePAR_CH2_VSET,
+    ePAR_CH2_VTH,
+    ePAR_CH2_VDAC_C,
+    ePAR_CH2_VDAC_F,
+    ePAR_CH2_VDAC_C_RAW,
+    ePAR_CH2_VDAC_F_RAW,
+
+    // Channel 2 measurements
+    ePAR_CH2_CUR,
+    ePAR_CH2_VOL,
+    ePAR_CH2_CUR_RAW,
+    ePAR_CH2_VOL_RAW,
+    ePAR_CH2_AFE_VCC,
+    ePAR_CH2_AFE_RES,
+
+    // Channel 3 control
+    ePAR_CH3_CTRL,
+    ePAR_CH3_AFE_MEAS_EN,
+    ePAR_CH3_TEST_MODE_EN,
+    ePAR_CH3_REF_SEL,
+    ePAR_CH3_REF_VAL,
+
+    // Channel 3 status
+    ePAR_CH3_STATUS,
+    ePAR_CH3_FSM_STATE,
+
+    // Channel 3 reference values
+    ePAR_CH3_TSIM,
+    ePAR_CH3_RSIM,
+    ePAR_CH3_VOUT,
+    ePAR_CH3_ISINK,
+    ePAR_CH3_VSET,
+    ePAR_CH3_VTH,
+    ePAR_CH3_VDAC_C,
+    ePAR_CH3_VDAC_F,
+    ePAR_CH3_VDAC_C_RAW,
+    ePAR_CH3_VDAC_F_RAW,
+
+    // Channel 3 measurements
+    ePAR_CH3_CUR,
+    ePAR_CH3_VOL,
+    ePAR_CH3_CUR_RAW,
+    ePAR_CH3_VOL_RAW,
+    ePAR_CH3_AFE_VCC,
+    ePAR_CH3_AFE_RES,
+
+    // Channel 4 control
+    ePAR_CH4_CTRL,
+    ePAR_CH4_AFE_MEAS_EN,
+    ePAR_CH4_TEST_MODE_EN,
+    ePAR_CH4_REF_SEL,
+    ePAR_CH4_REF_VAL,
+
+    // Channel 4 status
+    ePAR_CH4_STATUS,
+    ePAR_CH4_FSM_STATE,
+
+    // Channel 4 reference values
+    ePAR_CH4_TSIM,
+    ePAR_CH4_RSIM,
+    ePAR_CH4_VOUT,
+    ePAR_CH4_ISINK,
+    ePAR_CH4_VSET,
+    ePAR_CH4_VTH,
+    ePAR_CH4_VDAC_C,
+    ePAR_CH4_VDAC_F,
+    ePAR_CH4_VDAC_C_RAW,
+    ePAR_CH4_VDAC_F_RAW,
+
+    // Channel 4 measurements
+    ePAR_CH4_CUR,
+    ePAR_CH4_VOL,
+    ePAR_CH4_CUR_RAW,
+    ePAR_CH4_VOL_RAW,
+    ePAR_CH4_AFE_VCC,
+    ePAR_CH4_AFE_RES,
+
+    // System status
+    ePAR_SYS_STATUS,
+    ePAR_SYS_CPU_LOAD,
+    ePAR_SYS_CPU_LOAD_MAX,
 
 	// USER CODE END...
 
 	ePAR_NUM_OF
-} par_num_t;
+};
+typedef uint16_t par_num_t;
 
-// USER CODE BEGIN...
-
-/************************************************************************************
- *
- *      Device parameter enumerations
- *
- ***********************************************************************************/
+// USER CODE START...
 
 /**
- *  Test I16 state
- *
- * @note Applicable to "ePAR_TEST_I16" parameter!
+ *  Parameter enumeration gap between channels
  */
-typedef enum
+#define PAR_CH_ENUM_GAP         ( ePAR_CH2_CTRL - ePAR_CH1_CTRL )
+
+/**
+ *  Get channel parameter enumeration
+ */
+#define PAR_GET_BY_CH(par,ch)   ( par + ( PAR_CH_ENUM_GAP * ch ))
+
+/**
+ *  Temperature simulation channel control
+ */
+enum
 {
-    ePAR_TEST_I16_STATE_IDLE         = 0U,
-    ePAR_TEST_I16_STATE_BT_PAIR      = 1U,
-    ePAR_TEST_I16_STATE_BT_ADV       = 2U,
-    ePAR_TEST_I16_STATE_LR_PAIR      = 3U,
-    ePAR_TEST_I16_STATE_LR_ADV       = 4U,
+    ePAR_CH_CTRL_NORMAL = 0,    /**<Normal temperature simulation */
+    ePAR_CH_CTRL_SHORT,         /**<Channel in short circuit */
+    ePAR_CH_CTRL_OPEN,          /**<Channel in open circuit */
 
-    ePAR_BLE_ADV_STATE_NUM_OF,
-} par_test_i16_state_t;
+    ePAR_CH_CTRL_NUM_OF,
+};
+typedef uint8_t par_ch_ctrl_t;
 
 /**
- * 	Enable/Disable multiple access protection
+ *  Temperature simulation channel status
  */
-#define PAR_CFG_MUTEX_EN						( 0 )
+enum
+{
+    ePAR_CH_STAT_NORMAL = 0,    /**<Normal temperature simulation */
+    ePAR_CH_STAT_SHORT,         /**<Channel in short circuit */
+    ePAR_CH_STAT_OPEN,          /**<Channel in open circuit */
+    ePAR_CH_STAT_NC,            /**<Channel not connected to regulator */
+
+    ePAR_CH_STAT_NUM_OF,
+};
+typedef uint8_t par_ch_stat_t;
+
+/**
+ *  Reference selection
+ */
+enum
+{
+    ePAR_CH_REF_TEMP    = 0,    /**<Temperature as reference */
+    ePAR_CH_REF_RES,            /**<Resistance as reference */
+    ePAR_CH_REF_VOUT,           /**<Output voltage as reference */
+    ePAR_CH_REF_ISINK,          /**<Current sink as reference */
+    ePAR_CH_REF_VSET,           /**<Set voltage as reference */
+
+    ePAR_CH_NUM_OF,
+};
+typedef uint8_t par_ch_ref_sel_t;
 
 /**
  * 	Enable/Disable storing persistent parameters to NVM
  */
-#define PAR_CFG_NVM_EN							( 0 )
+#define PAR_CFG_NVM_EN							( 1 )
 
 #if ( 1 == PAR_CFG_NVM_EN )
 	/**
@@ -108,7 +260,7 @@ typedef enum
 	 *
 	 * 			Don't care if "PAR_CFG_NVM_EN" set to 0
 	 */
-	#define PAR_CFG_NVM_REGION						( eNVM_REGION_EEPROM_RUN_PAR )
+	#define PAR_CFG_NVM_REGION						( eNVM_REGION_INT_FLASH_DEV_PAR )
 
 	/**
 	 * 	Enable/Disable parameter table unique ID checking
@@ -136,7 +288,7 @@ typedef enum
  *
  * 	@note	Disable in release!
  */
-#define PAR_CFG_DEBUG_EN						( 1 )
+#define PAR_CFG_DEBUG_EN						( 0 )
 
 #ifndef DEBUG
 #undef PAR_CFG_DEBUG_EN
@@ -162,7 +314,6 @@ typedef enum
 	#define PAR_DBG_PRINT( ... )				( cli_printf((char*) __VA_ARGS__ ))
 #else
 	#define PAR_DBG_PRINT( ... )				{ ; }
-
 #endif
 
 /**
@@ -188,7 +339,8 @@ typedef enum
 ////////////////////////////////////////////////////////////////////////////////
 // Functions Prototypes
 ////////////////////////////////////////////////////////////////////////////////
-const void * 	par_cfg_get_table		(void);
-uint32_t	 	par_cfg_get_table_size	(void);
+const void * par_cfg_get_table		(void);
+const void * par_cfg_get            (const par_num_t par_num);
+uint32_t     par_cfg_get_table_size	(void);
 
 #endif // _PAR_CFG_H_
