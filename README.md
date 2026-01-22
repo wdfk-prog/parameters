@@ -2,6 +2,8 @@
 
 The **Device Parameters** module manages all device parameters through a single configuration table, offering a streamlined approach to system configuration and diagnostics. This module often serves as the backbone of an embedded system, controlling the application's behavior and providing insights into device performance, making diagnostics straightforward and efficient.  
 
+For more details about storage into NVM look at the [General Embedded C Library Manual](https://github.com/GeneralEmbeddedCLibraries/documentation/blob/develop/General_Embedded_C_Library_Manual.pdf) document.
+
 ## Key Benefits  
 - **Centralized Configuration**: Simplifies management by defining all system settings in a single table.
 - **Data Integrity**: Integrated Min/Max range checking and custom validation callbacks.
