@@ -3,9 +3,12 @@
 The **Device Parameters** module manages all device parameters through a single configuration table, offering a streamlined approach to system configuration and diagnostics. This module often serves as the backbone of an embedded system, controlling the application's behavior and providing insights into device performance, making diagnostics straightforward and efficient.  
 
 ## Key Benefits  
-- **Centralized Configuration**: Simplifies the management of system parameters.  
-- **Diagnostics**: Enables quick and easy performance analysis of the target device.  
-- **Behavior Control**: Directly influences the end behavior of the embedded application.  
+- **Centralized Configuration**: Simplifies management by defining all system settings in a single table.
+- **Data Integrity**: Integrated Min/Max range checking and custom validation callbacks.
+- **Thread Safety**: Optional mutex protection for multi-threaded environments (e.g., RTOS).
+- **Persistence**: Transparent NVM (Non-Volatile Memory) integration with CRC and signature verification.
+- **Observability**: Built-in support for parameter names, units, and descriptions for easy CLI/GUI integration.
+- **Event-Driven**: Chained callback system for notifying other modules of parameter changes.
 
 ## Integration with other modules in General Embedded C Libraries ecosystem
 When combined with the following modules, the **Device Parameters** module significantly enhances the capabilities of embedded applications:  
@@ -27,11 +30,14 @@ When combined with the following modules, the **Device Parameters** module signi
 By leveraging this combination of modules, embedded firmware development becomes significantly faster and more efficient, enabling developers to focus on functionality rather than repetitive low-level implementation.  
 
 ## **Dependencies**
-
 ### **1. Parameter persistance**
-
 In case of using persistant options (*PAR_CFG_NVM_EN = 1*) it is mandatory to use [NVM module](https://github.com/GeneralEmbeddedCLibraries/nvm).
 
+## **Limitations**
+ - **Heap Usage:** The module uses malloc during par_init() to allocate RAM space for the parameters based on the configuration table. Ensure your heap is sufficiently sized.
+ - **Alignment:** Address offsets are calculated based on 4-byte (32-bit) alignment to satisfy most ARM Cortex-M requirements.
+ - **Flat ID Space:** Parameter IDs must be unique across the entire table to ensure NVM consistency.
+ - **Execution Time:** If many callbacks are chained to a single parameter, the par_set execution time will increase accordingly.
 
 ## **General Embedded C Libraries Ecosystem**
 In order to be part of *General Embedded C Libraries Ecosystem* this module must be placed in following path: 
@@ -217,14 +223,17 @@ if ( ePAR_OK != par_init())
 ```
 **NOTICE: NVM module will be initialized as a part of Device Parameters initialization routine in case of usage (*PAR_CFG_NVM_EN = 1*)!**
 
-6. Set up parameter value
-
-For set/get of parameters value always use a casting form!
+6. Setting/Getting parameter value
 
 ```C
 // Set battery voltage & sytem current
+// NOTICE: When using "par_set" don't forget to always CAST to appropriate data type!
 (void) par_set( ePAR_BAT_VOLTAGE, (float32_t*) &g_pwr_data.bat.voltage_filt );
 (void) par_set( ePAR_SYS_CURRENT, (float32_t*) &g_pwr_data.inp.sys_cur );
+
+// Or equivalent
+PAR_SET( ePAR_BAT_VOLTAGE, g_pwr_data.bat.voltage_filt );
+PAR_SET( ePAR_SYS_CURRENT, g_pwr_data.inp.sys_cur );
 
 // Set and save parameter 
 if ( ePAR_OK != par_set_n_save( ePAR_P1_10, (uint32_t) &p1_10_val ))
@@ -232,6 +241,15 @@ if ( ePAR_OK != par_set_n_save( ePAR_P1_10, (uint32_t) &p1_10_val ))
 	// Operation error...
 	// Further actions here...
 }
+
+// Get battery voltage & sytem current
+// NOTICE: When using "par_get" don't forget to always CAST to appropriate data type!
+(void) par_get( ePAR_BAT_VOLTAGE, (float32_t*) &g_pwr_data.bat.voltage_filt );
+(void) par_get( ePAR_SYS_CURRENT, (float32_t*) &g_pwr_data.inp.sys_cur );
+
+// Or equivalent
+PAR_GET( ePAR_BAT_VOLTAGE, g_pwr_data.bat.voltage_filt );
+PAR_GET( ePAR_SYS_CURRENT, g_pwr_data.inp.sys_cur );
 ```
 
 7. Store to NVM
@@ -245,6 +263,26 @@ if ( ePAR_OK != par_save_all())
 }
 ```
 
+8. On-change callback usage
+
+```C
+
+void par_on_change_cb1(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val)
+{
+    cli_printf("Parameter %d change from %d to %d", par_num, old_val.u8, new_val.u8 );
+
+}
+
+PAR_DEFINE_ON_CHANGE_CB( test_par_cb, ePAR_CH1_TEST_MODE_EN, par_on_change_cb1);
+
+
+// Later at init phase
+@init
+{
+	par_register_on_change_cb(&test_par_cb);
+}
+
+```
 
 
 
