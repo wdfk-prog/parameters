@@ -57,27 +57,13 @@ static par_validation_t * gp_par_validations = NULL;
 /**
  *  Parameter live values divided by its type in RAM
  */
-
-#if 1
-    static _Atomic uint8_t *    gpu8_par_value = NULL;
-    static _Atomic int8_t  *    gpi8_par_value = NULL;
-    static _Atomic uint16_t *   gpu16_par_value = NULL;
-    static _Atomic int16_t  *   gpi16_par_value = NULL;
-    static _Atomic uint32_t *   gpu32_par_value = NULL;
-    static _Atomic int32_t  *   gpi32_par_value = NULL;
-    static _Atomic float32_t *  gpf32_par_value = NULL;
-#endif
-
-#if 0
-static uint8_t *    gpu8_par_value = NULL;
-static int8_t  *    gpi8_par_value = NULL;
-static uint16_t *   gpu16_par_value = NULL;
-static int16_t  *   gpi16_par_value = NULL;
-static uint32_t *   gpu32_par_value = NULL;
-static int32_t  *   gpi32_par_value = NULL;
-static float32_t *  gpf32_par_value = NULL;
-#endif
-
+static _Atomic uint8_t *    gpu8_par_value = NULL;
+static _Atomic int8_t  *    gpi8_par_value = NULL;
+static _Atomic uint16_t *   gpu16_par_value = NULL;
+static _Atomic int16_t  *   gpi16_par_value = NULL;
+static _Atomic uint32_t *   gpu32_par_value = NULL;
+static _Atomic int32_t  *   gpi32_par_value = NULL;
+static _Atomic float32_t *  gpf32_par_value = NULL;
 
 /**
  *  Address offset by parameter enumeration
@@ -87,42 +73,21 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 /**
  *  Private getters and setters
  */
-#if 1
-    #define PAR_GET_U8_PRIV(par_num)        ATOMIC_LOAD( &gpu8_par_value[gu32_par_offset[par_num]] )
-    #define PAR_GET_I8_PRIV(par_num)        ATOMIC_LOAD( &gpi8_par_value[gu32_par_offset[par_num]] )
-    #define PAR_GET_U16_PRIV(par_num)       ATOMIC_LOAD( &gpu16_par_value[gu32_par_offset[par_num]] )
-    #define PAR_GET_I16_PRIV(par_num)       ATOMIC_LOAD( &gpi16_par_value[gu32_par_offset[par_num]] )
-    #define PAR_GET_U32_PRIV(par_num)       ATOMIC_LOAD( &gpu32_par_value[gu32_par_offset[par_num]] )
-    #define PAR_GET_I32_PRIV(par_num)       ATOMIC_LOAD( &gpi32_par_value[gu32_par_offset[par_num]] )
-    #define PAR_GET_F32_PRIV(par_num)       ATOMIC_LOAD( &gpf32_par_value[gu32_par_offset[par_num]] )
+#define PAR_GET_U8_PRIV(par_num)        ATOMIC_LOAD( &gpu8_par_value[gu32_par_offset[par_num]] )
+#define PAR_GET_I8_PRIV(par_num)        ATOMIC_LOAD( &gpi8_par_value[gu32_par_offset[par_num]] )
+#define PAR_GET_U16_PRIV(par_num)       ATOMIC_LOAD( &gpu16_par_value[gu32_par_offset[par_num]] )
+#define PAR_GET_I16_PRIV(par_num)       ATOMIC_LOAD( &gpi16_par_value[gu32_par_offset[par_num]] )
+#define PAR_GET_U32_PRIV(par_num)       ATOMIC_LOAD( &gpu32_par_value[gu32_par_offset[par_num]] )
+#define PAR_GET_I32_PRIV(par_num)       ATOMIC_LOAD( &gpi32_par_value[gu32_par_offset[par_num]] )
+#define PAR_GET_F32_PRIV(par_num)       ATOMIC_LOAD( &gpf32_par_value[gu32_par_offset[par_num]] )
 
-    #define PAR_SET_U8_PRIV(par_num, val)   ATOMIC_STORE( &gpu8_par_value[gu32_par_offset[par_num]], val )
-    #define PAR_SET_I8_PRIV(par_num, val)   ATOMIC_STORE( &gpi8_par_value[gu32_par_offset[par_num]], val )
-    #define PAR_SET_U16_PRIV(par_num, val)  ATOMIC_STORE( &gpu16_par_value[gu32_par_offset[par_num]], val )
-    #define PAR_SET_I16_PRIV(par_num, val)  ATOMIC_STORE( &gpi16_par_value[gu32_par_offset[par_num]], val )
-    #define PAR_SET_U32_PRIV(par_num, val)  ATOMIC_STORE( &gpu32_par_value[gu32_par_offset[par_num]], val )
-    #define PAR_SET_I32_PRIV(par_num, val)  ATOMIC_STORE( &gpi32_par_value[gu32_par_offset[par_num]], val )
-    #define PAR_SET_F32_PRIV(par_num, val)  ATOMIC_STORE( &gpf32_par_value[gu32_par_offset[par_num]], val )
-#endif
-
-#if 0
-#define PAR_GET_U8_PRIV(par_num)        ( gpu8_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_I8_PRIV(par_num)        ( gpi8_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_U16_PRIV(par_num)       ( gpu16_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_I16_PRIV(par_num)       ( gpi16_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_U32_PRIV(par_num)       ( gpu32_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_I32_PRIV(par_num)       ( gpi32_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_F32_PRIV(par_num)       ( gpf32_par_value[gu32_par_offset[par_num]] )
-
-#define PAR_SET_U8_PRIV(par_num, val)   ( gpu8_par_value[gu32_par_offset[par_num]] = val )
-#define PAR_SET_I8_PRIV(par_num, val)   ( gpi8_par_value[gu32_par_offset[par_num]] = val )
-#define PAR_SET_U16_PRIV(par_num, val)  ( gpu16_par_value[gu32_par_offset[par_num]] = val )
-#define PAR_SET_I16_PRIV(par_num, val)  ( gpi16_par_value[gu32_par_offset[par_num]] = val )
-#define PAR_SET_U32_PRIV(par_num, val)  ( gpu32_par_value[gu32_par_offset[par_num]] = val )
-#define PAR_SET_I32_PRIV(par_num, val)  ( gpi32_par_value[gu32_par_offset[par_num]] = val )
-#define PAR_SET_F32_PRIV(par_num, val)  ( gpf32_par_value[gu32_par_offset[par_num]] = val )
-#endif
-
+#define PAR_SET_U8_PRIV(par_num, val)   ATOMIC_STORE( &gpu8_par_value[gu32_par_offset[par_num]], val )
+#define PAR_SET_I8_PRIV(par_num, val)   ATOMIC_STORE( &gpi8_par_value[gu32_par_offset[par_num]], val )
+#define PAR_SET_U16_PRIV(par_num, val)  ATOMIC_STORE( &gpu16_par_value[gu32_par_offset[par_num]], val )
+#define PAR_SET_I16_PRIV(par_num, val)  ATOMIC_STORE( &gpi16_par_value[gu32_par_offset[par_num]], val )
+#define PAR_SET_U32_PRIV(par_num, val)  ATOMIC_STORE( &gpu32_par_value[gu32_par_offset[par_num]], val )
+#define PAR_SET_I32_PRIV(par_num, val)  ATOMIC_STORE( &gpi32_par_value[gu32_par_offset[par_num]], val )
+#define PAR_SET_F32_PRIV(par_num, val)  ATOMIC_STORE( &gpf32_par_value[gu32_par_offset[par_num]], val )
 
 #if ( PAR_CFG_DEBUG_EN )
 
@@ -152,9 +117,7 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 // Function Prototypes
 ////////////////////////////////////////////////////////////////////////////////
 static void         par_allocate_ram_space          (void);
-//static uint32_t     par_calc_ram_usage              (void);
 static par_status_t par_check_table_validy          (const par_cfg_t * const p_par_cfg);
-//static uint32_t     par_get_type_size               (const par_type_list_t type);
 static bool         par_is_value_changed            (const par_num_t par_num, const void * p_val);
 static void         par_raise_on_change_callback    (const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
@@ -171,97 +134,6 @@ static void         par_raise_on_change_callback    (const par_num_t par_num, co
 ////////////////////////////////////////////////////////////////////////////////
 static void par_allocate_ram_space(void)
 {
-
-#if 0
-    // Calculate total size of RAM
-    const uint32_t ram_size = par_calc_ram_usage();
-
-    // Allocate space in RAM
-    const uint8_t * par_val_space = malloc( ram_size );
-
-    return par_val_space;
-#endif
-
-
-#if 0
-    uint32_t u8_mem_offset = 0;
-    uint32_t i8_mem_offset = 0;
-    uint32_t u16_mem_offset = 0;
-    uint32_t i16_mem_offset = 0;
-    uint32_t u32_mem_offset = 0;
-    uint32_t i32_mem_offset = 0;
-    uint32_t f32_mem_offset = 0;
-
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        if ( ePAR_TYPE_U8 == par_get_type(par_num))
-        {
-            gu32_par_addr_offset[par_num] = u8_mem_offset;
-            u8_mem_offset += sizeof(uint8_t);
-        }
-
-        if ( ePAR_TYPE_I8 == par_get_type(par_num))
-        {
-            gu32_par_addr_offset[par_num] = i8_mem_offset;
-            i8_mem_offset += sizeof(int8_t);
-        }
-
-        if ( ePAR_TYPE_U16 == par_get_type(par_num))
-        {
-            gu32_par_addr_offset[par_num] = u16_mem_offset;
-            u16_mem_offset += sizeof(uint16_t);
-        }
-
-        if ( ePAR_TYPE_I16 == par_get_type(par_num))
-        {
-            gu32_par_addr_offset[par_num] = i16_mem_offset;
-            i16_mem_offset += sizeof(int16_t);
-        }
-
-        if ( ePAR_TYPE_U32 == par_get_type(par_num))
-        {
-            gu32_par_addr_offset[par_num] = u32_mem_offset;
-            u32_mem_offset += sizeof(uint32_t);
-        }
-
-        if ( ePAR_TYPE_I32 == par_get_type(par_num))
-        {
-            gu32_par_addr_offset[par_num] = i32_mem_offset;
-            i32_mem_offset += sizeof(int32_t);
-        }
-
-        if ( ePAR_TYPE_F32 == par_get_type(par_num))
-        {
-            gu32_par_addr_offset[par_num] = f32_mem_offset;
-            f32_mem_offset += sizeof(float32_t);
-        }
-    }
-
-    const uint32_t total_size = u8_mem_offset + i8_mem_offset + u16_mem_offset + i16_mem_offset + u32_mem_offset + i32_mem_offset + f32_mem_offset;
-    PAR_DBG_PRINT( "Total RAM consumption for parameters value: %d bytes", total_size );
-
-    // Allocate memory
-    gpu8_par_value = malloc( u8_mem_offset );
-    gpi8_par_value = malloc( i8_mem_offset );
-    gpu16_par_value = malloc( u16_mem_offset );
-    gpi16_par_value = malloc( i16_mem_offset );
-    gpu32_par_value = malloc( u32_mem_offset );
-    gpi32_par_value = malloc( i32_mem_offset );
-    gpf32_par_value = malloc( f32_mem_offset );
-
-    //void * mem = malloc( total_size );
-    //gpu8_par_value  = mem;
-    //gpi8_par_value  = (gpu8_par_value + u8_mem_offset);
-    //gpu16_par_value = (gpi8_par_value + i8_mem_offset);
-    //gpi16_par_value = (gpu16_par_value + u16_mem_offset);
-    //gpu32_par_value = (gpi16_par_value + i16_mem_offset);
-    //gpi32_par_value = (gpu32_par_value + u32_mem_offset);
-    //gpf32_par_value = (gpi32_par_value + i32_mem_offset);
-
-#endif
-
-
-#if 1
     uint32_t total_size = 0;
     void * mem = NULL;
 
@@ -310,138 +182,7 @@ static void par_allocate_ram_space(void)
     gpi8_par_value  =   (mem + group32_size + group16_size);
 
     PAR_DBG_PRINT( "Total RAM consumption for parameters value: %d bytes", total_size );
-
-
-#endif
-
-
-#if 0
-    uint32_t total_size = 0U;
-
-    // First fit u32, i32 and f32 into RAM
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        if  (   ( ePAR_TYPE_U32 == par_get_type(par_num))
-            ||  ( ePAR_TYPE_I32 == par_get_type(par_num))
-            ||  ( ePAR_TYPE_F32 == par_get_type(par_num)))
-        {
-            // Store par RAM address offset
-            gu32_par_addr_offset[par_num] = total_size;
-
-            // Accumulate total RAM space
-            total_size += par_get_type_size(par_get_type(par_num));
-        }
-    }
-
-    // Then fit u16 and i16 into RAM
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        if  (   ( ePAR_TYPE_U16 == par_get_type(par_num))
-            ||  ( ePAR_TYPE_I16 == par_get_type(par_num)))
-        {
-            // Store par RAM address offset
-            gu32_par_addr_offset[par_num] = total_size;
-
-            // Accumulate total RAM space
-            total_size += par_get_type_size(par_get_type(par_num));
-        }
-    }
-
-    // Finally fit u8 and i8 into RAM
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        if  (   ( ePAR_TYPE_U8 == par_get_type(par_num))
-            ||  ( ePAR_TYPE_I8 == par_get_type(par_num)))
-        {
-            // Store par RAM address offset
-            gu32_par_addr_offset[par_num] = total_size;
-
-            // Accumulate total RAM space
-            total_size += par_get_type_size(par_get_type(par_num));
-        }
-    }
-
-    PAR_DBG_PRINT( "Total RAM consumption for parameters value: %d bytes", total_size );
-
-#endif
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Calculate total size for parameter live values and assign
-*        address offset in RAM
-*
-* @return   Size of RAM space for parameters value in bytes
-*/
-////////////////////////////////////////////////////////////////////////////////
-
-
-#if 0
-static uint32_t par_calc_ram_usage(void)
-{
-    uint32_t total_size = 0U;
-
-    // First fit u32, i32 and f32 into RAM
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        if  (   ( ePAR_TYPE_U32 == par_get_type(par_num))
-            ||  ( ePAR_TYPE_I32 == par_get_type(par_num))
-            ||  ( ePAR_TYPE_F32 == par_get_type(par_num)))
-        {
-            // Store par RAM address offset
-            gu32_par_addr_offset[par_num] = total_size;
-
-            // Accumulate total RAM space
-            total_size += par_get_type_size(par_get_type(par_num));
-        }
-    }
-
-    // Then fit u16 and i16 into RAM
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        if  (   ( ePAR_TYPE_U16 == par_get_type(par_num))
-            ||  ( ePAR_TYPE_I16 == par_get_type(par_num)))
-        {
-            // Store par RAM address offset
-            gu32_par_addr_offset[par_num] = total_size;
-
-            // Accumulate total RAM space
-            total_size += par_get_type_size(par_get_type(par_num));
-        }
-    }
-
-    // Finally fit u8 and i8 into RAM
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        if  (   ( ePAR_TYPE_U8 == par_get_type(par_num))
-            ||  ( ePAR_TYPE_I8 == par_get_type(par_num)))
-        {
-            // Store par RAM address offset
-            gu32_par_addr_offset[par_num] = total_size;
-
-            // Accumulate total RAM space
-            total_size += par_get_type_size(par_get_type(par_num));
-        }
-    }
-
-    PAR_DBG_PRINT( "Total RAM consumption for parameters value: %d bytes", total_size );
-
-
-
-    // ======================================================================================
-
-
-
-
-
-
-
-
-
-    return total_size;
-}
-#endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -492,49 +233,6 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
 
     return status;
 }
-
-#if 0
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Get parameter type size
-*
-* @param[in]    type    - Data type of parameter
-* @return       Parameter data type size
-*/
-////////////////////////////////////////////////////////////////////////////////
-static uint32_t par_get_type_size(const par_type_list_t type)
-{
-    switch ( type )
-    {
-        case ePAR_TYPE_U8:
-            return sizeof( uint8_t );
-
-        case ePAR_TYPE_I8:
-            return sizeof( int8_t );
-
-        case ePAR_TYPE_U16:
-            return sizeof( uint16_t );
-
-        case ePAR_TYPE_I16:
-            return sizeof( int16_t );
-
-        case ePAR_TYPE_U32:
-            return sizeof( uint32_t );
-
-        case ePAR_TYPE_I32:
-            return sizeof( int32_t );
-
-        case ePAR_TYPE_F32:
-            return sizeof( float32_t );
-            break;
-
-        case ePAR_TYPE_NUM_OF:
-        default:
-            PAR_ASSERT(0);
-            return 0;
-    }
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -673,9 +371,6 @@ par_status_t par_init(void)
     status |= par_check_table_validy( par_cfg_get_table());
 
     // Allocate space in RAM
-    //gpu8_par_value = (uint8_t*) par_allocate_ram_space();
-    //PAR_ASSERT( NULL != gpu8_par_value );
-    // TODO:
     par_allocate_ram_space();
 
     // Initialize parameter interface
