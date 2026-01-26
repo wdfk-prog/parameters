@@ -32,8 +32,22 @@ When combined with the following modules, the **Device Parameters** module signi
 By leveraging this combination of modules, embedded firmware development becomes significantly faster and more efficient, enabling developers to focus on functionality rather than repetitive low-level implementation.  
 
 ## **Dependencies**
-### **1. Parameter persistance**
-In case of using persistant options (*PAR_CFG_NVM_EN = 1*) it is mandatory to use [NVM module](https://github.com/GeneralEmbeddedCLibraries/nvm).
+
+### **1. Utils Module**
+[Utils module](https://github.com/GeneralEmbeddedCLibraries/utils) is a mandatory dependecy when using CLI and it must take following path:
+```
+"root/common/utils/src/utils.h"
+```
+
+### **2. NVM Module**
+In case of using NVM module *PAR_CFG_NVM_EN = 1*, then [NVM module](https://github.com/GeneralEmbeddedCLibraries/nvm) must pe part of project. 
+NVM module must take following path:
+```
+"root/middleware/nvm/nvm/src/nvm.h"
+```
+
+### **3. C11 compiler support**
+Parameter module utilize C11 *_Atomic* and *_Generic* features, therefore make sure your compiler supports C11 primitives.  
 
 ## **Limitations**
  - **Heap Usage:** The module uses malloc during par_init() to allocate RAM space for the parameters based on the configuration table. Ensure your heap is sufficiently sized.
@@ -66,6 +80,13 @@ root/middleware/parameters/parameters/"module_space"
 | **par_set_u32** 				| Set u32 parameter value 							| par_status_t par_set_u32(const par_num_t par_num, const uint32_t val) |
 | **par_set_i32** 				| Set i32 parameter value 							| par_status_t par_set_i32(const par_num_t par_num, const int32_t val) |
 | **par_set_f32** 				| Set f32 parameter value 							| par_status_t par_set_f32(const par_num_t par_num, const float32_t val) |
+| **par_set_u8_fast** 			| Set u8 parameter value fast						| par_status_t par_set_u8_fast(const par_num_t par_num, const uint8_t val) |
+| **par_set_i8_fast** 			| Set i8 parameter value fast 						| par_status_t par_set_i8_fast(const par_num_t par_num, const int8_t val) |
+| **par_set_u16_fast** 			| Set u16 parameter value fast						| par_status_t par_set_u16_fast(const par_num_t par_num, const uint16_t val) |
+| **par_set_i16_fast** 			| Set i16 parameter value fast						| par_status_t par_set_i16_fast(const par_num_t par_num, const int16_t val) |
+| **par_set_u32_fast** 			| Set u32 parameter value fast						| par_status_t par_set_u32_fast(const par_num_t par_num, const uint32_t val) |
+| **par_set_i32_fast** 			| Set i32 parameter value fast						| par_status_t par_set_i32_fast(const par_num_t par_num, const int32_t val) |
+| **par_set_f32_fast** 			| Set f32 parameter value fast						| par_status_t par_set_f32_fast(const par_num_t par_num, const float32_t val) |
 | **par_set_to_default** 		| Set parameter to default value 					| par_status_t par_set_to_default (const par_num_t par_num) |
 | **par_set_all_to_default** 	| Set all parameters to default value 				| par_status_t par_set_all_to_default (void) |
 | **PAR_SET** 					| Set generic parameters value 						| #define PAR_SET(par_num, value) |
@@ -119,8 +140,8 @@ root/middleware/parameters/parameters/"module_space"
 
 **Put all user code between sections: USER CODE BEGIN & USER CODE END!**
 
-1. Copy template files to root directory of module.
-2. List names of all wanted parameters inside **par_cfg.h** file
+**1. Copy template files to root directory of module.**
+**2. List names of all wanted parameters inside **par_cfg.h** file**
 
 ```C
 /**
@@ -153,7 +174,7 @@ typedef enum
 } par_num_t;
 ```
 
-3. Change parameter configuration table inside **par_cfg.c** file. It is recommended to use designated initializers.
+**3. Change parameter configuration table inside **par_cfg.c** file. It is recommended to use designated initializers.**
 
 ```C
 /**
@@ -202,11 +223,10 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] =
 };
 ```
 
-4. Set-up all configurations options inside **par_cfg.h** file (such as using mutex, using NVM, ...)
+**4. Set-up all configurations options inside **par_cfg.h** file**
 
 | Configuration | Description |
 | --- | --- |
-| **PAR_CFG_MUTEX_EN** 			| Enable/Disable multiple access protection. |
 | **PAR_CFG_NVM_EN** 			| Enable/Disable usage of NVM for persistant parameters. |
 | **PAR_CFG_NVM_REGION** 		| Select NVM region for Device Parameter storage space. | 
 | **PAR_CFG_DEBUG_EN** 			| Enable/Disable debugging mode. | 
@@ -214,7 +234,7 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] =
 | **PAR_DBG_PRINT** 			| Definition of debug print. | 
 | **PAR_ASSERT** 				| Definition of assert. | 
 
-5. Call **par_init()** function
+**5. Call **par_init()** function**
 
 ```C
 // Init parameters
@@ -225,7 +245,7 @@ if ( ePAR_OK != par_init())
 ```
 **NOTICE: NVM module will be initialized as a part of Device Parameters initialization routine in case of usage (*PAR_CFG_NVM_EN = 1*)!**
 
-6. Setting/Getting parameter value
+**6. Setting/Getting parameter value**
 
 ```C
 // Set battery voltage & sytem current
@@ -264,7 +284,21 @@ par_set( ePAR_BAT_VOLTAGE, (float32_t*) &(float32_t){ 1.1234f} );
 PAR_SET( ePAR_BAT_VOLTAGE, (float32_t) 1.1234f );	
 ```
 
-7. Store to NVM
+### Normal and fast parameter setting API
+When choosing an API for setting parameter values, you must decide between the safe (normal) API and the fast API (with suffix *_fast*). The choice depends on whether your priority is data integrity and system observability or raw execution speed.
+
+```C
+// --- NORMAL API ---
+// Use this for 90% of your code. It prevents errors and triggers callbacks.
+par_set_f32( ePAR_TARGET_TEMP, 25.5f );
+
+// --- FAST API ---
+// Use this in high frequency control loops where every microsecond counts.
+// WARNING: No safety checks are performed!
+par_set_f32_fast( ePAR_MOTOR_PWM, 0.85f );
+```
+
+**7. Store to NVM**
 
 ```C
 // Store all paramters to NVM
@@ -275,7 +309,7 @@ if ( ePAR_OK != par_save_all())
 }
 ```
 
-8. On-change callback usage
+**8. On-change callback usage**
 
 ```C
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +341,7 @@ PAR_DEFINE_ON_CHANGE_CB( test_par_cb, ePAR_CH1_TEST_MODE_EN, par_on_change_cb1);
 }
 ```
 
-9. Parameter value validation usage
+**9. Parameter value validation usage**
 
 ```C
 ////////////////////////////////////////////////////////////////////////////////

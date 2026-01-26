@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## V3.0.0 - xx.xx.2026
+## V3.0.0 - 26.01.2026
 
 ### Added
  - Introduce new warning when seting parameter value out of range - *WAR_LIMITED*
@@ -26,6 +26,13 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
     + par_set_u32
     + par_set_i32
     + par_set_f32    
+    + par_set_u8_fast
+    + par_set_i8_fast
+    + par_set_u16_fast
+    + par_set_i16_fast
+    + par_set_u32_fast
+    + par_set_i32_fast
+    + par_set_f32_fast       
  - Improved RAM consumption space for parameter values
  - On parameter value change callbacks
  - Added new API for getting parameter configurations
@@ -34,6 +41,7 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
     + par_get_unit
     + par_get_access
     + par_is_persistant
+ - Improved parameter table validation checker
 
 ### Changed
  - Forced all enums to C99 integer types
