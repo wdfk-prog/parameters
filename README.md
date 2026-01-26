@@ -38,12 +38,16 @@ By leveraging this combination of modules, embedded firmware development becomes
 ```
 "root/common/utils/src/utils.h"
 ```
+
 ### **2. NVM Module**
 In case of using NVM module *PAR_CFG_NVM_EN = 1*, then [NVM module](https://github.com/GeneralEmbeddedCLibraries/nvm) must pe part of project. 
 NVM module must take following path:
 ```
 "root/middleware/nvm/nvm/src/nvm.h"
 ```
+
+### **3. C11 compiler support**
+Parameter module utilize C11 *_Atomic* and *_Generic* features, therefore make sure your compiler supports C11 primitives.  
 
 ## **Limitations**
  - **Heap Usage:** The module uses malloc during par_init() to allocate RAM space for the parameters based on the configuration table. Ensure your heap is sufficiently sized.
@@ -76,6 +80,13 @@ root/middleware/parameters/parameters/"module_space"
 | **par_set_u32** 				| Set u32 parameter value 							| par_status_t par_set_u32(const par_num_t par_num, const uint32_t val) |
 | **par_set_i32** 				| Set i32 parameter value 							| par_status_t par_set_i32(const par_num_t par_num, const int32_t val) |
 | **par_set_f32** 				| Set f32 parameter value 							| par_status_t par_set_f32(const par_num_t par_num, const float32_t val) |
+| **par_set_u8_fast** 			| Set u8 parameter value fast						| par_status_t par_set_u8_fast(const par_num_t par_num, const uint8_t val) |
+| **par_set_i8_fast** 			| Set i8 parameter value fast 						| par_status_t par_set_i8_fast(const par_num_t par_num, const int8_t val) |
+| **par_set_u16_fast** 			| Set u16 parameter value fast						| par_status_t par_set_u16_fast(const par_num_t par_num, const uint16_t val) |
+| **par_set_i16_fast** 			| Set i16 parameter value fast						| par_status_t par_set_i16_fast(const par_num_t par_num, const int16_t val) |
+| **par_set_u32_fast** 			| Set u32 parameter value fast						| par_status_t par_set_u32_fast(const par_num_t par_num, const uint32_t val) |
+| **par_set_i32_fast** 			| Set i32 parameter value fast						| par_status_t par_set_i32_fast(const par_num_t par_num, const int32_t val) |
+| **par_set_f32_fast** 			| Set f32 parameter value fast						| par_status_t par_set_f32_fast(const par_num_t par_num, const float32_t val) |
 | **par_set_to_default** 		| Set parameter to default value 					| par_status_t par_set_to_default (const par_num_t par_num) |
 | **par_set_all_to_default** 	| Set all parameters to default value 				| par_status_t par_set_all_to_default (void) |
 | **PAR_SET** 					| Set generic parameters value 						| #define PAR_SET(par_num, value) |
@@ -272,6 +283,20 @@ par_set( ePAR_BAT_VOLTAGE, (float32_t*) &(float32_t){ 1.1234f} );
 // Or equivalent using "PAR_SET"
 // NOTE: When putting direct numbers using "PAR_SET" always cast to appropriate data type! 
 PAR_SET( ePAR_BAT_VOLTAGE, (float32_t) 1.1234f );	
+```
+
+### Normal and fast parameter setting API
+When choosing an API for setting parameter values, you must decide between the safe (normal) API and the fast API (with suffix *_fast*). The choice depends on whether your priority is data integrity and system observability or raw execution speed.
+
+```C
+// --- NORMAL API ---
+// Use this for 90% of your code. It prevents errors and triggers callbacks.
+par_set_f32( ePAR_TARGET_TEMP, 25.5f );
+
+// --- FAST API ---
+// Use this in high frequency control loops where every microsecond counts.
+// WARNING: No safety checks are performed!
+par_set_f32_fast( ePAR_MOTOR_PWM, 0.85f );
 ```
 
 7. Store to NVM
