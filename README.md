@@ -140,8 +140,8 @@ root/middleware/parameters/parameters/"module_space"
 
 **Put all user code between sections: USER CODE BEGIN & USER CODE END!**
 
-1. Copy template files to root directory of module.
-2. List names of all wanted parameters inside **par_cfg.h** file
+**1. Copy template files to root directory of module.**
+**2. List names of all wanted parameters inside **par_cfg.h** file**
 
 ```C
 /**
@@ -174,7 +174,7 @@ typedef enum
 } par_num_t;
 ```
 
-3. Change parameter configuration table inside **par_cfg.c** file. It is recommended to use designated initializers.
+**3. Change parameter configuration table inside **par_cfg.c** file. It is recommended to use designated initializers.**
 
 ```C
 /**
@@ -223,11 +223,10 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] =
 };
 ```
 
-4. Set-up all configurations options inside **par_cfg.h** file (such as using mutex, using NVM, ...)
+**4. Set-up all configurations options inside **par_cfg.h** file**
 
 | Configuration | Description |
 | --- | --- |
-| **PAR_CFG_MUTEX_EN** 			| Enable/Disable multiple access protection. |
 | **PAR_CFG_NVM_EN** 			| Enable/Disable usage of NVM for persistant parameters. |
 | **PAR_CFG_NVM_REGION** 		| Select NVM region for Device Parameter storage space. | 
 | **PAR_CFG_DEBUG_EN** 			| Enable/Disable debugging mode. | 
@@ -235,7 +234,7 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] =
 | **PAR_DBG_PRINT** 			| Definition of debug print. | 
 | **PAR_ASSERT** 				| Definition of assert. | 
 
-5. Call **par_init()** function
+**5. Call **par_init()** function**
 
 ```C
 // Init parameters
@@ -246,7 +245,7 @@ if ( ePAR_OK != par_init())
 ```
 **NOTICE: NVM module will be initialized as a part of Device Parameters initialization routine in case of usage (*PAR_CFG_NVM_EN = 1*)!**
 
-6. Setting/Getting parameter value
+**6. Setting/Getting parameter value**
 
 ```C
 // Set battery voltage & sytem current
@@ -299,7 +298,7 @@ par_set_f32( ePAR_TARGET_TEMP, 25.5f );
 par_set_f32_fast( ePAR_MOTOR_PWM, 0.85f );
 ```
 
-7. Store to NVM
+**7. Store to NVM**
 
 ```C
 // Store all paramters to NVM
@@ -310,7 +309,7 @@ if ( ePAR_OK != par_save_all())
 }
 ```
 
-8. On-change callback usage
+**8. On-change callback usage**
 
 ```C
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,7 +341,7 @@ PAR_DEFINE_ON_CHANGE_CB( test_par_cb, ePAR_CH1_TEST_MODE_EN, par_on_change_cb1);
 }
 ```
 
-9. Parameter value validation usage
+**9. Parameter value validation usage**
 
 ```C
 ////////////////////////////////////////////////////////////////////////////////
