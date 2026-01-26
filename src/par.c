@@ -221,7 +221,7 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
                 if ( p_par_cfg[i].id == p_par_cfg[j].id )
                 {
                     status = ePAR_ERROR_INIT;
-                    PAR_DBG_PRINT( "Parameter table error: Duplicate ID!" );
+                    PAR_DBG_PRINT( "ERR, Two parameters have the same ID %d!", p_par_cfg[i].id );
                     PAR_ASSERT( 0 );
                     break;
                 }
@@ -242,6 +242,27 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
         PAR_ASSERT(( ePAR_TYPE_U32 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.u32 < p_par_cfg[i].max.u32 ) && ( p_par_cfg[i].def.u32 <= p_par_cfg[i].max.u32 )) && (  p_par_cfg[i].min.u32 <= p_par_cfg[i].def.u32 )) : ( 1 ));
         PAR_ASSERT(( ePAR_TYPE_I32 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.i32 < p_par_cfg[i].max.i32 ) && ( p_par_cfg[i].def.i32 <= p_par_cfg[i].max.i32 )) && (  p_par_cfg[i].min.i32 <= p_par_cfg[i].def.i32 )) : ( 1 ));
         PAR_ASSERT(( ePAR_TYPE_F32 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.f32 < p_par_cfg[i].max.f32 ) && ( p_par_cfg[i].def.f32 <= p_par_cfg[i].max.f32 )) && (  p_par_cfg[i].min.f32 <= p_par_cfg[i].def.f32 )) : ( 1 ));
+
+        // Parameter shall have a description and the name
+        if (( NULL == p_par_cfg[i].name ) || ( NULL == p_par_cfg[i].desc ))
+        {
+            status = ePAR_ERROR_INIT;
+            PAR_DBG_PRINT( "ERR, Parameter %d definition incomplete!", i );
+            PAR_ASSERT( 0 );
+            break;
+        }
+        else
+        {
+            // ',' is prohibited in parameter description
+            // NOTE: ',' is used as column separator and will break PC tool side parser logic in case of usage in description!
+            if ( NULL != strchr(p_par_cfg[i].desc, ','))
+            {
+                status = ePAR_ERROR_INIT;
+                PAR_DBG_PRINT( "ERR, Parameter %d description contains comma!", i );
+                PAR_ASSERT( 0 );
+                break;
+            }
+        }
     }
 
     return status;

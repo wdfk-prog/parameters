@@ -41,6 +41,7 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
     + par_get_unit
     + par_get_access
     + par_is_persistant
+ - Improved parameter table validation checker
 
 ### Changed
  - Forced all enums to C99 integer types
