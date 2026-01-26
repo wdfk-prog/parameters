@@ -137,49 +137,62 @@ static void par_allocate_ram_space(void)
     uint32_t total_size = 0;
     void * mem = NULL;
 
-    // 1. Group 32-bit types FIRST (Alignment safety)
+    // Group 32-bit types first - Alignment safety
     uint32_t group32_size = 0, group32_count = 0;
-    for ( par_num_t i = 0; i < ePAR_NUM_OF; i++ ) {
-        if (par_get_type(i) == ePAR_TYPE_U32 || par_get_type(i) == ePAR_TYPE_I32 || par_get_type(i) == ePAR_TYPE_F32) {
-            gu32_par_offset[i] = group32_count;
+    for ( par_num_t par_it = 0; par_it < ePAR_NUM_OF; par_it++ )
+    {
+        if (    ( ePAR_TYPE_U32 == par_get_type(par_it))
+           ||   ( ePAR_TYPE_I32 == par_get_type(par_it))
+           ||   ( ePAR_TYPE_F32 == par_get_type(par_it)))
+        {
+            gu32_par_offset[par_it] = group32_count;
             group32_size += 4;
             group32_count++;
         }
     }
 
-    // 2. Group 16-bit types SECOND
+    // Group 16-bit types second
     uint32_t group16_size = 0, group16_count = 0;
-    for ( par_num_t i = 0; i < ePAR_NUM_OF; i++ ) {
-        if (par_get_type(i) == ePAR_TYPE_U16 || par_get_type(i) == ePAR_TYPE_I16) {
-            gu32_par_offset[i] = group16_count;
+    for ( par_num_t par_it = 0; i < ePAR_NUM_OF; i++ )
+    {
+        if (    ( ePAR_TYPE_U16 == par_get_type(par_it))
+           ||   ( ePAR_TYPE_I16 == par_get_type(par_it)))
+        {
+            gu32_par_offset[par_it] = group16_count;
             group16_size += 2;
             group16_count++;
         }
     }
 
-    // 3. Group 8-bit types LAST
+    // Group 8-bit types last
     uint32_t group8_size = 0, group8_count = 0;
-    for ( par_num_t i = 0; i < ePAR_NUM_OF; i++ ) {
-        if (par_get_type(i) == ePAR_TYPE_U8 || par_get_type(i) == ePAR_TYPE_I8) {
-            gu32_par_offset[i] = group8_count;
+    for ( par_num_t par_it = 0; par_it < ePAR_NUM_OF; par_it++ )
+    {
+        if (    ( ePAR_TYPE_U8 == par_get_type(par_it))
+           ||   ( ePAR_TYPE_I8 == par_get_type(par_it)))
+        {
+            gu32_par_offset[par_it] = group8_count;
             group8_size += 1;
             group8_count++;
         }
     }
 
+    // Calculate full RAM size and allocate memory in single shot
     total_size = group32_size + group16_size + group8_size;
     mem = malloc(total_size);
 
-    // Assign Pointers Cumulatively
-    gpu32_par_value = (mem);
-    gpf32_par_value =  (mem); // shared start because offsets handle differentiation
-    gpi32_par_value =    (mem);
+    // 32-bit vars share the first part of the memory
+    gpu32_par_value = mem;
+    gpf32_par_value = mem;
+    gpi32_par_value = mem;
 
-    gpu16_par_value = (mem + group32_size);
-    gpi16_par_value =  (mem + group32_size);
+    // 16-bit vars share the middle part of the memory
+    gpu16_par_value = mem + group32_size;
+    gpi16_par_value = mem + group32_size;
 
-    gpu8_par_value  =   (mem + group32_size + group16_size);
-    gpi8_par_value  =   (mem + group32_size + group16_size);
+    // 8-bit vars share the last part of the memory
+    gpu8_par_value = mem + group32_size + group16_size;
+    gpi8_par_value = mem + group32_size + group16_size;
 
     PAR_DBG_PRINT( "Total RAM consumption for parameters value: %d bytes", total_size );
 }
