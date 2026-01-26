@@ -153,7 +153,7 @@ static void par_allocate_ram_space(void)
 
     // Group 16-bit types second
     uint32_t group16_size = 0, group16_count = 0;
-    for ( par_num_t par_it = 0; i < ePAR_NUM_OF; i++ )
+    for ( par_num_t par_it = 0; par_it < ePAR_NUM_OF; par_it++ )
     {
         if (    ( ePAR_TYPE_U16 == par_get_type(par_it))
            ||   ( ePAR_TYPE_I16 == par_get_type(par_it)))
