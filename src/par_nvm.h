@@ -1,14 +1,14 @@
-// Copyright (c) 2025 Ziga Miklosic
+// Copyright (c) 2026 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *@file      par_nvm.h
-*@brief    	Parameter storage to non-volatile memory
+*@brief     Parameter storage to non-volatile memory
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      06.12.2024
-*@version   V2.2.0
+*@date      22.01.2026
+*@version   V3.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -23,20 +23,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
+#include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
+
 #include "par.h"
 
 #if ( 1 == PAR_CFG_NVM_EN )
 
-	////////////////////////////////////////////////////////////////////////////////
-	// Functions Prototypes
-	////////////////////////////////////////////////////////////////////////////////
-	par_status_t par_nvm_init           (void);
-	par_status_t par_nvm_deinit         (void);
-	par_status_t par_nvm_write          (const par_num_t par_num, const bool nvm_sync);
-	par_status_t par_nvm_write_all      (void);
-	par_status_t par_nvm_reset_all      (void);
-	par_status_t par_nvm_print_nvm_lut  (void);
+    ////////////////////////////////////////////////////////////////////////////////
+    // Functions Prototypes
+    ////////////////////////////////////////////////////////////////////////////////
+    par_status_t par_nvm_init           (void);
+    par_status_t par_nvm_deinit         (void);
+    par_status_t par_nvm_write          (const par_num_t par_num, const bool nvm_sync);
+    par_status_t par_nvm_write_all      (void);
+    par_status_t par_nvm_reset_all      (void);
+    par_status_t par_nvm_print_nvm_lut  (void);
 
 #endif // 1 == PAR_CFG_NVM_EN
 
