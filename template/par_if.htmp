@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Ziga Miklosic
+// Copyright (c) 2026 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief    	Interface for device parameters
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      06.12.2024
-*@version   V2.2.0
+*@date      29.01.2026
+*@version   V3.0.1
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**

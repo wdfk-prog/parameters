@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Ziga Miklosic
+// Copyright (c) 2026 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief     Interface with device parameters
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      06.12.2024
-*@version   V2.2.0
+*@date      29.01.2026
+*@version   V3.0.1
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -29,8 +29,9 @@
 
 // USER INCLUDES BEGIN...
 
+#include "common/utils/src/utils.h"
 #include "cmsis_os2.h"
-#include "middleware/misc/sha256.h"
+
 // USER INCLUDES END...
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,10 +106,7 @@ par_status_t par_if_init(void)
 *
 * @note	User shall provide definition of that function based on used platform!
 *
-*		If not being used leave empty.
-*
-*		This function does not have an affect if "PAR_CFG_MUTEX_EN"
-* 		is set to 0.
+*       If mutex is not needed leave empty space between user code begin and end.
 *
 * @return 		status - Status of operation
 */
@@ -139,10 +137,7 @@ par_status_t par_if_aquire_mutex(void)
 *
 * @note	User shall provide definition of that function based on used platform!
 *
-*		If not being used leave empty.
-*
-*		This function does not have an affect if "PAR_CFG_MUTEX_EN"
-* 		is set to 0.
+*       If mutex is not needed leave empty space between user code begin and end.
 *
 * @return 		status - Status of operation
 */
@@ -178,13 +173,11 @@ par_status_t par_if_release_mutex(void)
 ////////////////////////////////////////////////////////////////////////////////
 void par_if_calc_hash(const uint8_t * const p_data, const uint32_t size, uint8_t * const p_hash)
 {
-	PAR_ASSERT( NULL != p_data );
-	PAR_ASSERT( NULL != p_hash );
-	PAR_ASSERT( size > 0 );
+    UNUSED( p_data );
+    UNUSED( p_hash );
+    UNUSED( size );
 
 	// USER CODE BEGIN...
-
-	sha256( p_data, size, p_hash );
 
 	// USER CODE END...
 }
