@@ -30,7 +30,6 @@
 #include "par.h"
 #include "par_nvm.h"
 #include "../../par_if.h"
-#include "common/utils/src/utils.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -74,43 +73,29 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 /**
  *  Private getters and setters
  */
-#define PAR_GET_U8_PRIV(par_num)        ATOMIC_LOAD( &gpu8_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_I8_PRIV(par_num)        ATOMIC_LOAD( &gpi8_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_U16_PRIV(par_num)       ATOMIC_LOAD( &gpu16_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_I16_PRIV(par_num)       ATOMIC_LOAD( &gpi16_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_U32_PRIV(par_num)       ATOMIC_LOAD( &gpu32_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_I32_PRIV(par_num)       ATOMIC_LOAD( &gpi32_par_value[gu32_par_offset[par_num]] )
-//#define PAR_GET_F32_PRIV(par_num)       ATOMIC_LOAD( &gpf32_par_value[gu32_par_offset[par_num]] )
+#define PAR_GET_U8_PRIV(par_num)        atomic_load_explicit( &gpu8_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
+#define PAR_GET_I8_PRIV(par_num)        atomic_load_explicit( &gpi8_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
+#define PAR_GET_U16_PRIV(par_num)       atomic_load_explicit( &gpu16_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
+#define PAR_GET_I16_PRIV(par_num)       atomic_load_explicit( &gpi16_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
+#define PAR_GET_U32_PRIV(par_num)       atomic_load_explicit( &gpu32_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
+#define PAR_GET_I32_PRIV(par_num)       atomic_load_explicit( &gpi32_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
 
+// NOTICE: "atomic_load_explicit" does not support float data type, therfore using GCC/CLang build-in primitive "__atomic_load" to overcome this limitation
 #define PAR_GET_F32_PRIV(par_num) ({ \
     float32_t __val; \
     __atomic_load( &gpf32_par_value[gu32_par_offset[par_num]], &__val, __ATOMIC_RELAXED); \
     __val; \
 })
 
-#if 0
-static inline float32_t static_load_f32(const par_num_t par_num)
-{
-    float32_t f32_val;
+#define PAR_SET_U8_PRIV(par_num, val)   atomic_store_explicit( &gpu8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
+#define PAR_SET_I8_PRIV(par_num, val)   atomic_store_explicit( &gpi8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
+#define PAR_SET_U16_PRIV(par_num, val)  atomic_store_explicit( &gpu16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
+#define PAR_SET_I16_PRIV(par_num, val)  atomic_store_explicit( &gpi16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
+#define PAR_SET_U32_PRIV(par_num, val)  atomic_store_explicit( &gpu32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
+#define PAR_SET_I32_PRIV(par_num, val)  atomic_store_explicit( &gpi32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
 
-    __atomic_load( &gpf32_par_value[gu32_par_offset[par_num]], &f32_val, memory_order_relaxed );
-    
-    return f32_val;
-}
-
-
-#define PAR_GET_F32_PRIV(par_num)       static_load_f32( par_num )
-#endif
-
-
-#define PAR_SET_U8_PRIV(par_num, val)   ATOMIC_STORE( &gpu8_par_value[gu32_par_offset[par_num]], val )
-#define PAR_SET_I8_PRIV(par_num, val)   ATOMIC_STORE( &gpi8_par_value[gu32_par_offset[par_num]], val )
-#define PAR_SET_U16_PRIV(par_num, val)  ATOMIC_STORE( &gpu16_par_value[gu32_par_offset[par_num]], val )
-#define PAR_SET_I16_PRIV(par_num, val)  ATOMIC_STORE( &gpi16_par_value[gu32_par_offset[par_num]], val )
-#define PAR_SET_U32_PRIV(par_num, val)  ATOMIC_STORE( &gpu32_par_value[gu32_par_offset[par_num]], val )
-#define PAR_SET_I32_PRIV(par_num, val)  ATOMIC_STORE( &gpi32_par_value[gu32_par_offset[par_num]], val )
-//#define PAR_SET_F32_PRIV(par_num, val)  ATOMIC_STORE( &gpf32_par_value[gu32_par_offset[par_num]], val )
-#define PAR_SET_F32_PRIV(par_num, val)  __atomic_store( &gpf32_par_value[gu32_par_offset[par_num]], &val, memory_order_relaxed )
+// NOTICE: "atomic_store_explicit" does not support float data type, therfore using GCC/CLang build-in primitive "__atomic_store" to overcome this limitation
+#define PAR_SET_F32_PRIV(par_num, val)  __atomic_store( &gpf32_par_value[gu32_par_offset[par_num]], &val, memory_order_relaxed )    
 
 #if ( PAR_CFG_DEBUG_EN )
 
