@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdatomic.h>
 
 #include "par.h"
 #include "par_nvm.h"
@@ -79,7 +80,28 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 #define PAR_GET_I16_PRIV(par_num)       ATOMIC_LOAD( &gpi16_par_value[gu32_par_offset[par_num]] )
 #define PAR_GET_U32_PRIV(par_num)       ATOMIC_LOAD( &gpu32_par_value[gu32_par_offset[par_num]] )
 #define PAR_GET_I32_PRIV(par_num)       ATOMIC_LOAD( &gpi32_par_value[gu32_par_offset[par_num]] )
-#define PAR_GET_F32_PRIV(par_num)       ATOMIC_LOAD( &gpf32_par_value[gu32_par_offset[par_num]] )
+//#define PAR_GET_F32_PRIV(par_num)       ATOMIC_LOAD( &gpf32_par_value[gu32_par_offset[par_num]] )
+
+#define PAR_GET_F32_PRIV(par_num) ({ \
+    float32_t __val; \
+    __atomic_load( &gpf32_par_value[gu32_par_offset[par_num]], &__val, __ATOMIC_RELAXED); \
+    __val; \
+})
+
+#if 0
+static inline float32_t static_load_f32(const par_num_t par_num)
+{
+    float32_t f32_val;
+
+    __atomic_load( &gpf32_par_value[gu32_par_offset[par_num]], &f32_val, memory_order_relaxed );
+    
+    return f32_val;
+}
+
+
+#define PAR_GET_F32_PRIV(par_num)       static_load_f32( par_num )
+#endif
+
 
 #define PAR_SET_U8_PRIV(par_num, val)   ATOMIC_STORE( &gpu8_par_value[gu32_par_offset[par_num]], val )
 #define PAR_SET_I8_PRIV(par_num, val)   ATOMIC_STORE( &gpi8_par_value[gu32_par_offset[par_num]], val )
@@ -87,7 +109,8 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 #define PAR_SET_I16_PRIV(par_num, val)  ATOMIC_STORE( &gpi16_par_value[gu32_par_offset[par_num]], val )
 #define PAR_SET_U32_PRIV(par_num, val)  ATOMIC_STORE( &gpu32_par_value[gu32_par_offset[par_num]], val )
 #define PAR_SET_I32_PRIV(par_num, val)  ATOMIC_STORE( &gpi32_par_value[gu32_par_offset[par_num]], val )
-#define PAR_SET_F32_PRIV(par_num, val)  ATOMIC_STORE( &gpf32_par_value[gu32_par_offset[par_num]], val )
+//#define PAR_SET_F32_PRIV(par_num, val)  ATOMIC_STORE( &gpf32_par_value[gu32_par_offset[par_num]], val )
+#define PAR_SET_F32_PRIV(par_num, val)  __atomic_store( &gpf32_par_value[gu32_par_offset[par_num]], &val, memory_order_relaxed )
 
 #if ( PAR_CFG_DEBUG_EN )
 
@@ -1162,7 +1185,7 @@ par_status_t par_set_to_default(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set_all_to_default(void)
 {
-    for ( uint32_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
     {
         // Ignore return as it is not possible to return other that OK
         (void) par_set_to_default( par_num );
@@ -1675,7 +1698,7 @@ par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
 {
     if ( NULL != p_par_num )
     {
-        for (uint32_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+        for (par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
         {
             const par_cfg_t * const par_cfg = par_get_config(par_num);
 
