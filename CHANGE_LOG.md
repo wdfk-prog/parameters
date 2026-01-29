@@ -8,7 +8,7 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
 ## V3.0.1 - 29.01.2026
 
 ### Fixed
- - Fixed strict atomic store/load usage in Segger Runtime Library (RTL)
+ - Fixed strict atomic store/load usage (problem occured when used with Segger Runtime Library-RTL)
 
 ### Removed
  - Removed *utils* module dependency
