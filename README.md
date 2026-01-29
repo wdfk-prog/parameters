@@ -33,20 +33,14 @@ By leveraging this combination of modules, embedded firmware development becomes
 
 ## **Dependencies**
 
-### **1. Utils Module**
-[Utils module](https://github.com/GeneralEmbeddedCLibraries/utils) is a mandatory dependecy when using CLI and it must take following path:
-```
-"root/common/utils/src/utils.h"
-```
-
-### **2. NVM Module**
+### **1. NVM Module**
 In case of using NVM module *PAR_CFG_NVM_EN = 1*, then [NVM module](https://github.com/GeneralEmbeddedCLibraries/nvm) must pe part of project. 
 NVM module must take following path:
 ```
 "root/middleware/nvm/nvm/src/nvm.h"
 ```
 
-### **3. C11 compiler support**
+### **2. C11 compiler support**
 Parameter module utilize C11 *_Atomic* and *_Generic* features, therefore make sure your compiler supports C11 primitives.  
 
 ## **Limitations**

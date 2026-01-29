@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## V3.0.1 - 29.01.2026
+
+### Fixed
+ - Fixed strict atomic store/load usage in Segger Runtime Library (RTL)
+
+### Removed
+ - Removed *utils* module dependency
+
+---
 ## V3.0.0 - 26.01.2026
 
 ### Added

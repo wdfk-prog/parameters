@@ -7,8 +7,8 @@
 *@brief     Interface with device parameters
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      22.01.2026
-*@version   V3.0.0
+*@date      29.01.2026
+*@version   V3.0.1
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -27,10 +27,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "par_if.h"
 
-#include "common/utils/src/utils.h"
-
 // USER INCLUDES BEGIN...
 
+#include "common/utils/src/utils.h"
 #include "cmsis_os2.h"
 
 // USER INCLUDES END...
