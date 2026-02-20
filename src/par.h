@@ -232,6 +232,18 @@ par_status_t par_set_i16_fast       (const par_num_t par_num, const int16_t val)
 par_status_t par_set_u32_fast       (const par_num_t par_num, const uint32_t val);
 par_status_t par_set_i32_fast       (const par_num_t par_num, const int32_t val);
 par_status_t par_set_f32_fast       (const par_num_t par_num, const float32_t val);
+par_status_t par_bitand_set_u8_fast (const par_num_t par_num, const uint8_t val);
+par_status_t par_bitand_set_i8_fast (const par_num_t par_num, const int8_t val);
+par_status_t par_bitand_set_u16_fast(const par_num_t par_num, const uint16_t val);
+par_status_t par_bitand_set_i16_fast(const par_num_t par_num, const int16_t val);
+par_status_t par_bitand_set_u32_fast(const par_num_t par_num, const uint32_t val);
+par_status_t par_bitand_set_i32_fast(const par_num_t par_num, const int32_t val);
+par_status_t par_bitor_set_u8_fast  (const par_num_t par_num, const uint8_t val);
+par_status_t par_bitor_set_i8_fast  (const par_num_t par_num, const int8_t val);
+par_status_t par_bitor_set_u16_fast (const par_num_t par_num, const uint16_t val);
+par_status_t par_bitor_set_i16_fast (const par_num_t par_num, const int16_t val);
+par_status_t par_bitor_set_u32_fast (const par_num_t par_num, const uint32_t val);
+par_status_t par_bitor_set_i32_fast (const par_num_t par_num, const int32_t val);
 par_status_t par_set_to_default     (const par_num_t par_num);
 par_status_t par_set_all_to_default (void);
 
