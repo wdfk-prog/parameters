@@ -235,6 +235,8 @@ par_status_t par_set_f32_fast       (const par_num_t par_num, const float32_t va
 par_status_t par_set_to_default     (const par_num_t par_num);
 par_status_t par_set_all_to_default (void);
 
+par_status_t par_has_changed        (const par_num_t par_num, bool *const p_has_changed);
+
 /**
  *  @brief   Type-generic macro to set a parameter value.
  *

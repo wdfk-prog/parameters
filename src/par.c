@@ -1184,6 +1184,58 @@ par_status_t par_set_all_to_default(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
+*		Check if parameter changed from its default value
+*
+* @param[in]	par_num       - Parameter number (enumeration)
+* @param[out]	p_has_changed - Pointer to changed indication
+* @return		status         - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_status_t par_has_changed(const par_num_t par_num, bool *const p_has_changed)
+{
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
+
+    switch ( par_cfg->type )
+    {
+        case ePAR_TYPE_U8:
+            *p_has_changed = (par_get_u8(par_num) != par_cfg->def.u8);
+            break;
+
+        case ePAR_TYPE_I8:
+            *p_has_changed = (par_get_i8(par_num) != par_cfg->def.i8);
+            break;
+
+        case ePAR_TYPE_U16:
+            *p_has_changed = (par_get_u16(par_num) != par_cfg->def.u16);
+            break;
+
+        case ePAR_TYPE_I16:
+            *p_has_changed = (par_get_i16(par_num) != par_cfg->def.i16);
+            break;
+
+        case ePAR_TYPE_U32:
+            *p_has_changed = (par_get_u32(par_num) != par_cfg->def.u32);
+            break;
+
+        case ePAR_TYPE_I32:
+            *p_has_changed = (par_get_i32(par_num) != par_cfg->def.i32);
+            break;
+
+        case ePAR_TYPE_F32:
+            *p_has_changed = (par_get_f32(par_num) != par_cfg->def.f32);
+            break;
+
+        case ePAR_TYPE_NUM_OF:
+        default:
+            PAR_ASSERT( 0 );
+            return ePAR_ERROR_TYPE;
+    }
+
+    return ePAR_OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
 *        Get parameter value
 *
 * @note     Mandatory to cast input argument to appropriate type. E.g.:
