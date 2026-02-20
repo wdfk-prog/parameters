@@ -182,17 +182,30 @@ typedef bool (*pf_par_validation_t)(const par_num_t par_num, const par_type_t va
 
 typedef struct par_validation
 {
-    const pf_par_validation_t  valid_func; /**<Validation function pointer */
-    const par_num_t            par_num;    /**<Parameter number (enumeration) */
-    struct par_validation **   next;       /**<Pointer to next callback block */
+    const pf_par_validation_t  valid_func;      /**<Validation function pointer */
+    const par_num_t            par_num_first;   /**<First (or only) parameter */
+    const par_num_t            par_num_last;    /**<Last parameter */
+    const bool                 is_range;        /**<Is validation for range of parameters? */
+    struct par_validation **   next;            /**<Pointer to next callback block */
 } par_validation_t;
 
 #define PAR_DEFINE_VALIDATION(name, par, validation)    \
     static const par_validation_t name =                \
     {                                                   \
-        .valid_func = validation,                       \
-        .par_num    = par,                              \
-        .next       = &(par_validation_t*){NULL},       \
+        .valid_func    = validation,                    \
+        .par_num_first = par,                           \
+        .is_range      = false,                         \
+        .next          = &(par_validation_t*){NULL},    \
+    }
+
+#define PAR_DEFINE_VALIDATION_RANGE(name, par_first, par_last, validation)  \
+    static const par_validation_t name =                                    \
+    {                                                                       \
+        .valid_func    = validation,                                        \
+        .par_num_first = par_first,                                         \
+        .par_num_last  = par_last,                                          \
+        .is_range      = true,                                              \
+        .next          = &(par_validation_t*){NULL},                        \
     }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -367,7 +367,8 @@ static bool par_validate_value(const par_num_t par_num, const par_type_t val)
 {
     for (const par_validation_t * validation = gp_par_validations; NULL != validation; validation=(*validation->next))
     {
-        if ( par_num == validation->par_num )
+        if ((!validation->is_range && (par_num == validation->par_num_first)) ||
+            (validation->is_range && (par_num >= validation->par_num_first) && (par_num <= validation->par_num_last)))
         {
             return validation->valid_func( par_num, val );
         }
