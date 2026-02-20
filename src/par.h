@@ -149,17 +149,30 @@ typedef void (*pf_par_on_change_cb_t)(const par_num_t par_num, const par_type_t 
 
 typedef struct par_on_change_cb
 {
-    const pf_par_on_change_cb_t callback;   /**<Callback function pointer */
-    const par_num_t             par_num;    /**<Parameter number (enumeration) */
-    struct par_on_change_cb **  next;       /**<Pointer to next callback block */
+    const pf_par_on_change_cb_t callback;       /**<Callback function pointer */
+    const par_num_t             par_num_first;  /**<First (or only) parameter */
+    const par_num_t             par_num_last;   /**<Last parameter */
+    const bool                  is_range;       /**<Is on change for range of parameters? */
+    struct par_on_change_cb **  next;           /**<Pointer to next callback block */
 } par_on_change_cb_t;
 
-#define PAR_DEFINE_ON_CHANGE_CB(name, par, cb)      \
-    static const par_on_change_cb_t name =          \
-    {                                               \
-        .callback = cb,                             \
-        .par_num  = par,                            \
-        .next     = &(par_on_change_cb_t*){NULL},   \
+#define PAR_DEFINE_ON_CHANGE_CB(name, par, cb)          \
+    static const par_on_change_cb_t name =              \
+    {                                                   \
+        .callback      = cb,                            \
+        .par_num_first = par,                           \
+        .is_range      = false,                         \
+        .next          = &(par_on_change_cb_t*){NULL},  \
+    }
+
+#define PAR_DEFINE_ON_CHANGE_RANGE_CB(name, par_first, par_last, cb)    \
+    static const par_on_change_cb_t name =                              \
+    {                                                                   \
+        .callback      = cb,                                            \
+        .par_num_first = par_first,                                     \
+        .par_num_last  = par_last,                                      \
+        .is_range      = true,                                          \
+        .next          = &(par_on_change_cb_t*){NULL},                  \
     }
 
 /**

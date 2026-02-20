@@ -345,7 +345,8 @@ static void par_raise_on_change_callback(const par_num_t par_num, const par_type
     {
         for (const par_on_change_cb_t * cb = gp_par_cb; NULL != cb; cb=(*cb->next))
         {
-            if ( par_num == cb->par_num )
+            if ((!cb->is_range && (par_num == cb->par_num_first)) ||
+                (cb->is_range && (par_num >= cb->par_num_first) && (par_num <= cb->par_num_last)))
             {
                 cb->callback( par_num, new_val, old_val );
             }
