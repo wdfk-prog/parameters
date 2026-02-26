@@ -1181,39 +1181,6 @@ par_status_t par_bitand_set_u8_fast(const par_num_t par_num, const uint8_t val)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Set signed 8-bit parameter ANDing with current set value  fast
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    val     - Value of parameter
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_bitand_set_i8_fast(const par_num_t par_num, const int8_t val)
-{
-    PAR_ASSERT( true == par_is_init());
-    PAR_ASSERT( ePAR_TYPE_I8 == par_get_type(par_num));
-
-    const par_range_t range = par_get_range(par_num);
-
-    if ( val > range.max.i8 )
-    {
-        atomic_fetch_and_explicit( &gpi8_par_value[gu32_par_offset[par_num]], range.max.i8, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else if ( val < range.min.i8 )
-    {
-        atomic_fetch_and_explicit( &gpi8_par_value[gu32_par_offset[par_num]], range.min.i8, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else
-    {
-        atomic_fetch_and_explicit( &gpi8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
-        return ePAR_OK;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
 *        Set unsigned 16-bit parameter ANDing with current set value  fast
 *
 * @param[in]    par_num - Parameter number (enumeration)
@@ -1241,39 +1208,6 @@ par_status_t par_bitand_set_u16_fast(const par_num_t par_num, const uint16_t val
     else
     {
         atomic_fetch_and_explicit( &gpu16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
-        return ePAR_OK;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Set signed 16-bit parameter ANDing with current set value  fast
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    val     - Value of parameter
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_bitand_set_i16_fast(const par_num_t par_num, const int16_t val)
-{
-    PAR_ASSERT( true == par_is_init());
-    PAR_ASSERT( ePAR_TYPE_I16 == par_get_type(par_num));
-
-    const par_range_t range = par_get_range(par_num);
-
-    if ( val > range.max.i16 )
-    {
-        atomic_fetch_and_explicit( &gpi16_par_value[gu32_par_offset[par_num]], range.max.i16, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else if ( val < range.min.i16 )
-    {
-        atomic_fetch_and_explicit( &gpi16_par_value[gu32_par_offset[par_num]], range.min.i16, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else
-    {
-        atomic_fetch_and_explicit( &gpi16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
         return ePAR_OK;
     }
 }
@@ -1313,39 +1247,6 @@ par_status_t par_bitand_set_u32_fast(const par_num_t par_num, const uint32_t val
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Set signed 32-bit parameter ANDing with current set value  fast
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    val     - Value of parameter
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_bitand_set_i32_fast(const par_num_t par_num, const int32_t val)
-{
-    PAR_ASSERT( true == par_is_init());
-    PAR_ASSERT( ePAR_TYPE_I32 == par_get_type(par_num));
-
-    const par_range_t range = par_get_range(par_num);
-
-    if ( val > range.max.i32 )
-    {
-        atomic_fetch_and_explicit( &gpi32_par_value[gu32_par_offset[par_num]], range.max.i32, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else if ( val < range.min.i32 )
-    {
-        atomic_fetch_and_explicit( &gpi32_par_value[gu32_par_offset[par_num]], range.min.i32, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else
-    {
-        atomic_fetch_and_explicit( &gpi32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
-        return ePAR_OK;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
 *        Set unsigned 8-bit parameter ORing with current set value fast
 *
 * @param[in]    par_num - Parameter number (enumeration)
@@ -1373,39 +1274,6 @@ par_status_t par_bitor_set_u8_fast(const par_num_t par_num, const uint8_t val)
     else
     {
         atomic_fetch_or_explicit( &gpu8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
-        return ePAR_OK;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Set signed 8-bit parameter ORing with current set value  fast
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    val     - Value of parameter
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_bitor_set_i8_fast(const par_num_t par_num, const int8_t val)
-{
-    PAR_ASSERT( true == par_is_init());
-    PAR_ASSERT( ePAR_TYPE_I8 == par_get_type(par_num));
-
-    const par_range_t range = par_get_range(par_num);
-
-    if ( val > range.max.i8 )
-    {
-        atomic_fetch_or_explicit( &gpi8_par_value[gu32_par_offset[par_num]], range.max.i8, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else if ( val < range.min.i8 )
-    {
-        atomic_fetch_or_explicit( &gpi8_par_value[gu32_par_offset[par_num]], range.min.i8, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else
-    {
-        atomic_fetch_or_explicit( &gpi8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
         return ePAR_OK;
     }
 }
@@ -1445,39 +1313,6 @@ par_status_t par_bitor_set_u16_fast(const par_num_t par_num, const uint16_t val)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Set signed 16-bit parameter ORing with current set value  fast
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    val     - Value of parameter
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_bitor_set_i16_fast(const par_num_t par_num, const int16_t val)
-{
-    PAR_ASSERT( true == par_is_init());
-    PAR_ASSERT( ePAR_TYPE_I16 == par_get_type(par_num));
-
-    const par_range_t range = par_get_range(par_num);
-
-    if ( val > range.max.i16 )
-    {
-        atomic_fetch_or_explicit( &gpi16_par_value[gu32_par_offset[par_num]], range.max.i16, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else if ( val < range.min.i16 )
-    {
-        atomic_fetch_or_explicit( &gpi16_par_value[gu32_par_offset[par_num]], range.min.i16, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else
-    {
-        atomic_fetch_or_explicit( &gpi16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
-        return ePAR_OK;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
 *        Set unsigned 16-bit parameter ORing with current set value  fast
 *
 * @param[in]    par_num - Parameter number (enumeration)
@@ -1505,39 +1340,6 @@ par_status_t par_bitor_set_u32_fast(const par_num_t par_num, const uint32_t val)
     else
     {
         atomic_fetch_or_explicit( &gpu32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
-        return ePAR_OK;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Set signed 32-bit parameter ORing with current set value  fast
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @param[in]    val     - Value of parameter
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_bitor_set_i32_fast(const par_num_t par_num, const int32_t val)
-{
-    PAR_ASSERT( true == par_is_init());
-    PAR_ASSERT( ePAR_TYPE_I32 == par_get_type(par_num));
-
-    const par_range_t range = par_get_range(par_num);
-
-    if ( val > range.max.i32 )
-    {
-        atomic_fetch_or_explicit( &gpi32_par_value[gu32_par_offset[par_num]], range.max.i32, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else if ( val < range.min.i32 )
-    {
-        atomic_fetch_or_explicit( &gpi32_par_value[gu32_par_offset[par_num]], range.min.i32, memory_order_relaxed );
-        return ePAR_WAR_LIMITED;
-    }
-    else
-    {
-        atomic_fetch_or_explicit( &gpi32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
         return ePAR_OK;
     }
 }
