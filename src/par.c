@@ -479,6 +479,32 @@ bool par_is_init(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
+*        Try to acquire mutex for specified parameter
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_status_t par_acquire_mutex(const par_num_t par_num)
+{
+    return par_if_aquire_mutex(par_num);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Try to acquire mutex for specified parameter
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+void par_release_mutex(const par_num_t par_num)
+{
+    par_if_release_mutex(par_num);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
 *        Set parameter value
 *
 * @note     Mandatory to cast input argument to appropriate type. E.g.:
@@ -584,7 +610,7 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
     if( ePAR_TYPE_U8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
     // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    if ( ePAR_OK == par_acquire_mutex(par_num))
     {
         const par_type_t old_val = {.u8 = PAR_GET_U8_PRIV( par_num )};
 
@@ -602,7 +628,7 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
         const par_type_t new_val = {.u8 = PAR_GET_U8_PRIV( par_num )};
         par_raise_on_change_callback( par_num, new_val, old_val );
 
-        (void) par_if_release_mutex();
+        par_release_mutex(par_num);
     }
     else
     {
@@ -634,7 +660,7 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t val)
     if( ePAR_TYPE_I8 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
     // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    if ( ePAR_OK == par_acquire_mutex(par_num))
     {
         const par_type_t old_val = {.i8 = PAR_GET_I8_PRIV( par_num )};
 
@@ -652,7 +678,7 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t val)
         const par_type_t new_val = {.i8 = PAR_GET_I8_PRIV( par_num )};
         par_raise_on_change_callback( par_num, new_val, old_val );
 
-        (void) par_if_release_mutex();
+        par_release_mutex(par_num);
     }
     else
     {
@@ -684,7 +710,7 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t val)
     if( ePAR_TYPE_U16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
     // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    if ( ePAR_OK == par_acquire_mutex(par_num))
     {
         const par_type_t old_val = {.u16 = PAR_GET_U16_PRIV( par_num )};
 
@@ -702,7 +728,7 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t val)
         const par_type_t new_val = {.u16 = PAR_GET_U16_PRIV( par_num )};
         par_raise_on_change_callback( par_num, new_val, old_val );
 
-        (void) par_if_release_mutex();
+        par_release_mutex(par_num);
     }
     else
     {
@@ -734,7 +760,7 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t val)
     if( ePAR_TYPE_I16 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
     // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    if ( ePAR_OK == par_acquire_mutex(par_num))
     {
         const par_type_t old_val = {.i16 = PAR_GET_I16_PRIV( par_num )};
 
@@ -752,7 +778,7 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t val)
         const par_type_t new_val = {.i16 = PAR_GET_I16_PRIV( par_num )};
         par_raise_on_change_callback( par_num, new_val, old_val );
 
-        (void) par_if_release_mutex();
+        par_release_mutex(par_num);
     }
     else
     {
@@ -784,7 +810,7 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t val)
     if( ePAR_TYPE_U32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
     // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    if ( ePAR_OK == par_acquire_mutex(par_num))
     {
         const par_type_t old_val = {.u32 = PAR_GET_U32_PRIV( par_num )};
 
@@ -802,7 +828,7 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t val)
         const par_type_t new_val = {.u32 = PAR_GET_U32_PRIV( par_num )};
         par_raise_on_change_callback( par_num, new_val, old_val );
 
-        (void) par_if_release_mutex();
+        par_release_mutex(par_num);
     }
     else
     {
@@ -834,7 +860,7 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
     if( ePAR_TYPE_I32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
     // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    if ( ePAR_OK == par_acquire_mutex(par_num))
     {
         const par_type_t old_val = {.i32 = PAR_GET_I32_PRIV( par_num )};
 
@@ -852,7 +878,7 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
         const par_type_t new_val = {.i32 = PAR_GET_I32_PRIV( par_num )};
         par_raise_on_change_callback( par_num, new_val, old_val );
 
-        (void) par_if_release_mutex();
+        par_release_mutex(par_num);
     }
     else
     {
@@ -884,7 +910,7 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
     if( ePAR_TYPE_F32 != par_get_type(par_num)) return ePAR_ERROR_TYPE;
 
     // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    if ( ePAR_OK == par_acquire_mutex(par_num))
     {
         const par_type_t old_val = {.f32 = PAR_GET_F32_PRIV( par_num )};
 
@@ -902,7 +928,7 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
         const par_type_t new_val = {.f32 = PAR_GET_F32_PRIV( par_num )};
         par_raise_on_change_callback( par_num, new_val, old_val );
 
-        (void) par_if_release_mutex();
+        par_release_mutex(par_num);
     }
     else
     {

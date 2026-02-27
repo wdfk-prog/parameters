@@ -215,6 +215,9 @@ par_status_t par_init    (void);
 par_status_t par_deinit  (void);
 bool         par_is_init (void);
 
+par_status_t par_acquire_mutex	(const par_num_t par_num);
+void         par_release_mutex  (const par_num_t par_num);
+
 // Setting parameter value API (module must be first initialized before using those func)
 par_status_t par_set                (const par_num_t par_num, const void * p_val);
 par_status_t par_set_by_id          (const uint16_t id, const void * p_val);
