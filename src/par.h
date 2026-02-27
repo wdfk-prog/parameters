@@ -147,66 +147,10 @@ typedef struct
  */
 typedef void (*pf_par_on_change_cb_t)(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
-typedef struct par_on_change_cb
-{
-    const pf_par_on_change_cb_t callback;       /**<Callback function pointer */
-    const par_num_t             par_num_first;  /**<First (or only) parameter */
-    const par_num_t             par_num_last;   /**<Last parameter */
-    const bool                  is_range;       /**<Is on change for range of parameters? */
-    struct par_on_change_cb **  next;           /**<Pointer to next callback block */
-} par_on_change_cb_t;
-
-#define PAR_DEFINE_ON_CHANGE_CB(name, par, cb)          \
-    static const par_on_change_cb_t name =              \
-    {                                                   \
-        .callback      = cb,                            \
-        .par_num_first = par,                           \
-        .is_range      = false,                         \
-        .next          = &(par_on_change_cb_t*){NULL},  \
-    }
-
-#define PAR_DEFINE_ON_CHANGE_RANGE_CB(name, par_first, par_last, cb)    \
-    static const par_on_change_cb_t name =                              \
-    {                                                                   \
-        .callback      = cb,                                            \
-        .par_num_first = par_first,                                     \
-        .par_num_last  = par_last,                                      \
-        .is_range      = true,                                          \
-        .next          = &(par_on_change_cb_t*){NULL},                  \
-    }
-
 /**
  *  Device Parameters validation
  */
 typedef bool (*pf_par_validation_t)(const par_num_t par_num, const par_type_t val);
-
-typedef struct par_validation
-{
-    const pf_par_validation_t  valid_func;      /**<Validation function pointer */
-    const par_num_t            par_num_first;   /**<First (or only) parameter */
-    const par_num_t            par_num_last;    /**<Last parameter */
-    const bool                 is_range;        /**<Is validation for range of parameters? */
-    struct par_validation **   next;            /**<Pointer to next callback block */
-} par_validation_t;
-
-#define PAR_DEFINE_VALIDATION(name, par, validation)    \
-    static const par_validation_t name =                \
-    {                                                   \
-        .valid_func    = validation,                    \
-        .par_num_first = par,                           \
-        .is_range      = false,                         \
-        .next          = &(par_validation_t*){NULL},    \
-    }
-
-#define PAR_DEFINE_VALIDATION_RANGE(name, par_first, par_last, validation)  \
-    static const par_validation_t name =                                    \
-    {                                                                       \
-        .valid_func    = validation,                                        \
-        .par_num_first = par_first,                                         \
-        .par_num_last  = par_last,                                          \
-        .is_range      = true,                                              \
-        .next          = &(par_validation_t*){NULL},                        \
-    }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions Prototypes
@@ -324,8 +268,8 @@ par_status_t        par_get_id_by_num   (const par_num_t par_num, uint16_t * con
 #endif
 
 // Registration API
-par_status_t par_register_on_change_cb  (const par_on_change_cb_t * const cb);
-par_status_t par_register_validation    (const par_validation_t * const validation);
+void par_register_on_change_cb  (const par_num_t par_num, const pf_par_on_change_cb_t cb);
+void par_register_validation    (const par_num_t par_num, const pf_par_validation_t validation);
 
 #if ( PAR_CFG_DEBUG_EN )
     const char * par_get_status_str(const par_status_t status);
