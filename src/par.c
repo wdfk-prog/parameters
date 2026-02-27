@@ -2131,28 +2131,18 @@ par_status_t par_register_on_change_cb(const par_on_change_cb_t * const cb)
     if ( NULL == cb ) return ePAR_ERROR;
     if ( NULL == cb->callback) return ePAR_ERROR;
 
-    // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    // First registration -> store the start of the callback linked list
+    if ( NULL == gp_par_cb )
     {
-        // First registration -> store the start of the callback linked list
-        if ( NULL == gp_par_cb )
-        {
-            gp_par_cb = (par_on_change_cb_t*) cb;
-        }
-        else
-        {
-            (*prev_cb->next) = (par_on_change_cb_t*) cb;
-        }
-
-        // Store previous callback
-        prev_cb = (par_on_change_cb_t*) cb;
-
-        (void) par_if_release_mutex();
+        gp_par_cb = (par_on_change_cb_t*) cb;
     }
     else
     {
-        return ePAR_ERROR_MUTEX;
+        (*prev_cb->next) = (par_on_change_cb_t*) cb;
     }
+
+    // Store previous callback
+    prev_cb = (par_on_change_cb_t*) cb;
 
     return ePAR_OK;
 }
@@ -2174,28 +2164,18 @@ par_status_t par_register_validation(const par_validation_t * const validation)
     if ( NULL == validation ) return ePAR_ERROR;
     if ( NULL == validation->valid_func) return ePAR_ERROR;
 
-    // Get mutex
-    if ( ePAR_OK == par_if_aquire_mutex())
+    // First registration -> store the start of the callback linked list
+    if ( NULL == gp_par_validations )
     {
-        // First registration -> store the start of the callback linked list
-        if ( NULL == gp_par_validations )
-        {
-            gp_par_validations = (par_validation_t*) validation;
-        }
-        else
-        {
-            (*prev_validation->next) = (par_validation_t*) validation;
-        }
-
-        // Store previous callback
-        prev_validation = (par_validation_t*) validation;
-
-        (void) par_if_release_mutex();
+        gp_par_validations = (par_validation_t*) validation;
     }
     else
     {
-        return ePAR_ERROR_MUTEX;
+        (*prev_validation->next) = (par_validation_t*) validation;
     }
+
+    // Store previous callback
+    prev_validation = (par_validation_t*) validation;
 
     return ePAR_OK;
 }
