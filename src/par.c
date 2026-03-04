@@ -580,7 +580,7 @@ par_status_t par_set_u8(const par_num_t par_num, const uint8_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.u8 = PAR_GET_U8_PRIV( par_num )};
-        if (on_change != NULL)
+        if ((on_change != NULL) && (new_val.u8 != old_val.u8))
         {
             on_change(par_num, new_val, old_val);
         }
@@ -635,7 +635,7 @@ par_status_t par_set_i8(const par_num_t par_num, const int8_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.i8 = PAR_GET_I8_PRIV( par_num )};
-        if (on_change != NULL)
+        if ((on_change != NULL) && (new_val.i8 != old_val.i8))
         {
             on_change(par_num, new_val, old_val);
         }
@@ -690,7 +690,7 @@ par_status_t par_set_u16(const par_num_t par_num, const uint16_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.u16 = PAR_GET_U16_PRIV( par_num )};
-        if (on_change != NULL)
+        if ((on_change != NULL) && (new_val.u16 != old_val.u16))
         {
             on_change(par_num, new_val, old_val);
         }
@@ -745,7 +745,7 @@ par_status_t par_set_i16(const par_num_t par_num, const int16_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.i16 = PAR_GET_I16_PRIV( par_num )};
-        if (on_change != NULL)
+        if ((on_change != NULL) && (new_val.i16 != old_val.i16))
         {
             on_change(par_num, new_val, old_val);
         }
@@ -800,7 +800,7 @@ par_status_t par_set_u32(const par_num_t par_num, const uint32_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.u32 = PAR_GET_U32_PRIV( par_num )};
-        if (on_change != NULL)
+        if ((on_change != NULL) && (new_val.u32 != old_val.u32))
         {
             on_change(par_num, new_val, old_val);
         }
@@ -855,7 +855,7 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.i32 = PAR_GET_I32_PRIV( par_num )};
-        if (on_change != NULL)
+        if ((on_change != NULL) && (new_val.i32 != old_val.i32))
         {
             on_change(par_num, new_val, old_val);
         }
@@ -910,7 +910,7 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
 
         // Raise on change callback
         const par_type_t new_val = {.f32 = PAR_GET_F32_PRIV( par_num )};
-        if (on_change != NULL)
+        if ((on_change != NULL) && (new_val.f32 != old_val.f32))
         {
             on_change(par_num, new_val, old_val);
         }
