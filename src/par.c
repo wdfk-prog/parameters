@@ -117,7 +117,9 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 ////////////////////////////////////////////////////////////////////////////////
 static void         par_allocate_ram_space          (void);
 static par_status_t par_check_table_validy          (const par_cfg_t * const p_par_cfg);
+#if ( 1 == PAR_CFG_NVM_EN )
 static bool         par_is_value_changed            (const par_num_t par_num, const void * p_val);
+#endif /* ( 1 == PAR_CFG_NVM_EN ) */
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -266,6 +268,7 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
     return status;
 }
 
+#if ( 1 == PAR_CFG_NVM_EN )
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *        Is parameter value changed
@@ -317,6 +320,7 @@ static bool par_is_value_changed(const par_num_t par_num, const void * p_val)
 
     return value_changed;
 }
+#endif /* ( 1 == PAR_CFG_NVM_EN ) */
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
