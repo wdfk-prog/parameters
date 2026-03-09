@@ -25,9 +25,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <stdatomic.h>
 
 #include "par.h"
+#include "par_atomic.h"
 #include "par_nvm.h"
 #include "../../par_if.h"
 
@@ -56,13 +56,13 @@ static struct
 /**
  *  Parameter live values divided by its type in RAM
  */
-static _Atomic uint8_t *    gpu8_par_value = NULL;
-static _Atomic int8_t  *    gpi8_par_value = NULL;
-static _Atomic uint16_t *   gpu16_par_value = NULL;
-static _Atomic int16_t  *   gpi16_par_value = NULL;
-static _Atomic uint32_t *   gpu32_par_value = NULL;
-static _Atomic int32_t  *   gpi32_par_value = NULL;
-static _Atomic float32_t *  gpf32_par_value = NULL;
+static par_atomic_u8_t *     gpu8_par_value = NULL;
+static par_atomic_i8_t *     gpi8_par_value = NULL;
+static par_atomic_u16_t *    gpu16_par_value = NULL;
+static par_atomic_i16_t *    gpi16_par_value = NULL;
+static par_atomic_u32_t *    gpu32_par_value = NULL;
+static par_atomic_i32_t *    gpi32_par_value = NULL;
+static par_atomic_f32_t *    gpf32_par_value = NULL;
 
 /**
  *  Address offset by parameter enumeration
@@ -72,29 +72,21 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 /**
  *  Private getters and setters
  */
-#define PAR_GET_U8_PRIV(par_num)        atomic_load_explicit( &gpu8_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
-#define PAR_GET_I8_PRIV(par_num)        atomic_load_explicit( &gpi8_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
-#define PAR_GET_U16_PRIV(par_num)       atomic_load_explicit( &gpu16_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
-#define PAR_GET_I16_PRIV(par_num)       atomic_load_explicit( &gpi16_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
-#define PAR_GET_U32_PRIV(par_num)       atomic_load_explicit( &gpu32_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
-#define PAR_GET_I32_PRIV(par_num)       atomic_load_explicit( &gpi32_par_value[gu32_par_offset[par_num]], memory_order_relaxed )
+#define PAR_GET_U8_PRIV(par_num)        PAR_ATOMIC_LOAD(u8, &gpu8_par_value[gu32_par_offset[par_num]])
+#define PAR_GET_I8_PRIV(par_num)        PAR_ATOMIC_LOAD(i8, &gpi8_par_value[gu32_par_offset[par_num]])
+#define PAR_GET_U16_PRIV(par_num)       PAR_ATOMIC_LOAD(u16, &gpu16_par_value[gu32_par_offset[par_num]])
+#define PAR_GET_I16_PRIV(par_num)       PAR_ATOMIC_LOAD(i16, &gpi16_par_value[gu32_par_offset[par_num]])
+#define PAR_GET_U32_PRIV(par_num)       PAR_ATOMIC_LOAD(u32, &gpu32_par_value[gu32_par_offset[par_num]])
+#define PAR_GET_I32_PRIV(par_num)       PAR_ATOMIC_LOAD(i32, &gpi32_par_value[gu32_par_offset[par_num]])
+#define PAR_GET_F32_PRIV(par_num)       PAR_ATOMIC_LOAD(f32, &gpf32_par_value[gu32_par_offset[par_num]])
 
-// NOTICE: "atomic_load_explicit" does not support float data type, therfore using GCC/CLang build-in primitive "__atomic_load" to overcome this limitation
-#define PAR_GET_F32_PRIV(par_num) ({ \
-    float32_t __val; \
-    __atomic_load( &gpf32_par_value[gu32_par_offset[par_num]], &__val, __ATOMIC_RELAXED); \
-    __val; \
-})
-
-#define PAR_SET_U8_PRIV(par_num, val)   atomic_store_explicit( &gpu8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
-#define PAR_SET_I8_PRIV(par_num, val)   atomic_store_explicit( &gpi8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
-#define PAR_SET_U16_PRIV(par_num, val)  atomic_store_explicit( &gpu16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
-#define PAR_SET_I16_PRIV(par_num, val)  atomic_store_explicit( &gpi16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
-#define PAR_SET_U32_PRIV(par_num, val)  atomic_store_explicit( &gpu32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
-#define PAR_SET_I32_PRIV(par_num, val)  atomic_store_explicit( &gpi32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed )
-
-// NOTICE: "atomic_store_explicit" does not support float data type, therfore using GCC/CLang build-in primitive "__atomic_store" to overcome this limitation
-#define PAR_SET_F32_PRIV(par_num, val)  __atomic_store( &gpf32_par_value[gu32_par_offset[par_num]], &val, memory_order_relaxed )    
+#define PAR_SET_U8_PRIV(par_num, val)   PAR_ATOMIC_STORE(u8, &gpu8_par_value[gu32_par_offset[par_num]], (val))
+#define PAR_SET_I8_PRIV(par_num, val)   PAR_ATOMIC_STORE(i8, &gpi8_par_value[gu32_par_offset[par_num]], (val))
+#define PAR_SET_U16_PRIV(par_num, val)  PAR_ATOMIC_STORE(u16, &gpu16_par_value[gu32_par_offset[par_num]], (val))
+#define PAR_SET_I16_PRIV(par_num, val)  PAR_ATOMIC_STORE(i16, &gpi16_par_value[gu32_par_offset[par_num]], (val))
+#define PAR_SET_U32_PRIV(par_num, val)  PAR_ATOMIC_STORE(u32, &gpu32_par_value[gu32_par_offset[par_num]], (val))
+#define PAR_SET_I32_PRIV(par_num, val)  PAR_ATOMIC_STORE(i32, &gpi32_par_value[gu32_par_offset[par_num]], (val))
+#define PAR_SET_F32_PRIV(par_num, val)  PAR_ATOMIC_STORE(f32, &gpf32_par_value[gu32_par_offset[par_num]], (val))
 
 #if ( PAR_CFG_DEBUG_EN )
 
@@ -1177,17 +1169,17 @@ par_status_t par_bitand_set_u8_fast(const par_num_t par_num, const uint8_t val)
 
     if ( val > range.max.u8 )
     {
-        atomic_fetch_and_explicit( &gpu8_par_value[gu32_par_offset[par_num]], range.max.u8, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u8, &gpu8_par_value[gu32_par_offset[par_num]], range.max.u8);
         return ePAR_WAR_LIMITED;
     }
     else if ( val < range.min.u8 )
     {
-        atomic_fetch_and_explicit( &gpu8_par_value[gu32_par_offset[par_num]], range.min.u8, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u8, &gpu8_par_value[gu32_par_offset[par_num]], range.min.u8);
         return ePAR_WAR_LIMITED;
     }
     else
     {
-        atomic_fetch_and_explicit( &gpu8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u8, &gpu8_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
 }
@@ -1210,17 +1202,17 @@ par_status_t par_bitand_set_u16_fast(const par_num_t par_num, const uint16_t val
 
     if ( val > range.max.u16 )
     {
-        atomic_fetch_and_explicit( &gpu16_par_value[gu32_par_offset[par_num]], range.max.u16, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u16, &gpu16_par_value[gu32_par_offset[par_num]], range.max.u16);
         return ePAR_WAR_LIMITED;
     }
     else if ( val < range.min.u16 )
     {
-        atomic_fetch_and_explicit( &gpu16_par_value[gu32_par_offset[par_num]], range.min.u16, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u16, &gpu16_par_value[gu32_par_offset[par_num]], range.min.u16);
         return ePAR_WAR_LIMITED;
     }
     else
     {
-        atomic_fetch_and_explicit( &gpu16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u16, &gpu16_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
 }
@@ -1243,17 +1235,17 @@ par_status_t par_bitand_set_u32_fast(const par_num_t par_num, const uint32_t val
 
     if ( val > range.max.u32 )
     {
-        atomic_fetch_and_explicit( &gpu32_par_value[gu32_par_offset[par_num]], range.max.u32, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u32, &gpu32_par_value[gu32_par_offset[par_num]], range.max.u32);
         return ePAR_WAR_LIMITED;
     }
     else if ( val < range.min.u32 )
     {
-        atomic_fetch_and_explicit( &gpu32_par_value[gu32_par_offset[par_num]], range.min.u32, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u32, &gpu32_par_value[gu32_par_offset[par_num]], range.min.u32);
         return ePAR_WAR_LIMITED;
     }
     else
     {
-        atomic_fetch_and_explicit( &gpu32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_AND(u32, &gpu32_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
 }
@@ -1276,17 +1268,17 @@ par_status_t par_bitor_set_u8_fast(const par_num_t par_num, const uint8_t val)
 
     if ( val > range.max.u8 )
     {
-        atomic_fetch_or_explicit( &gpu8_par_value[gu32_par_offset[par_num]], range.max.u8, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u8, &gpu8_par_value[gu32_par_offset[par_num]], range.max.u8);
         return ePAR_WAR_LIMITED;
     }
     else if ( val < range.min.u8 )
     {
-        atomic_fetch_or_explicit( &gpu8_par_value[gu32_par_offset[par_num]], range.min.u8, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u8, &gpu8_par_value[gu32_par_offset[par_num]], range.min.u8);
         return ePAR_WAR_LIMITED;
     }
     else
     {
-        atomic_fetch_or_explicit( &gpu8_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u8, &gpu8_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
 }
@@ -1309,17 +1301,17 @@ par_status_t par_bitor_set_u16_fast(const par_num_t par_num, const uint16_t val)
 
     if ( val > range.max.u16 )
     {
-        atomic_fetch_or_explicit( &gpu16_par_value[gu32_par_offset[par_num]], range.max.u16, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u16, &gpu16_par_value[gu32_par_offset[par_num]], range.max.u16);
         return ePAR_WAR_LIMITED;
     }
     else if ( val < range.min.u16 )
     {
-        atomic_fetch_or_explicit( &gpu16_par_value[gu32_par_offset[par_num]], range.min.u16, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u16, &gpu16_par_value[gu32_par_offset[par_num]], range.min.u16);
         return ePAR_WAR_LIMITED;
     }
     else
     {
-        atomic_fetch_or_explicit( &gpu16_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u16, &gpu16_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
 }
@@ -1342,17 +1334,17 @@ par_status_t par_bitor_set_u32_fast(const par_num_t par_num, const uint32_t val)
 
     if ( val > range.max.u32 )
     {
-        atomic_fetch_or_explicit( &gpu32_par_value[gu32_par_offset[par_num]], range.max.u32, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u32, &gpu32_par_value[gu32_par_offset[par_num]], range.max.u32);
         return ePAR_WAR_LIMITED;
     }
     else if ( val < range.min.u32 )
     {
-        atomic_fetch_or_explicit( &gpu32_par_value[gu32_par_offset[par_num]], range.min.u32, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u32, &gpu32_par_value[gu32_par_offset[par_num]], range.min.u32);
         return ePAR_WAR_LIMITED;
     }
     else
     {
-        atomic_fetch_or_explicit( &gpu32_par_value[gu32_par_offset[par_num]], val, memory_order_relaxed );
+        PAR_ATOMIC_FETCH_OR(u32, &gpu32_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
 }
