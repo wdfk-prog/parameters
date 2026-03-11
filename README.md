@@ -55,6 +55,251 @@ In order to be part of *General Embedded C Libraries Ecosystem* this module must
 root/middleware/parameters/parameters/"module_space"
 ```
 
+
+## Parameter identification
+
+Each parameter defined in the configuration table contains two identifiers:
+
+- **par_num** – internal parameter index (enumeration)
+- **id** – external parameter identifier
+
+These identifiers serve different purposes and are intentionally separated.
+
+### Internal identifier (`par_num`)
+
+`par_num` is the enumeration defined in `par_cfg.h` and represents the **internal index of a parameter**.
+
+It is primarily used inside firmware code and by the parameter module APIs.
+
+Example:
+
+```c
+par_set(ePAR_TEST_U8, &value);
+````
+
+Characteristics:
+
+* used as an **index into the parameter configuration table**
+* provides **fast and type-safe access** inside firmware
+* may change if parameters are reordered or new parameters are added
+
+Because of this, `par_num` should generally be used **only inside firmware code**.
+
+### External identifier (`id`)
+
+Each parameter also defines a unique **ID** in the configuration table:
+
+```c
+[ePAR_TEST_U8] = {
+    .id = 0,
+    ...
+}
+```
+
+The **ID is intended for external access** to parameters.
+
+Typical use cases include:
+
+* CLI commands
+* PC configuration tools
+* communication protocols (UART / CAN / etc.)
+* parameter import/export
+* diagnostics or logging
+
+To support these use cases, the module provides APIs that operate using parameter IDs:
+
+* `par_set_by_id()`
+* `par_get_by_id()`
+* `par_save_by_id()`
+
+Internally, these functions resolve the ID to the corresponding `par_num` before accessing the parameter.
+
+### Design rationale
+
+Separating internal and external identifiers provides several advantages:
+
+* **Efficient internal access** through `par_num`
+* **Stable external interface** through `id`
+* the ability to **reorder or extend parameters without breaking external tools**
+
+External systems should always reference parameters by **ID**, while firmware code should typically use **par_num**.
+
+### ID allocation guidelines
+
+Parameter IDs must be **unique across the entire parameter table**.
+
+IDs do not need to be sequential, but it is recommended to group them by subsystem for clarity.
+
+Example allocation:
+
+| ID Range | Subsystem         |
+| -------- | ----------------- |
+| 0–99     | Channel 1         |
+| 100–199  | Channel 2         |
+| 200–299  | Channel 3         |
+| 300–399  | Channel 4         |
+| 10000+   | System parameters |
+
+This approach simplifies integration with external tools and communication protocols.
+
+## ID lookup using hash map
+
+To improve parameter lookup by **ID**, the module builds a runtime hash map during `par_init()`.
+
+This hash map is used by APIs such as:
+
+- `par_get_num_by_id()`
+- `par_set_by_id()`
+- `par_get_by_id()`
+- `par_save_by_id()`
+
+Instead of scanning the full parameter table for every ID lookup, the module hashes the parameter ID and directly maps it to the corresponding `par_num`.
+
+### Why a hash map is used
+
+The parameter module supports two access paths:
+
+- **`par_num`** for internal firmware access
+- **`id`** for external access such as CLI, PC tools, and communication protocols
+
+Internal access by `par_num` is naturally efficient because it uses the parameter enumeration as a direct table index.
+
+External access by **ID** is different. Since IDs are user-defined and do not need to be sequential, converting an ID back to `par_num` would otherwise require a linear search through the full parameter table.
+
+A hash map avoids that cost and provides near constant-time lookup for ID-based APIs.
+
+### How it works
+
+During `par_init()`, the module:
+
+1. walks through the parameter configuration table
+2. hashes each parameter ID into a bucket index
+3. stores the mapping:
+
+```text
+ID -> par_num
+````
+
+Later, when an external API uses an ID, the module:
+
+1. hashes the requested ID
+2. checks the corresponding bucket
+3. returns the mapped `par_num`
+4. performs the actual parameter operation internally
+
+Conceptually:
+
+```text
+External ID
+   |
+   v
+ hash(id)
+   |
+   v
+ hash bucket
+   |
+   v
+ par_num
+   |
+   v
+ internal parameter API
+```
+
+### Why this is better than linear search
+
+Compared to a linear scan of the parameter table, the hash map provides:
+
+* lower lookup latency
+* predictable runtime
+* better scalability as the number of parameters grows
+* lower overhead for frequently used ID-based APIs
+
+This is especially useful when parameters are accessed repeatedly from:
+
+* CLI commands
+* host tools
+* diagnostic services
+* communication stacks
+
+### Why this is preferred over binary search
+
+Binary search would require the parameter table to be sorted by ID or an additional sorted lookup table.
+
+That introduces extra maintenance constraints and reduces flexibility in parameter definition order.
+
+The hash-based approach keeps the configuration table simple and preserves fast ID lookup without requiring sorted IDs.
+
+### Collision policy
+
+This implementation uses a strict one-entry-per-bucket hash map.
+
+That means:
+
+* duplicate IDs are rejected
+* hash collisions are also rejected during initialization
+
+If two different IDs map to the same hash bucket, initialization fails and a debug message is printed.
+
+This design keeps runtime lookup logic simple, fast, and deterministic.
+
+### What to do if a hash collision is reported
+
+If initialization prints a message such as:
+
+```text
+ERR, Hash collision: ID X conflicts with ID Y at bucket Z!
+ERR, Please regenerate IDs or adjust hash parameters.
+```
+
+then two different parameter IDs were mapped to the same hash bucket.
+
+Recommended actions:
+
+1. change one or more parameter IDs so they no longer collide
+2. keep subsystem-based ID allocation, but avoid problematic values
+
+In practice, the preferred solution is to **regenerate or reassign the conflicting IDs**.
+
+### Recommended usage
+
+When defining parameter IDs manually:
+
+* keep IDs unique across the entire table
+* keep IDs stable across firmware versions
+* group IDs by subsystem when possible
+* avoid changing IDs unless external compatibility is intentionally broken
+
+### Notes for generated parameter tables
+
+In future workflows, parameter definitions and IDs can be generated by script tools.
+
+When IDs are generated automatically, collisions can be checked during generation, which means:
+
+* duplicate IDs can be prevented before build time
+* hash collisions can be avoided before firmware is compiled
+* the runtime hash map remains simple and fast
+* manual ID maintenance is reduced
+
+With script-generated parameter tables, hash collision problems should normally not occur.
+
+### Design tradeoff
+
+This implementation intentionally favors:
+
+* **fast lookup**
+* **simple runtime logic**
+* **deterministic behavior**
+
+over:
+
+* runtime collision resolution
+* more complex lookup structures
+
+Compared to alternatives such as linear search, linear probing, or maintaining a sorted structure for binary search, this approach gives better lookup performance for normal operation.
+
+The main tradeoff is that a rare hash collision must be resolved by reassigning IDs or regenerating the parameter table. For this module, that tradeoff is considered better than paying additional runtime cost or complexity on every ID lookup.
+
+
  ## **API**
 | API Functions | Description | Prototype |
 | --- | ----------- | ----- |
@@ -221,12 +466,13 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] =
 
 | Configuration | Description |
 | --- | --- |
-| **PAR_CFG_NVM_EN** 			| Enable/Disable usage of NVM for persistant parameters. |
-| **PAR_CFG_NVM_REGION** 		| Select NVM region for Device Parameter storage space. | 
-| **PAR_CFG_DEBUG_EN** 			| Enable/Disable debugging mode. | 
-| **PAR_CFG_ASSERT_EN** 		| Enable/Disable asserts. Shall be disabled in release build!  | 
-| **PAR_DBG_PRINT** 			| Definition of debug print. | 
-| **PAR_ASSERT** 				| Definition of assert. | 
+| **PAR_CFG_NVM_EN**            | Enable/Disable usage of NVM for persistant parameters. |
+| **PAR_CFG_NVM_REGION**        | Select NVM region for Device Parameter storage space. | 
+| **PAR_CFG_DEBUG_EN**          | Enable/Disable debugging mode. |
+| **PAR_CFG_ASSERT_EN**         | Enable/Disable asserts. Shall be disabled in release build!  | 
+| **PAR_DBG_PRINT**             | Definition of debug print. |
+| **PAR_ASSERT**                | Definition of assert. |
+| **PAR_ATOMIC_BACKEND**        | Select atomic backend implementation. |
 
 **5. Call **par_init()** function**
 
