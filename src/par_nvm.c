@@ -54,8 +54,8 @@
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
 #include "par_nvm.h"
-#include "../../par_cfg.h"
-#include "../../par_if.h"
+#include "par_cfg.h"
+#include "par_if.h"
 
 #if ( 1 == PAR_CFG_NVM_EN )
 

@@ -1,0 +1,4 @@
+#ifndef _PAR_CFG_PORT_H_
+#define _PAR_CFG_PORT_H_
+/* Optional platform overrides */
+#endif

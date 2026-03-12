@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "../../par_cfg.h"
+#include "par_cfg.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions

@@ -29,7 +29,7 @@
 #include "par.h"
 #include "par_atomic.h"
 #include "par_nvm.h"
-#include "../../par_if.h"
+#include "par_if.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -71,6 +71,9 @@ enum
         ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 17 )) ? 17u : 18u,
     PAR_ID_HASH_SIZE = ( 1u << PAR_ID_HASH_BITS ),
 };
+
+PAR_STATIC_ASSERT(par_id_hash_size_valid, (PAR_ID_HASH_SIZE >= PAR_ID_HASH_MIN_BUCKETS));
+PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HASH_BITS < 32u)));
 
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -279,7 +282,6 @@ static inline uint32_t par_hash_id(const uint16_t id)
 ////////////////////////////////////////////////////////////////////////////////
 static par_status_t par_build_and_validate_id_map(const par_cfg_t * const p_par_cfg)
 {
-    PAR_ASSERT( PAR_ID_HASH_SIZE >= PAR_ID_HASH_MIN_BUCKETS );
     memset( g_par_id_map, 0, sizeof(g_par_id_map) );
     for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
     {

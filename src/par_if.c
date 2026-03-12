@@ -15,10 +15,10 @@
 *@addtogroup PAR_IF
 * @{ <!-- BEGIN GROUP -->
 *
-* 	Interface layer for device parameters
+*   Interface layer for device parameters
 *
-* 	Put code that is platform depended inside code block start with
-* 	"USER_CODE_BEGIN" and with end of "USER_CODE_END".
+*   Put code that is platform depended inside code block start with
+*   "USER_CODE_BEGIN" and with end of "USER_CODE_END".
 */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -26,6 +26,12 @@
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
 #include "par_if.h"
+
+#if ( 1 == PAR_CFG_IF_PORT_EN )
+
+#include "par_if_port.c"
+
+#else
 
 // USER INCLUDES BEGIN...
 
@@ -41,11 +47,11 @@
 // USER DEFINITIONS BEGIN...
 
 /**
- * 	Parameter mutex timeout
+ *  Parameter mutex timeout
  *
- * 	Unit: ms
+ *  Unit: ms
  */
-#define PAR_CFG_MUTEX_TIMEOUT_MS				( 10 )
+#define PAR_CFG_MUTEX_TIMEOUT_MS                ( 10 )
 
 // USER DEFINITIONS END...
 
@@ -56,13 +62,13 @@
 // USER VARIABLES BEGIN...
 
 /**
- * 	Parameters OS mutex
+ *  Parameters OS mutex
  */
-static osMutexId_t	g_par_mutex_id = NULL;
+static osMutexId_t g_par_mutex_id = NULL;
 const osMutexAttr_t g_par_mutex_attr =
 {
-    .name 		= "par",
-    .attr_bits 	= ( osMutexPrioInherit ),
+    .name       = "par",
+    .attr_bits  = ( osMutexPrioInherit ),
 };
 
 // USER VARIABLES END...
@@ -73,100 +79,100 @@ const osMutexAttr_t g_par_mutex_attr =
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*		Initialize low level interface
+*       Initialize low level interface
 *
-* @note	User shall provide definition of that function based on used platform!
+* @note User shall provide definition of that function based on used platform!
 *
-* @return 		status - Status of initialization
+* @return       status - Status of initialization
 */
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_if_init(void)
 {
-	par_status_t status = ePAR_OK;
+    par_status_t status = ePAR_OK;
 
-	// USER CODE BEGIN...
+    // USER CODE BEGIN...
 
-	// Create mutex
-	g_par_mutex_id = osMutexNew( &g_par_mutex_attr );
+    // Create mutex
+    g_par_mutex_id = osMutexNew( &g_par_mutex_attr );
 
-	if ( NULL == g_par_mutex_id )
-	{
-		status = ePAR_ERROR;
-	}
+    if ( NULL == g_par_mutex_id )
+    {
+        status = ePAR_ERROR;
+    }
 
-	// USER CODE END...
+    // USER CODE END...
 
 
-	return status;
+    return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*		Acquire mutex for specified parameter
+*       Acquire mutex for specified parameter
 *
-* @note	User shall provide definition of that function based on used platform!
+* @note User shall provide definition of that function based on used platform!
 *
 *       If mutex is not needed leave empty space between user code begin and end.
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @return 		status - Status of operation
+* @return       status - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_if_aquire_mutex(const par_num_t par_num)
 {
-	par_status_t status = ePAR_OK;
+    par_status_t status = ePAR_OK;
 
-	// USER CODE BEGIN...
+    // USER CODE BEGIN...
     UNUSED(par_num);
-	if ( osOK == osMutexAcquire( g_par_mutex_id, PAR_CFG_MUTEX_TIMEOUT_MS ))
-	{
-		// No action
-	}
-	else
-	{
-		status = ePAR_ERROR;
-	}
+    if ( osOK == osMutexAcquire( g_par_mutex_id, PAR_CFG_MUTEX_TIMEOUT_MS ))
+    {
+        // No action
+    }
+    else
+    {
+        status = ePAR_ERROR;
+    }
 
-	// USER CODE END...
+    // USER CODE END...
 
-	return status;
+    return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*		Release mutex for specified parameter
+*       Release mutex for specified parameter
 *
-* @note	User shall provide definition of that function based on used platform!
+* @note User shall provide definition of that function based on used platform!
 *
 *       If mutex is not needed leave empty space between user code begin and end.
 *
 * @param[in]    par_num - Parameter number (enumeration)
-* @return 		status - Status of operation
+* @return       status - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
 void par_if_release_mutex(const par_num_t par_num)
 {
-	// USER CODE BEGIN...
+    // USER CODE BEGIN...
     UNUSED(par_num);
     osMutexRelease( g_par_mutex_id );
 
-	// USER CODE END...
+    // USER CODE END...
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*		Calculate hash
+*       Calculate hash
 *
-* @note	User shall provide definition of that function based on used platform!
+* @note User shall provide definition of that function based on used platform!
 *
-* 		If not being used leave empty.
+*       If not being used leave empty.
 *
-* 		This function does not have an affect if "PAR_CFG_TABLE_ID_CHECK_EN"
-* 		is set to 0.
+*       This function does not have an affect if "PAR_CFG_TABLE_ID_CHECK_EN"
+*       is set to 0.
 *
-* @param[in]	p_data	- Pointer to data for hash calculation
-* @param[in]	size	- Size of data in bytes
-* @return 		p_hash	- Pointer to calculated hash number
+* @param[in]    p_data  - Pointer to data for hash calculation
+* @param[in]    size    - Size of data in bytes
+* @return       p_hash  - Pointer to calculated hash number
 */
 ////////////////////////////////////////////////////////////////////////////////
 void par_if_calc_hash(const uint8_t * const p_data, const uint32_t size, uint8_t * const p_hash)
@@ -175,10 +181,12 @@ void par_if_calc_hash(const uint8_t * const p_data, const uint32_t size, uint8_t
     UNUSED( p_hash );
     UNUSED( size );
 
-	// USER CODE BEGIN...
+    // USER CODE BEGIN...
 
-	// USER CODE END...
+    // USER CODE END...
 }
+
+#endif /* ( 1 == PAR_CFG_IF_PORT_EN ) */
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
