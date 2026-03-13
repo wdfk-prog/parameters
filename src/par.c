@@ -178,7 +178,7 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 static void             par_allocate_ram_space          (void);
 static inline uint32_t  par_hash_id                     (const uint16_t id);
 static par_status_t     par_build_and_validate_id_map   (const par_cfg_t * const p_par_cfg);
-static par_status_t     par_check_table_validy          (const par_cfg_t * const p_par_cfg);
+static par_status_t     par_check_table_validity        (const par_cfg_t * const p_par_cfg);
 #if ( 1 == PAR_CFG_NVM_EN )
 static bool         par_is_value_changed            (const par_num_t par_num, const void * p_val);
 #endif /* ( 1 == PAR_CFG_NVM_EN ) */
@@ -322,7 +322,7 @@ static par_status_t par_build_and_validate_id_map(const par_cfg_t * const p_par_
 * @return       status    - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
+static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
 {
     par_status_t status = ePAR_OK;
 
@@ -336,19 +336,13 @@ static par_status_t par_check_table_validy(const par_cfg_t * const p_par_cfg)
     // For each parameter
     for ( uint32_t i = 0; i < ePAR_NUM_OF; i++ )
     {
-        /**
-         *     Check for correct MIN, MAX and DEF value definitions
+        /*
+         * Keep F32 range/default validation in runtime.
          *
-         *    1. Check that MAX is larger than MIN
-         *    2. Check that DEF is equal or less than MAX
-         *    3. Check that DEF is equal or more than MIN
+         * On some embedded/legacy GCC toolchains, float comparisons used in
+         * typedef-based static asserts may be treated as non-constant
+         * expressions and trigger file-scope VLA warnings.
          */
-        PAR_ASSERT(( ePAR_TYPE_U8 == p_par_cfg[i].type )     ? ((( p_par_cfg[i].min.u8 < p_par_cfg[i].max.u8 ) && ( p_par_cfg[i].def.u8 <= p_par_cfg[i].max.u8 )) && (  p_par_cfg[i].min.u8 <= p_par_cfg[i].def.u8 )) : ( 1 ));
-        PAR_ASSERT(( ePAR_TYPE_I8 == p_par_cfg[i].type )     ? ((( p_par_cfg[i].min.i8 < p_par_cfg[i].max.i8 ) && ( p_par_cfg[i].def.i8 <= p_par_cfg[i].max.i8 )) && (  p_par_cfg[i].min.i8 <= p_par_cfg[i].def.i8 )) : ( 1 ));
-        PAR_ASSERT(( ePAR_TYPE_U16 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.u16 < p_par_cfg[i].max.u16 ) && ( p_par_cfg[i].def.u16 <= p_par_cfg[i].max.u16 )) && (  p_par_cfg[i].min.u16 <= p_par_cfg[i].def.u16 )) : ( 1 ));
-        PAR_ASSERT(( ePAR_TYPE_I16 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.i16 < p_par_cfg[i].max.i16 ) && ( p_par_cfg[i].def.i16 <= p_par_cfg[i].max.i16 )) && (  p_par_cfg[i].min.i16 <= p_par_cfg[i].def.i16 )) : ( 1 ));
-        PAR_ASSERT(( ePAR_TYPE_U32 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.u32 < p_par_cfg[i].max.u32 ) && ( p_par_cfg[i].def.u32 <= p_par_cfg[i].max.u32 )) && (  p_par_cfg[i].min.u32 <= p_par_cfg[i].def.u32 )) : ( 1 ));
-        PAR_ASSERT(( ePAR_TYPE_I32 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.i32 < p_par_cfg[i].max.i32 ) && ( p_par_cfg[i].def.i32 <= p_par_cfg[i].max.i32 )) && (  p_par_cfg[i].min.i32 <= p_par_cfg[i].def.i32 )) : ( 1 ));
         PAR_ASSERT(( ePAR_TYPE_F32 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.f32 < p_par_cfg[i].max.f32 ) && ( p_par_cfg[i].def.f32 <= p_par_cfg[i].max.f32 )) && (  p_par_cfg[i].min.f32 <= p_par_cfg[i].def.f32 )) : ( 1 ));
 
         // Parameter shall have a description and the name
@@ -464,7 +458,7 @@ par_status_t par_init(void)
     if ( false != par_is_init()) return ePAR_ERROR_INIT;
 
     // Check if par table is defined correctly
-    status |= par_check_table_validy( par_cfg_get_table());
+    status |= par_check_table_validity( par_cfg_get_table());
 
     // Allocate space in RAM
     par_allocate_ram_space();
@@ -1896,7 +1890,7 @@ const par_cfg_t * par_get_config(const par_num_t par_num)
     PAR_ASSERT( par_num < ePAR_NUM_OF );
     if ( par_num >= ePAR_NUM_OF ) return NULL;
 
-    return (const par_cfg_t*) par_cfg_get(par_num);
+    return par_cfg_get(par_num);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

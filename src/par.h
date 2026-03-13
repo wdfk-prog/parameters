@@ -128,7 +128,7 @@ typedef struct
  * @note    Single parameter object has size of 28 bytes on
  *             arm-gcc compiler.
  */
-typedef struct
+typedef struct par_cfg_s
 {
     const char *    name;       /**<Name of variable */
     par_type_t      min;        /**<Minimum value of parameter */

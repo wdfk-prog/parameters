@@ -132,7 +132,7 @@
 /**
  *  Package compile-time assert
  */
-#define PAR_STATIC_ASSERT(name, expn)               PAR_PORT_STATIC_ASSERT(name, expn)
+#define PAR_STATIC_ASSERT(name, expn)               PAR_PORT_STATIC_ASSERT(name, expn);
 
 /**
  *  Resolve log/assert routing mode before default macro emission
@@ -233,8 +233,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Functions Prototypes
 ////////////////////////////////////////////////////////////////////////////////
-const void * par_cfg_get_table      (void);
-const void * par_cfg_get            (const par_num_t par_num);
+const par_cfg_t * par_cfg_get_table      (void);
+const par_cfg_t * par_cfg_get            (const par_num_t par_num);
 uint32_t     par_cfg_get_table_size (void);
 
 ////////////////////////////////////////////////////////////////////////////////
