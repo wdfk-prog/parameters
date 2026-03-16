@@ -194,6 +194,24 @@ static bool         par_is_value_changed            (const par_num_t par_num, co
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_DESC ) && ( 1 == PAR_CFG_ENABLE_DESC_CHECK )
+/**
+*        Validate parameter description string
+*
+* @note         Default weak implementation only prohibits comma character.
+*               Application may override this symbol with stronger policy.
+*
+* @param[in]    p_desc - Parameter description
+* @return       true if description is valid
+*/
+////////////////////////////////////////////////////////////////////////////////
+PAR_PORT_WEAK bool par_port_is_desc_valid(const char * const p_desc)
+{
+    return ((NULL == p_desc) || (NULL == strchr(p_desc, ',')));
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /**
 *        Allocate space for live parameter values
 *
@@ -377,13 +395,11 @@ static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
         }
 #endif
 
-#if ( 1 == PAR_CFG_ENABLE_DESC ) && ( 1 == PAR_CFG_ENABLE_DESC_COMMA_CHECK )
-        // ',' is prohibited in parameter description
-        // NOTE: ',' is used as column separator and will break PC tool side parser logic in case of usage in description!
-        if ( NULL != strchr( p_par_cfg[i].desc, ',' ))
+#if ( 1 == PAR_CFG_ENABLE_DESC ) && ( 1 == PAR_CFG_ENABLE_DESC_CHECK )
+        if ( false == par_port_is_desc_valid( p_par_cfg[i].desc))
         {
             status = ePAR_ERROR_INIT;
-            PAR_DBG_PRINT( "ERR, Parameter %d description contains comma!", i );
+            PAR_DBG_PRINT( "ERR, Parameter %d description is invalid!", i );
             PAR_ASSERT( 0 );
             break;
         }

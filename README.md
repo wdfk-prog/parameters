@@ -300,7 +300,7 @@ This guarantees that invalid parameter configurations cannot pass the build stag
 
 ---
 
-### Example compile-time error
+#### Example compile-time error
 
 If the default value exceeds the allowed range:
 
@@ -327,7 +327,12 @@ Runtime validation includes:
 * floating-point (`F32`) range validation
 * parameter `name` must not be `NULL`
 * parameter `desc` must not be `NULL`
-* `desc` must not contain `,`
+* parameter description validity check through `par_port_is_desc_valid()`
+
+By default, the weak implementation of `par_port_is_desc_valid()` rejects descriptions containing `,`.
+This default policy helps keep descriptions compatible with CSV- and CLI-oriented tooling.
+
+Applications may override `par_port_is_desc_valid()` to enforce a stronger or different description policy.
 
 These checks are executed during module initialization in: `par_check_table_validity()` located in `par.c`.
 
@@ -335,7 +340,7 @@ If a runtime validation fails, module initialization will fail and an error will
 
 ---
 
-### Why `F32` validation is runtime-only
+#### Why `F32` validation is runtime-only
 
 Floating-point values are not ideal for strict compile-time validation in embedded toolchains because:
 
@@ -357,7 +362,9 @@ To maintain portability and predictable builds, `F32` validation is performed **
 | float range check           | runtime      | `F32`          |
 | `name != NULL`              | runtime      | all parameters |
 | `desc != NULL`              | runtime      | all parameters |
-| `desc` must not contain `,` | runtime      | all parameters |
+| `desc` validity check via `par_port_is_desc_valid()` | runtime | all parameters |
+
+The default weak implementation rejects `,` in descriptions, but this behavior may be overridden by the application.
 
 ## **Configuration model**
 
@@ -837,7 +844,7 @@ Platform-specific overrides and hooks are provided in: `port/par_cfg_port.h`
 | **PAR_CFG_ENABLE_NAME** | Enable parameter name metadata and `par_get_name()` API. |
 | **PAR_CFG_ENABLE_UNIT** | Enable parameter unit metadata and `par_get_unit()` API. |
 | **PAR_CFG_ENABLE_DESC** | Enable parameter description metadata and `par_get_desc()` API. |
-| **PAR_CFG_ENABLE_DESC_COMMA_CHECK** | Enable validation that forbids `,` inside parameter descriptions (used by CSV/CLI tools). |
+| **PAR_CFG_ENABLE_DESC_CHECK** | Enable description validity checks. The default policy forbids `,` in descriptions, and the application may override the validation hook. |
 | **PAR_CFG_ENABLE_ID** | Enable parameter ID metadata and ID-based APIs (`par_get_by_id`, `par_set_by_id`). |
 | **PAR_CFG_ENABLE_ACCESS** | Enable access control metadata (`RO/RW`) and `par_get_access()` API. |
 | **PAR_CFG_ENABLE_PERSIST** | Enable parameter persistence metadata and persistent parameter support. |

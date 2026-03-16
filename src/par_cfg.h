@@ -26,6 +26,7 @@
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
 #include <stdint.h>
+#include <stdbool.h>
 #include "par_def.h"
 
 // USER CODE BEGIN...
@@ -127,6 +128,15 @@
 
 #ifndef PAR_PORT_STATIC_ASSERT
     #define PAR_PORT_STATIC_ASSERT(name, expn)      typedef char _static_assert_##name[(expn) ? 1 : -1]
+#endif
+
+/**
+ *  Platform weak symbol macro
+ *
+ * @note   Integrator may override this macro (for example: RT_WEAK).
+ */
+#ifndef PAR_PORT_WEAK
+    #define PAR_PORT_WEAK                           __attribute__((weak))
 #endif
 
 /**
@@ -280,12 +290,12 @@
 #endif
 
 /**
- *  Enable/Disable description comma check
+ *  Enable/Disable description check
  *
  * @note  Default follows PAR_CFG_ENABLE_DESC.
  */
-#ifndef PAR_CFG_ENABLE_DESC_COMMA_CHECK
-    #define PAR_CFG_ENABLE_DESC_COMMA_CHECK         ( PAR_CFG_ENABLE_DESC )
+#ifndef PAR_CFG_ENABLE_DESC_CHECK
+    #define PAR_CFG_ENABLE_DESC_CHECK               ( PAR_CFG_ENABLE_DESC )
 #endif
 
 /**
