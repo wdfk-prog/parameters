@@ -34,6 +34,7 @@
 /**
  * Shared compile-time range checks for integer parameter items.
  */
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
 #define PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)                      \
     PAR_STATIC_ASSERT(enum_##_min_lt_max, ((min_) < (max_)));              \
     PAR_STATIC_ASSERT(enum_##_def_ge_min, ((def_) >= (min_)));             \
@@ -51,6 +52,14 @@
 #define PAR_CHECK_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
 #define PAR_CHECK_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
 #define PAR_CHECK_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
+#else
+#define PAR_CHECK_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_CHECK_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_CHECK_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_CHECK_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_CHECK_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_CHECK_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#endif
 /*
  * NOTE: F32 range checks are runtime-only.
  *
@@ -88,7 +97,9 @@
 #undef PAR_CHECK_I16
 #undef PAR_CHECK_I32
 #undef PAR_CHECK_F32
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
 #undef PAR_CHECK_INT_COMMON
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -120,102 +131,149 @@
  * Signature:
  *   (enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
  */
-#define PAR_INIT_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)    \
-    [enum_] = {                                                                             \
-        .id = (uint16_t)(id_),                                                              \
-        .name = (name_),                                                                    \
-        .min.u8 = (uint8_t)(min_),                                                          \
-        .max.u8 = (uint8_t)(max_),                                                          \
-        .def.u8 = (uint8_t)(def_),                                                          \
-        .unit = (unit_),                                                                    \
-        .type = ePAR_TYPE_U8,                                                               \
-        .access = (access_),                                                                \
-        .persistant = (pers_),                                                              \
-        .desc = (desc_)                                                                     \
+#if ( 1 == PAR_CFG_ENABLE_ID )
+    #define PAR_INIT_ID(id_)                        .id = (uint16_t)(id_),
+#else
+    #define PAR_INIT_ID(id_)
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_NAME )
+    #define PAR_INIT_NAME(name_)                    .name = (name_),
+#else
+    #define PAR_INIT_NAME(name_)
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
+    #define PAR_INIT_RANGE_U8(min_, max_)           .min.u8 = (uint8_t)(min_), .max.u8 = (uint8_t)(max_),
+    #define PAR_INIT_RANGE_U16(min_, max_)          .min.u16 = (uint16_t)(min_), .max.u16 = (uint16_t)(max_),
+    #define PAR_INIT_RANGE_U32(min_, max_)          .min.u32 = (uint32_t)(min_), .max.u32 = (uint32_t)(max_),
+    #define PAR_INIT_RANGE_I8(min_, max_)           .min.i8 = (int8_t)(min_), .max.i8 = (int8_t)(max_),
+    #define PAR_INIT_RANGE_I16(min_, max_)          .min.i16 = (int16_t)(min_), .max.i16 = (int16_t)(max_),
+    #define PAR_INIT_RANGE_I32(min_, max_)          .min.i32 = (int32_t)(min_), .max.i32 = (int32_t)(max_),
+    #define PAR_INIT_RANGE_F32(min_, max_)          .min.f32 = (float32_t)(min_), .max.f32 = (float32_t)(max_),
+#else
+    #define PAR_INIT_RANGE_U8(min_, max_)
+    #define PAR_INIT_RANGE_U16(min_, max_)
+    #define PAR_INIT_RANGE_U32(min_, max_)
+    #define PAR_INIT_RANGE_I8(min_, max_)
+    #define PAR_INIT_RANGE_I16(min_, max_)
+    #define PAR_INIT_RANGE_I32(min_, max_)
+    #define PAR_INIT_RANGE_F32(min_, max_)
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_UNIT )
+    #define PAR_INIT_UNIT(unit_)                    .unit = (unit_),
+#else
+    #define PAR_INIT_UNIT(unit_)
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_ACCESS )
+    #define PAR_INIT_ACCESS(access_)                .access = (access_),
+#else
+    #define PAR_INIT_ACCESS(access_)
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_PERSIST )
+    #define PAR_INIT_PERSIST(pers_)                 .persistant = (pers_),
+#else
+    #define PAR_INIT_PERSIST(pers_)
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_DESC )
+    #define PAR_INIT_DESC(desc_)                    .desc = (desc_),
+#else
+    #define PAR_INIT_DESC(desc_)
+#endif
+
+#define PAR_INIT_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)      \
+    [enum_] = {                                                                               \
+        PAR_INIT_ID(id_)                                                                      \
+        PAR_INIT_NAME(name_)                                                                  \
+        PAR_INIT_RANGE_U8(min_, max_)                                                         \
+        .def.u8 = (uint8_t)(def_),                                                            \
+        PAR_INIT_UNIT(unit_)                                                                  \
+        .type = ePAR_TYPE_U8,                                                                 \
+        PAR_INIT_ACCESS(access_)                                                              \
+        PAR_INIT_PERSIST(pers_)                                                               \
+        PAR_INIT_DESC(desc_)                                                                  \
     },
 
-#define PAR_INIT_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   \
-    [enum_] = {                                                                             \
-        .id = (uint16_t)(id_),                                                              \
-        .name = (name_),                                                                    \
-        .min.u16 = (uint16_t)(min_),                                                        \
-        .max.u16 = (uint16_t)(max_),                                                        \
-        .def.u16 = (uint16_t)(def_),                                                        \
-        .unit = (unit_),                                                                    \
-        .type = ePAR_TYPE_U16,                                                              \
-        .access = (access_),                                                                \
-        .persistant = (pers_),                                                              \
-        .desc = (desc_)                                                                     \
+#define PAR_INIT_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     \
+    [enum_] = {                                                                               \
+        PAR_INIT_ID(id_)                                                                      \
+        PAR_INIT_NAME(name_)                                                                  \
+        PAR_INIT_RANGE_U16(min_, max_)                                                        \
+        .def.u16 = (uint16_t)(def_),                                                          \
+        PAR_INIT_UNIT(unit_)                                                                  \
+        .type = ePAR_TYPE_U16,                                                                \
+        PAR_INIT_ACCESS(access_)                                                              \
+        PAR_INIT_PERSIST(pers_)                                                               \
+        PAR_INIT_DESC(desc_)                                                                  \
     },
 
-#define PAR_INIT_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   \
-    [enum_] = {                                                                             \
-        .id = (uint16_t)(id_),                                                              \
-        .name = (name_),                                                                    \
-        .min.u32 = (uint32_t)(min_),                                                        \
-        .max.u32 = (uint32_t)(max_),                                                        \
-        .def.u32 = (uint32_t)(def_),                                                        \
-        .unit = (unit_),                                                                    \
-        .type = ePAR_TYPE_U32,                                                              \
-        .access = (access_),                                                                \
-        .persistant = (pers_),                                                              \
-        .desc = (desc_)                                                                     \
+#define PAR_INIT_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     \
+    [enum_] = {                                                                               \
+        PAR_INIT_ID(id_)                                                                      \
+        PAR_INIT_NAME(name_)                                                                  \
+        PAR_INIT_RANGE_U32(min_, max_)                                                        \
+        .def.u32 = (uint32_t)(def_),                                                          \
+        PAR_INIT_UNIT(unit_)                                                                  \
+        .type = ePAR_TYPE_U32,                                                                \
+        PAR_INIT_ACCESS(access_)                                                              \
+        PAR_INIT_PERSIST(pers_)                                                               \
+        PAR_INIT_DESC(desc_)                                                                  \
     },
 
-#define PAR_INIT_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)    \
-    [enum_] = {                                                                             \
-        .id = (uint16_t)(id_),                                                              \
-        .name = (name_),                                                                    \
-        .min.i8 = (int8_t)(min_),                                                           \
-        .max.i8 = (int8_t)(max_),                                                           \
-        .def.i8 = (int8_t)(def_),                                                           \
-        .unit = (unit_),                                                                    \
-        .type = ePAR_TYPE_I8,                                                               \
-        .access = (access_),                                                                \
-        .persistant = (pers_),                                                              \
-        .desc = (desc_)                                                                     \
+#define PAR_INIT_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)      \
+    [enum_] = {                                                                               \
+        PAR_INIT_ID(id_)                                                                      \
+        PAR_INIT_NAME(name_)                                                                  \
+        PAR_INIT_RANGE_I8(min_, max_)                                                         \
+        .def.i8 = (int8_t)(def_),                                                             \
+        PAR_INIT_UNIT(unit_)                                                                  \
+        .type = ePAR_TYPE_I8,                                                                 \
+        PAR_INIT_ACCESS(access_)                                                              \
+        PAR_INIT_PERSIST(pers_)                                                               \
+        PAR_INIT_DESC(desc_)                                                                  \
     },
 
-#define PAR_INIT_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   \
-    [enum_] = {                                                                             \
-        .id = (uint16_t)(id_),                                                              \
-        .name = (name_),                                                                    \
-        .min.i16 = (int16_t)(min_),                                                         \
-        .max.i16 = (int16_t)(max_),                                                         \
-        .def.i16 = (int16_t)(def_),                                                         \
-        .unit = (unit_),                                                                    \
-        .type = ePAR_TYPE_I16,                                                              \
-        .access = (access_),                                                                \
-        .persistant = (pers_),                                                              \
-        .desc = (desc_)                                                                     \
+#define PAR_INIT_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     \
+    [enum_] = {                                                                               \
+        PAR_INIT_ID(id_)                                                                      \
+        PAR_INIT_NAME(name_)                                                                  \
+        PAR_INIT_RANGE_I16(min_, max_)                                                        \
+        .def.i16 = (int16_t)(def_),                                                           \
+        PAR_INIT_UNIT(unit_)                                                                  \
+        .type = ePAR_TYPE_I16,                                                                \
+        PAR_INIT_ACCESS(access_)                                                              \
+        PAR_INIT_PERSIST(pers_)                                                               \
+        PAR_INIT_DESC(desc_)                                                                  \
     },
 
-#define PAR_INIT_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   \
-    [enum_] = {                                                                             \
-        .id = (uint16_t)(id_),                                                              \
-        .name = (name_),                                                                    \
-        .min.i32 = (int32_t)(min_),                                                         \
-        .max.i32 = (int32_t)(max_),                                                         \
-        .def.i32 = (int32_t)(def_),                                                         \
-        .unit = (unit_),                                                                    \
-        .type = ePAR_TYPE_I32,                                                              \
-        .access = (access_),                                                                \
-        .persistant = (pers_),                                                              \
-        .desc = (desc_)                                                                     \
+#define PAR_INIT_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     \
+    [enum_] = {                                                                               \
+        PAR_INIT_ID(id_)                                                                      \
+        PAR_INIT_NAME(name_)                                                                  \
+        PAR_INIT_RANGE_I32(min_, max_)                                                        \
+        .def.i32 = (int32_t)(def_),                                                           \
+        PAR_INIT_UNIT(unit_)                                                                  \
+        .type = ePAR_TYPE_I32,                                                                \
+        PAR_INIT_ACCESS(access_)                                                              \
+        PAR_INIT_PERSIST(pers_)                                                               \
+        PAR_INIT_DESC(desc_)                                                                  \
     },
 
-#define PAR_INIT_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   \
-    [enum_] = {                                                                             \
-        .id = (uint16_t)(id_),                                                              \
-        .name = (name_),                                                                    \
-        .min.f32 = (float32_t)(min_),                                                       \
-        .max.f32 = (float32_t)(max_),                                                       \
-        .def.f32 = (float32_t)(def_),                                                       \
-        .unit = (unit_),                                                                    \
-        .type = ePAR_TYPE_F32,                                                              \
-        .access = (access_),                                                                \
-        .persistant = (pers_),                                                              \
-        .desc = (desc_)                                                                     \
+#define PAR_INIT_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     \
+    [enum_] = {                                                                               \
+        PAR_INIT_ID(id_)                                                                      \
+        PAR_INIT_NAME(name_)                                                                  \
+        PAR_INIT_RANGE_F32(min_, max_)                                                        \
+        .def.f32 = (float32_t)(def_),                                                         \
+        PAR_INIT_UNIT(unit_)                                                                  \
+        .type = ePAR_TYPE_F32,                                                                \
+        PAR_INIT_ACCESS(access_)                                                              \
+        PAR_INIT_PERSIST(pers_)                                                               \
+        PAR_INIT_DESC(desc_)                                                                  \
     },
 
 /**
@@ -249,6 +307,19 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] =
 #undef PAR_INIT_I16
 #undef PAR_INIT_I32
 #undef PAR_INIT_F32
+#undef PAR_INIT_ID
+#undef PAR_INIT_NAME
+#undef PAR_INIT_RANGE_U8
+#undef PAR_INIT_RANGE_U16
+#undef PAR_INIT_RANGE_U32
+#undef PAR_INIT_RANGE_I8
+#undef PAR_INIT_RANGE_I16
+#undef PAR_INIT_RANGE_I32
+#undef PAR_INIT_RANGE_F32
+#undef PAR_INIT_UNIT
+#undef PAR_INIT_ACCESS
+#undef PAR_INIT_PERSIST
+#undef PAR_INIT_DESC
 
 /**
  * 	Table size in bytes

@@ -230,6 +230,75 @@
     #define PAR_CFG_PORT_HOOK_EN                    ( 0 )
 #endif
 
+/**
+ *  Enable/Disable parameter range metadata (min/max)
+ */
+#ifndef PAR_CFG_ENABLE_RANGE
+    #define PAR_CFG_ENABLE_RANGE                    ( 1 )
+#endif
+
+/**
+ *  Enable/Disable parameter name metadata
+ */
+#ifndef PAR_CFG_ENABLE_NAME
+    #define PAR_CFG_ENABLE_NAME                     ( 1 )
+#endif
+
+/**
+ *  Enable/Disable parameter unit metadata
+ */
+#ifndef PAR_CFG_ENABLE_UNIT
+    #define PAR_CFG_ENABLE_UNIT                     ( 1 )
+#endif
+
+/**
+ *  Enable/Disable parameter description metadata
+ */
+#ifndef PAR_CFG_ENABLE_DESC
+    #define PAR_CFG_ENABLE_DESC                     ( 1 )
+#endif
+
+/**
+ *  Enable/Disable parameter ID metadata
+ */
+#ifndef PAR_CFG_ENABLE_ID
+    #define PAR_CFG_ENABLE_ID                       ( 1 )
+#endif
+
+/**
+ *  Enable/Disable parameter access metadata
+ */
+#ifndef PAR_CFG_ENABLE_ACCESS
+    #define PAR_CFG_ENABLE_ACCESS                   ( 1 )
+#endif
+
+/**
+ *  Enable/Disable parameter persistence metadata
+ */
+#ifndef PAR_CFG_ENABLE_PERSIST
+    #define PAR_CFG_ENABLE_PERSIST                  ( 1 )
+#endif
+
+/**
+ *  Enable/Disable description comma check
+ *
+ * @note  Default follows PAR_CFG_ENABLE_DESC.
+ */
+#ifndef PAR_CFG_ENABLE_DESC_COMMA_CHECK
+    #define PAR_CFG_ENABLE_DESC_COMMA_CHECK         ( PAR_CFG_ENABLE_DESC )
+#endif
+
+/**
+ *  Configuration dependency checks for optional fields/features
+ */
+#if ( 1 == PAR_CFG_NVM_EN ) && ( 0 == PAR_CFG_ENABLE_ID )
+    #error "Parameter settings invalid: NVM requires PAR_CFG_ENABLE_ID = 1!"
+#endif
+
+#if ( 1 == PAR_CFG_NVM_EN ) && ( 0 == PAR_CFG_ENABLE_PERSIST )
+    #error "Parameter settings invalid: NVM requires PAR_CFG_ENABLE_PERSIST = 1!"
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // Functions Prototypes
 ////////////////////////////////////////////////////////////////////////////////

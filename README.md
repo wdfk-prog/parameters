@@ -815,24 +815,32 @@ This definition will be expanded through the X-Macro system to generate:
 
 ### 2. Configure the module
 
-The main package configuration is defined in:`parameters/src/par_cfg.h`
+The main package configuration is defined in: `parameters/src/par_cfg.h`
 
-Platform-specific overrides and hooks are provided in:`port/par_cfg_port.h`
+Platform-specific overrides and hooks are provided in: `port/par_cfg_port.h`
 
 | Configuration | Description |
-| --- | --- |
-| **PAR_CFG_NVM_EN**            | Enable/Disable usage of NVM for persistent parameters. |
-| **PAR_CFG_NVM_REGION**        | Select NVM region for Device Parameter storage space. | 
-| **PAR_CFG_DEBUG_EN**          | Enable/Disable debugging mode. |
-| **PAR_CFG_ASSERT_EN**         | Enable/Disable asserts. Shall be disabled in release build!  | 
-| **PAR_DBG_PRINT**             | Definition of debug print. |
-| **PAR_ASSERT**                | Definition of assert. |
-| **PAR_ATOMIC_BACKEND**        | Select atomic backend implementation. |
-| **PAR_CFG_TABLE_ID_CHECK_EN** | Enable or disable parameter table unique ID checking for NVM compatibility workflows. |
-| **PAR_CFG_MUTEX_EN**          | Enable or disable mutex protection.                                                   |
-| **PAR_CFG_MUTEX_TIMEOUT_MS**  | Mutex timeout in milliseconds.                                                        |
-| **PAR_CFG_IF_PORT_EN**        | Enable platform-specific `par_if` backend.                                            |
-| **PAR_CFG_PORT_HOOK_EN**      | Enable platform log/assert hooks.                                                     |
+|---|---|
+| **PAR_CFG_NVM_EN** | Enable or disable usage of NVM for persistent parameters. |
+| **PAR_CFG_NVM_REGION** | Select NVM region used to store persistent parameter values. |
+| **PAR_CFG_DEBUG_EN** | Enable debug features such as diagnostic logging. |
+| **PAR_CFG_ASSERT_EN** | Enable runtime assertions. Should be disabled in release builds. |
+| **PAR_DBG_PRINT** | Debug print macro implementation. |
+| **PAR_ASSERT** | Assertion macro implementation. |
+| **PAR_ATOMIC_BACKEND** | Select atomic operation backend implementation (e.g. C11, RTOS, platform-specific). |
+| **PAR_CFG_TABLE_ID_CHECK_EN** | Enable compile-time or initialization-time checks for duplicate parameter IDs. |
+| **PAR_CFG_MUTEX_EN** | Enable mutex protection for thread-safe parameter access. |
+| **PAR_CFG_MUTEX_TIMEOUT_MS** | Mutex acquisition timeout in milliseconds. |
+| **PAR_CFG_IF_PORT_EN** | Enable platform-specific backend implemented in `port/par_if_port.c`. |
+| **PAR_CFG_PORT_HOOK_EN** | Enable platform log/assert hook redirection. |
+| **PAR_CFG_ENABLE_RANGE** | Enable parameter range metadata (`min` / `max`) and range validation. |
+| **PAR_CFG_ENABLE_NAME** | Enable parameter name metadata and `par_get_name()` API. |
+| **PAR_CFG_ENABLE_UNIT** | Enable parameter unit metadata and `par_get_unit()` API. |
+| **PAR_CFG_ENABLE_DESC** | Enable parameter description metadata and `par_get_desc()` API. |
+| **PAR_CFG_ENABLE_DESC_COMMA_CHECK** | Enable validation that forbids `,` inside parameter descriptions (used by CSV/CLI tools). |
+| **PAR_CFG_ENABLE_ID** | Enable parameter ID metadata and ID-based APIs (`par_get_by_id`, `par_set_by_id`). |
+| **PAR_CFG_ENABLE_ACCESS** | Enable access control metadata (`RO/RW`) and `par_get_access()` API. |
+| **PAR_CFG_ENABLE_PERSIST** | Enable parameter persistence metadata and persistent parameter support. |
 
 ### **3. Build integration**
 

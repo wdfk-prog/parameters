@@ -116,11 +116,13 @@ typedef union
 /**
  *  Parameter value range
  */
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
 typedef struct
 {
     par_type_t min; /**<Minimum value */
     par_type_t max; /**<Maximum value */
 } par_range_t;
+#endif
 
 /**
  *     Parameter data settings
@@ -130,16 +132,30 @@ typedef struct
  */
 typedef struct par_cfg_s
 {
+#if ( 1 == PAR_CFG_ENABLE_NAME )
     const char *    name;       /**<Name of variable */
+#endif
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     par_type_t      min;        /**<Minimum value of parameter */
     par_type_t      max;        /**<Maximum value of parameter */
+#endif
     par_type_t      def;        /**<Default value of parameter */
+#if ( 1 == PAR_CFG_ENABLE_UNIT )
     const char *    unit;       /**<Unit of parameter */
+#endif
+#if ( 1 == PAR_CFG_ENABLE_DESC )
     const char *    desc;       /**<Parameter description */
+#endif
+#if ( 1 == PAR_CFG_ENABLE_ID )
     uint16_t        id;         /**<Variable ID */
+#endif
     par_type_list_t type;       /**<Parameter type */
+#if ( 1 == PAR_CFG_ENABLE_ACCESS )
     par_access_t    access;     /**<Parameter access from external device point-of-view */
+#endif
+#if ( 1 == PAR_CFG_ENABLE_PERSIST )
     bool            persistant; /**<Parameter persistence flag */
+#endif
 } par_cfg_t;
 
 /**
@@ -164,7 +180,9 @@ void         par_release_mutex  (const par_num_t par_num);
 
 // Setting parameter value API (module must be first initialized before using those func)
 par_status_t par_set                (const par_num_t par_num, const void * p_val);
+#if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_set_by_id          (const uint16_t id, const void * p_val);
+#endif
 par_status_t par_set_u8             (const par_num_t par_num, const uint8_t val);
 par_status_t par_set_i8             (const par_num_t par_num, const int8_t val);
 par_status_t par_set_u16            (const par_num_t par_num, const uint16_t val);
@@ -213,7 +231,9 @@ par_status_t par_has_changed        (const par_num_t par_num, bool *const p_has_
 
 // Getting parameter value API (module must be first initialized before using those func)
 par_status_t par_get            (const par_num_t par_num, void * const p_val);
+#if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_get_by_id      (const uint16_t id, void * const p_val);
+#endif
 uint8_t      par_get_u8         (const par_num_t par_num);
 int8_t       par_get_i8         (const par_num_t par_num);
 uint16_t     par_get_u16        (const par_num_t par_num);
@@ -248,22 +268,38 @@ bool         par_is_changed     (const par_num_t par_num);
 
 // Parameter configurations API (usage without module init pre-step)
 const par_cfg_t *   par_get_config      (const par_num_t par_num);
+#if ( 1 == PAR_CFG_ENABLE_NAME )
 const char *        par_get_name        (const par_num_t par_num);
+#endif
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
 par_range_t         par_get_range       (const par_num_t par_num);
+#endif
+#if ( 1 == PAR_CFG_ENABLE_UNIT )
 const char *        par_get_unit        (const par_num_t par_num);
+#endif
+#if ( 1 == PAR_CFG_ENABLE_DESC )
 const char *        par_get_desc        (const par_num_t par_num);
+#endif
 par_type_list_t     par_get_type        (const par_num_t par_num);
+#if ( 1 == PAR_CFG_ENABLE_ACCESS )
 par_access_t        par_get_access      (const par_num_t par_num);
+#endif
+#if ( 1 == PAR_CFG_ENABLE_PERSIST )
 bool                par_is_persistant   (const par_num_t par_num);
+#endif
+#if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t        par_get_num_by_id   (const uint16_t id, par_num_t * const p_par_num);
 par_status_t        par_get_id_by_num   (const par_num_t par_num, uint16_t * const p_id);
+#endif
 
 // Parameter NVM storage API
 #if ( 1 == PAR_CFG_NVM_EN )
     par_status_t par_set_n_save (const par_num_t par_num, const void * p_val);
     par_status_t par_save_all   (void);
     par_status_t par_save       (const par_num_t par_num);
+#if ( 1 == PAR_CFG_ENABLE_ID )
     par_status_t par_save_by_id (const uint16_t par_id);
+#endif
     par_status_t par_save_clean (void);
 #endif
 

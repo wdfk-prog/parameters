@@ -39,41 +39,43 @@
  *
  * GoldenRatio = ~(Math.pow(2, 32) / ((Math.sqrt(5) - 1) / 2)) + 1
  */
-#define PAR_ID_HASH_GOLDEN_RATIO_32   ( 0x61C88647u )
+#if ( 1 == PAR_CFG_ENABLE_ID )
+    #define PAR_ID_HASH_GOLDEN_RATIO_32   ( 0x61C88647u )
 
 /**
  *  Minimum number of hash buckets to keep target load factor <= 0.5.
  */
-#define PAR_ID_HASH_MIN_BUCKETS       ((uint32_t)(2u * (uint32_t)ePAR_NUM_OF))
+    #define PAR_ID_HASH_MIN_BUCKETS       ((uint32_t)(2u * (uint32_t)ePAR_NUM_OF))
 
 /**
  *  Hash map geometry derived from ePAR_NUM_OF at compile time.
  */
-enum
-{
-    PAR_ID_HASH_BITS =
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 1  )) ? 1u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 2  )) ? 2u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 3  )) ? 3u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 4  )) ? 4u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 5  )) ? 5u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 6  )) ? 6u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 7  )) ? 7u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 8  )) ? 8u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 9  )) ? 9u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 10 )) ? 10u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 11 )) ? 11u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 12 )) ? 12u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 13 )) ? 13u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 14 )) ? 14u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 15 )) ? 15u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 16 )) ? 16u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 17 )) ? 17u : 18u,
-    PAR_ID_HASH_SIZE = ( 1u << PAR_ID_HASH_BITS ),
-};
+    enum
+    {
+        PAR_ID_HASH_BITS =
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 1  )) ? 1u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 2  )) ? 2u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 3  )) ? 3u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 4  )) ? 4u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 5  )) ? 5u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 6  )) ? 6u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 7  )) ? 7u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 8  )) ? 8u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 9  )) ? 9u  :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 10 )) ? 10u :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 11 )) ? 11u :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 12 )) ? 12u :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 13 )) ? 13u :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 14 )) ? 14u :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 15 )) ? 15u :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 16 )) ? 16u :
+            ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 17 )) ? 17u : 18u,
+        PAR_ID_HASH_SIZE = ( 1u << PAR_ID_HASH_BITS ),
+    };
 
-PAR_STATIC_ASSERT(par_id_hash_size_valid, (PAR_ID_HASH_SIZE >= PAR_ID_HASH_MIN_BUCKETS));
-PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HASH_BITS < 32u)));
+    PAR_STATIC_ASSERT(par_id_hash_size_valid, (PAR_ID_HASH_SIZE >= PAR_ID_HASH_MIN_BUCKETS));
+    PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HASH_BITS < 32u)));
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -96,22 +98,24 @@ static struct
 /**
  *  ID hash map entry.
  */
-typedef struct
-{
-    uint16_t  id;
-    par_num_t par_num;
-    uint8_t   used;
-} par_id_map_entry_t;
+#if ( 1 == PAR_CFG_ENABLE_ID )
+    typedef struct
+    {
+        uint16_t  id;
+        par_num_t par_num;
+        uint8_t   used;
+    } par_id_map_entry_t;
 
-/**
- *  Runtime ID hash map.
- */
-static par_id_map_entry_t g_par_id_map[PAR_ID_HASH_SIZE] = {0};
+    /**
+     *  Runtime ID hash map.
+     */
+    static par_id_map_entry_t g_par_id_map[PAR_ID_HASH_SIZE] = {0};
 
-/**
- *  Initialization guard for ID hash map.
- */
-static bool gb_par_id_map_ready = false;
+    /**
+     *  Initialization guard for ID hash map.
+     */
+    static bool gb_par_id_map_ready = false;
+#endif
 
 /**
  *  Parameter live values divided by its type in RAM
@@ -176,8 +180,10 @@ static uint32_t gu32_par_offset[ ePAR_NUM_OF ] = { 0 };
 // Function Prototypes
 ////////////////////////////////////////////////////////////////////////////////
 static void             par_allocate_ram_space          (void);
+#if ( 1 == PAR_CFG_ENABLE_ID )
 static inline uint32_t  par_hash_id                     (const uint16_t id);
 static par_status_t     par_build_and_validate_id_map   (const par_cfg_t * const p_par_cfg);
+#endif
 static par_status_t     par_check_table_validity        (const par_cfg_t * const p_par_cfg);
 #if ( 1 == PAR_CFG_NVM_EN )
 static bool         par_is_value_changed            (const par_num_t par_num, const void * p_val);
@@ -267,6 +273,7 @@ static void par_allocate_ram_space(void)
 * @return       hash index
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_ID )
 static inline uint32_t par_hash_id(const uint16_t id)
 {
     return (((uint32_t) id * PAR_ID_HASH_GOLDEN_RATIO_32 ) >> ( 32u - PAR_ID_HASH_BITS ));
@@ -313,6 +320,7 @@ static par_status_t par_build_and_validate_id_map(const par_cfg_t * const p_par_
 
     return ePAR_OK;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -326,16 +334,19 @@ static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
 {
     par_status_t status = ePAR_OK;
 
+#if ( 1 == PAR_CFG_ENABLE_ID )
     // Build and validate runtime ID hash map
     status = par_build_and_validate_id_map( p_par_cfg );
     if ( ePAR_OK != status )
     {
         return status;
     }
+#endif
 
     // For each parameter
     for ( uint32_t i = 0; i < ePAR_NUM_OF; i++ )
     {
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
         /*
          * Keep F32 range/default validation in runtime.
          *
@@ -344,27 +355,39 @@ static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
          * expressions and trigger file-scope VLA warnings.
          */
         PAR_ASSERT(( ePAR_TYPE_F32 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.f32 < p_par_cfg[i].max.f32 ) && ( p_par_cfg[i].def.f32 <= p_par_cfg[i].max.f32 )) && (  p_par_cfg[i].min.f32 <= p_par_cfg[i].def.f32 )) : ( 1 ));
+#endif
 
-        // Parameter shall have a description and the name
-        if (( NULL == p_par_cfg[i].name ) || ( NULL == p_par_cfg[i].desc ))
+#if ( 1 == PAR_CFG_ENABLE_NAME )
+        if ( NULL == p_par_cfg[i].name )
         {
             status = ePAR_ERROR_INIT;
-            PAR_DBG_PRINT( "ERR, Parameter %d definition incomplete!", i );
+            PAR_DBG_PRINT( "ERR, Parameter %d name missing!", i );
             PAR_ASSERT( 0 );
             break;
         }
-        else
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_DESC )
+        if ( NULL == p_par_cfg[i].desc )
         {
-            // ',' is prohibited in parameter description
-            // NOTE: ',' is used as column separator and will break PC tool side parser logic in case of usage in description!
-            if ( NULL != strchr(p_par_cfg[i].desc, ','))
-            {
-                status = ePAR_ERROR_INIT;
-                PAR_DBG_PRINT( "ERR, Parameter %d description contains comma!", i );
-                PAR_ASSERT( 0 );
-                break;
-            }
+            status = ePAR_ERROR_INIT;
+            PAR_DBG_PRINT( "ERR, Parameter %d description missing!", i );
+            PAR_ASSERT( 0 );
+            break;
         }
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_DESC ) && ( 1 == PAR_CFG_ENABLE_DESC_COMMA_CHECK )
+        // ',' is prohibited in parameter description
+        // NOTE: ',' is used as column separator and will break PC tool side parser logic in case of usage in description!
+        if ( NULL != strchr( p_par_cfg[i].desc, ',' ))
+        {
+            status = ePAR_ERROR_INIT;
+            PAR_DBG_PRINT( "ERR, Parameter %d description contains comma!", i );
+            PAR_ASSERT( 0 );
+            break;
+        }
+#endif
     }
 
     return status;
@@ -471,7 +494,9 @@ par_status_t par_init(void)
     if ( ePAR_OK == status )
     {
         gb_is_init = true;
+#if ( 1 == PAR_CFG_ENABLE_ID )
         gb_par_id_map_ready = true;
+#endif
 
         // Set all parameters to default
         par_set_all_to_default();
@@ -508,7 +533,9 @@ par_status_t par_deinit(void)
 
     // Module de-initialized
     gb_is_init = false;
+#if ( 1 == PAR_CFG_ENABLE_ID )
     gb_par_id_map_ready = false;
+#endif
 
     return status;
 }
@@ -626,6 +653,7 @@ par_status_t par_set(const par_num_t par_num, const void * p_val)
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_set_by_id(const uint16_t id, const void * p_val)
 {
     par_num_t par_num;
@@ -639,6 +667,7 @@ par_status_t par_set_by_id(const uint16_t id, const void * p_val)
         return ePAR_ERROR;
     }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1042,6 +1071,7 @@ par_status_t par_set_u8_fast(const par_num_t par_num, const uint8_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U8 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u8 )
@@ -1059,6 +1089,10 @@ par_status_t par_set_u8_fast(const par_num_t par_num, const uint8_t val)
         PAR_SET_U8_PRIV( par_num, val );
         return ePAR_OK;
     }
+#else
+    PAR_SET_U8_PRIV( par_num, val );
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1075,6 +1109,7 @@ par_status_t par_set_i8_fast(const par_num_t par_num, const int8_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_I8 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.i8 )
@@ -1092,6 +1127,10 @@ par_status_t par_set_i8_fast(const par_num_t par_num, const int8_t val)
         PAR_SET_I8_PRIV( par_num, val );
         return ePAR_OK;
     }
+#else
+    PAR_SET_I8_PRIV( par_num, val );
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1108,6 +1147,7 @@ par_status_t par_set_u16_fast(const par_num_t par_num, const uint16_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U16 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u16 )
@@ -1125,6 +1165,10 @@ par_status_t par_set_u16_fast(const par_num_t par_num, const uint16_t val)
         PAR_SET_U16_PRIV( par_num, val );
         return ePAR_OK;
     }
+#else
+    PAR_SET_U16_PRIV( par_num, val );
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1141,6 +1185,7 @@ par_status_t par_set_i16_fast(const par_num_t par_num, const int16_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_I16 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.i16 )
@@ -1158,6 +1203,10 @@ par_status_t par_set_i16_fast(const par_num_t par_num, const int16_t val)
         PAR_SET_I16_PRIV( par_num, val );
         return ePAR_OK;
     }
+#else
+    PAR_SET_I16_PRIV( par_num, val );
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1174,6 +1223,7 @@ par_status_t par_set_u32_fast(const par_num_t par_num, const uint32_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U32 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u32 )
@@ -1191,6 +1241,10 @@ par_status_t par_set_u32_fast(const par_num_t par_num, const uint32_t val)
         PAR_SET_U32_PRIV( par_num, val );
         return ePAR_OK;
     }
+#else
+    PAR_SET_U32_PRIV( par_num, val );
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1207,6 +1261,7 @@ par_status_t par_set_i32_fast(const par_num_t par_num, const int32_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_I32 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.i32 )
@@ -1224,6 +1279,10 @@ par_status_t par_set_i32_fast(const par_num_t par_num, const int32_t val)
         PAR_SET_I32_PRIV( par_num, val );
         return ePAR_OK;
     }
+#else
+    PAR_SET_I32_PRIV( par_num, val );
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1240,6 +1299,7 @@ par_status_t par_set_f32_fast(const par_num_t par_num, const float32_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_F32 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.f32 )
@@ -1257,6 +1317,10 @@ par_status_t par_set_f32_fast(const par_num_t par_num, const float32_t val)
         PAR_SET_F32_PRIV( par_num, val );
         return ePAR_OK;
     }
+#else
+    PAR_SET_F32_PRIV( par_num, val );
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1273,6 +1337,7 @@ par_status_t par_bitand_set_u8_fast(const par_num_t par_num, const uint8_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U8 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u8 )
@@ -1290,6 +1355,10 @@ par_status_t par_bitand_set_u8_fast(const par_num_t par_num, const uint8_t val)
         PAR_ATOMIC_FETCH_AND(u8, &gpu8_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
+#else
+    PAR_ATOMIC_FETCH_AND(u8, &gpu8_par_value[gu32_par_offset[par_num]], val);
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1306,6 +1375,7 @@ par_status_t par_bitand_set_u16_fast(const par_num_t par_num, const uint16_t val
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U16 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u16 )
@@ -1323,6 +1393,10 @@ par_status_t par_bitand_set_u16_fast(const par_num_t par_num, const uint16_t val
         PAR_ATOMIC_FETCH_AND(u16, &gpu16_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
+#else
+    PAR_ATOMIC_FETCH_AND(u16, &gpu16_par_value[gu32_par_offset[par_num]], val);
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1339,6 +1413,7 @@ par_status_t par_bitand_set_u32_fast(const par_num_t par_num, const uint32_t val
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U32 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u32 )
@@ -1356,6 +1431,10 @@ par_status_t par_bitand_set_u32_fast(const par_num_t par_num, const uint32_t val
         PAR_ATOMIC_FETCH_AND(u32, &gpu32_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
+#else
+    PAR_ATOMIC_FETCH_AND(u32, &gpu32_par_value[gu32_par_offset[par_num]], val);
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1372,6 +1451,7 @@ par_status_t par_bitor_set_u8_fast(const par_num_t par_num, const uint8_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U8 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u8 )
@@ -1389,6 +1469,10 @@ par_status_t par_bitor_set_u8_fast(const par_num_t par_num, const uint8_t val)
         PAR_ATOMIC_FETCH_OR(u8, &gpu8_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
+#else
+    PAR_ATOMIC_FETCH_OR(u8, &gpu8_par_value[gu32_par_offset[par_num]], val);
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1405,6 +1489,7 @@ par_status_t par_bitor_set_u16_fast(const par_num_t par_num, const uint16_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U16 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u16 )
@@ -1422,6 +1507,10 @@ par_status_t par_bitor_set_u16_fast(const par_num_t par_num, const uint16_t val)
         PAR_ATOMIC_FETCH_OR(u16, &gpu16_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
+#else
+    PAR_ATOMIC_FETCH_OR(u16, &gpu16_par_value[gu32_par_offset[par_num]], val);
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1438,6 +1527,7 @@ par_status_t par_bitor_set_u32_fast(const par_num_t par_num, const uint32_t val)
     PAR_ASSERT( true == par_is_init());
     PAR_ASSERT( ePAR_TYPE_U32 == par_get_type(par_num));
 
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
     const par_range_t range = par_get_range(par_num);
 
     if ( val > range.max.u32 )
@@ -1455,6 +1545,10 @@ par_status_t par_bitor_set_u32_fast(const par_num_t par_num, const uint32_t val)
         PAR_ATOMIC_FETCH_OR(u32, &gpu32_par_value[gu32_par_offset[par_num]], val);
         return ePAR_OK;
     }
+#else
+    PAR_ATOMIC_FETCH_OR(u32, &gpu32_par_value[gu32_par_offset[par_num]], val);
+    return ePAR_OK;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1614,6 +1708,7 @@ par_status_t par_get(const par_num_t par_num, void * const p_val)
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_get_by_id(const uint16_t id, void * const p_val)
 {
     par_num_t par_num;
@@ -1627,6 +1722,7 @@ par_status_t par_get_by_id(const uint16_t id, void * const p_val)
         return ePAR_ERROR;
     }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1901,6 +1997,7 @@ const par_cfg_t * par_get_config(const par_num_t par_num)
 * @return       Parameter name
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_NAME )
 const char * par_get_name(const par_num_t par_num)
 {
     const par_cfg_t * const par_cfg = par_get_config(par_num);
@@ -1912,6 +2009,7 @@ const char * par_get_name(const par_num_t par_num)
 
     return NULL;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1921,6 +2019,7 @@ const char * par_get_name(const par_num_t par_num)
 * @return       Parameter min/max range
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_RANGE )
 par_range_t par_get_range(const par_num_t par_num)
 {
     par_range_t range = {0};
@@ -1934,6 +2033,7 @@ par_range_t par_get_range(const par_num_t par_num)
 
     return range;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1943,6 +2043,7 @@ par_range_t par_get_range(const par_num_t par_num)
 * @return       Parameter unit
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_UNIT )
 const char * par_get_unit(const par_num_t par_num)
 {
     const par_cfg_t * const par_cfg = par_get_config(par_num);
@@ -1954,6 +2055,7 @@ const char * par_get_unit(const par_num_t par_num)
 
     return NULL;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1963,6 +2065,7 @@ const char * par_get_unit(const par_num_t par_num)
 * @return       Parameter description
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_DESC )
 const char * par_get_desc(const par_num_t par_num)
 {
     const par_cfg_t * const par_cfg = par_get_config(par_num);
@@ -1974,6 +2077,7 @@ const char * par_get_desc(const par_num_t par_num)
 
     return NULL;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -2003,6 +2107,7 @@ par_type_list_t par_get_type(const par_num_t par_num)
 * @return       Parameter access
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_ACCESS )
 par_access_t par_get_access(const par_num_t par_num)
 {
     const par_cfg_t * const par_cfg = par_get_config(par_num);
@@ -2014,6 +2119,7 @@ par_access_t par_get_access(const par_num_t par_num)
 
     return ePAR_ACCESS_RO;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -2023,6 +2129,7 @@ par_access_t par_get_access(const par_num_t par_num)
 * @return       True if parameter persistant
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_PERSIST )
 bool par_is_persistant(const par_num_t par_num)
 {
     const par_cfg_t * const par_cfg = par_get_config(par_num);
@@ -2034,6 +2141,7 @@ bool par_is_persistant(const par_num_t par_num)
 
     return false;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -2044,6 +2152,7 @@ bool par_is_persistant(const par_num_t par_num)
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
 {
     if (( NULL != p_par_num ) && ( true == gb_par_id_map_ready ))
@@ -2060,6 +2169,7 @@ par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
 
     return ePAR_ERROR;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -2070,6 +2180,7 @@ par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
 {
     if ( NULL != p_id )
@@ -2085,6 +2196,7 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
 
     return ePAR_ERROR;
 }
+#endif
 
 #if ( 1 == PAR_CFG_NVM_EN )
     ////////////////////////////////////////////////////////////////////////////////
@@ -2185,6 +2297,7 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
     * @return       status  - Status of operation
     */
     ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_ID )
     par_status_t par_save_by_id(const uint16_t par_id)
     {
         par_num_t par_num = 0;
@@ -2200,6 +2313,7 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
 
         return ePAR_ERROR;
     }
+#endif
 
     ////////////////////////////////////////////////////////////////////////////////
     /**
