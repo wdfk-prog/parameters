@@ -75,13 +75,6 @@ void par_layout_init(void)
     for ( uint32_t par_it = 0u; par_it < (uint32_t) ePAR_NUM_OF; par_it++ )
     {
         const par_cfg_t * const p_cfg = par_cfg_get((par_num_t) par_it );
-        if ( NULL == p_cfg )
-        {
-            PAR_DBG_PRINT( "ERR, PAR layout config missing at par_num=%u", (unsigned) par_it );
-            PAR_ASSERT( 0 );
-            return;
-        }
-
         switch ( p_cfg->type )
         {
             case ePAR_TYPE_U8:
