@@ -5,8 +5,8 @@
 /**
 *@file      par_cfg.c
 *@brief     Configuration for device parameters
-*@author    Ziga Miklosic
-*@email     ziga.miklosic@gmail.com
+*@author    wdfk-prog
+*@email     1425075683@qq.com
 *@date      29.01.2026
 *@version   V3.0.1
 */

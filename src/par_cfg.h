@@ -27,6 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "par_def.h"
 
 // USER CODE BEGIN...
@@ -140,6 +141,23 @@
 #endif
 
 /**
+ *  Type alignment abstraction
+ *
+ * @note  Default uses C11 _Alignof. If unavailable, falls back to
+ *        offsetof-based alignment calculation.
+ * @note  This abstraction is intended for ordinary object types and platform
+ *        atomic-wrapper types, but the platform must guarantee the expression
+ *        is valid for its custom atomic wrapper definitions.
+ */
+#ifndef PAR_ALIGNOF
+    #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+        #define PAR_ALIGNOF(type)                   _Alignof(type)
+    #else
+        #define PAR_ALIGNOF(type)                   offsetof(struct { char _par_align_c; type _par_align_t; }, _par_align_t)
+    #endif
+#endif
+
+/**
  *  Package compile-time assert
  */
 #define PAR_STATIC_ASSERT(name, expn)               PAR_PORT_STATIC_ASSERT(name, expn);
@@ -241,6 +259,32 @@
 #endif
 
 /**
+ *  Parameter storage layout source
+ */
+#define PAR_CFG_LAYOUT_COMPILE_SCAN                 ( 0u )
+#define PAR_CFG_LAYOUT_SCRIPT                       ( 1u )
+
+/**
+ *  Select parameter storage layout source
+ *
+ * @note
+ *  - COMPILE_SCAN: counts are compile-time constants, offsets are scanned in init
+ *  - SCRIPT      : counts/offsets are provided by generated static layout header
+ */
+#ifndef PAR_CFG_LAYOUT_SOURCE
+    #define PAR_CFG_LAYOUT_SOURCE                   PAR_CFG_LAYOUT_COMPILE_SCAN
+#endif
+
+/**
+ *  Static layout include path
+ *
+ * @note Can be overridden by integrator to include generated layout header.
+ */
+#ifndef PAR_CFG_LAYOUT_STATIC_INCLUDE
+    #define PAR_CFG_LAYOUT_STATIC_INCLUDE           "par_layout_static.h"
+#endif
+
+/**
  *  Enable/Disable parameter range metadata (min/max)
  */
 #ifndef PAR_CFG_ENABLE_RANGE
@@ -308,6 +352,12 @@
 #if ( 1 == PAR_CFG_NVM_EN ) && ( 0 == PAR_CFG_ENABLE_PERSIST )
     #error "Parameter settings invalid: NVM requires PAR_CFG_ENABLE_PERSIST = 1!"
 #endif
+
+#if ( PAR_CFG_LAYOUT_SOURCE != PAR_CFG_LAYOUT_COMPILE_SCAN ) && ( PAR_CFG_LAYOUT_SOURCE != PAR_CFG_LAYOUT_SCRIPT )
+    #error "Parameter settings invalid: PAR_CFG_LAYOUT_SOURCE must be PAR_CFG_LAYOUT_COMPILE_SCAN or PAR_CFG_LAYOUT_SCRIPT!"
+#endif
+
+#define PAR_UINT16_MAX                              ( 65535u )
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions Prototypes

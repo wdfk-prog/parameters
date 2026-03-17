@@ -42,6 +42,19 @@
 #endif
 
 /**
+ *     Atomic shared-storage contract for backend implementers
+ *
+ * @note  Backends used with static shared storage mode must guarantee identical
+ *        object representation for the following type groups:
+ *        - par_atomic_u8_t  and par_atomic_i8_t
+ *        - par_atomic_u16_t and par_atomic_i16_t
+ *        - par_atomic_u32_t, par_atomic_i32_t and par_atomic_f32_t
+ *
+ * @note  If a port backend cannot satisfy this contract, static shared storage
+ *        mode is not supported for that backend.
+ */
+
+/**
  *     List of integral types supported by atomic load/store helpers
  *
  * @param[in]    X - Macro invoked as X(tag, type)
