@@ -90,9 +90,32 @@ At runtime, each parameter resolves to:
 - a storage group based on its type
 - an offset inside that group
 
+### How default values are applied at startup
+
+Live storage is initialized in two phases during startup:
+
+1. Integer default values from `par_table.def` are compiled directly into the shared storage arrays.
+2. `F32` default values are written into the shared 32-bit storage after layout offsets are available.
+
+This means `par_init()` does not need to apply startup defaults through the public setter path for every parameter.
+
+### Ordering contract for shared storage
+
+Within each width-based storage group, element order follows `par_table.def` entry order filtered by the types supported by that group.
+
+That ordering contract matters because:
+
+- compile-time integer default initializers depend on it
+- runtime layout offset generation depends on it
+- both sides must stay aligned so each parameter lands in the correct slot
+
+If the filtered storage order and the runtime layout scan order ever diverge, defaults can be written into the wrong storage positions.
+
 ## Layout subsystem
 
 The layout subsystem provides the offset map that connects each parameter to its location in the static typed storage.
+
+The layout step is also what makes it possible to patch `F32` defaults correctly, because floating-point values share the 32-bit storage group and need their final offsets first.
 
 ### Compile-scan mode
 

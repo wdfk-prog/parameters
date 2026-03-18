@@ -117,6 +117,7 @@ This repository contains the reusable module core and templates. A real integrat
 - The module separates **internal parameter enumeration** (`par_num_t`) from **external parameter IDs** (`id`).
 - Fast setter APIs skip part of the safety and observability path, so they should be reserved for tightly controlled hot paths.
 - NVM support is optional, but when enabled it depends on the external NVM module and on ID and persistence metadata being enabled.
+- `par_init()` applies startup default values directly to live storage. Integer default values from `par_table.def` are compiled into the shared width-based storage arrays, while `F32` default values are applied after layout offsets are available. Because this startup initialization does not go through the public setter path, it does not invoke runtime validation or on-change callbacks.
 
 ## Related projects
 

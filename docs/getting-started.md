@@ -156,7 +156,19 @@ if (par_init() != ePAR_OK)
 }
 ```
 
-If `PAR_CFG_NVM_EN = 1`, NVM-related initialization is part of the parameter module startup path.
+If `PAR_CFG_NVM_EN = 1`, NVM loading happens after the module applies default values from `par_table.def`, so persisted values can overwrite the startup defaults.
+
+### How `par_init()` applies default values
+
+`par_init()` validates the table, binds the storage layout, initializes the interface layer, applies default values to live storage, and then optionally loads persisted values from NVM.
+
+During startup:
+
+- integer default values defined in `par_table.def` are already present in the shared storage arrays at definition time
+- `F32` default values are written after layout offsets are known
+- if NVM support is enabled, persisted values may then overwrite those default values
+
+Do not rely on startup initialization to trigger application callbacks or runtime validation hooks.
 
 ## Reading and writing values
 

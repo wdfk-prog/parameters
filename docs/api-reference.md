@@ -14,7 +14,7 @@ This document groups the public API from `src/par.h` by responsibility.
 
 | Function | Description |
 | --- | --- |
-| `par_init()` | Initialize the module, build runtime state, validate the table, and prepare storage access. |
+| `par_init()` | Initialize the module, validate the table, bind layout/runtime state, apply default values to live storage, and optionally load persisted values from NVM. Startup defaults are applied internally and do not use the public setter path. |
 | `par_deinit()` | Deinitialize the module. |
 | `par_is_init()` | Return whether the module is initialized. |
 
@@ -80,6 +80,15 @@ Use these only in controlled hot paths.
 | `par_set_all_to_default()` | Reset all parameters to their default values. |
 | `par_has_changed(par_num, p_has_changed)` | Report whether the value differs from its default. |
 | `par_is_changed(par_num)` | Return whether the value differs from its default. |
+
+`par_set_to_default()` and `par_set_all_to_default()` are runtime reset APIs.
+
+They are different from startup initialization:
+
+- `par_init()` applies the default values defined in `par_table.def` directly to live storage
+- `par_set_to_default()` and `par_set_all_to_default()` still use the normal runtime value path
+
+That distinction matters if your application depends on validation callbacks, on-change callbacks, or other setter-side effects.
 
 ## Generic getters
 
@@ -165,6 +174,8 @@ static void app_hooks_init(void)
     par_register_validation(ePAR_MODE, validate_mode);
 }
 ```
+
+These hooks affect runtime writes and explicit reset operations. They are not invoked during the internal startup default initialization performed by `par_init()`.
 
 ## Debug helpers
 

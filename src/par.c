@@ -131,9 +131,86 @@ static struct
  *
  * @note  Zero-length groups are mapped to size 1 arrays for compiler portability.
  */
-static par_atomic_u8_t  gs_par_u8_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT8)];
-static par_atomic_u16_t gs_par_u16_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT16)];
-static par_atomic_u32_t gs_par_u32_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT32)];
+/*
+ * Compile-time default initialization for shared storage groups.
+ *
+ * Storage order inside each width group must follow par_table.def entry order
+ * filtered by the group-supported types, matching runtime layout scan order.
+ */
+#define PAR_STORAGE_INIT_NOP(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_STORAGE_U8_FROM_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   (par_atomic_u8_t)((uint8_t)(def_)),
+#define PAR_STORAGE_U8_FROM_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   (par_atomic_u8_t)((uint8_t)(int8_t)(def_)),
+#define PAR_STORAGE_U16_FROM_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u16_t)((uint16_t)(def_)),
+#define PAR_STORAGE_U16_FROM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u16_t)((uint16_t)(int16_t)(def_)),
+#define PAR_STORAGE_U32_FROM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)((uint32_t)(def_)),
+#define PAR_STORAGE_U32_FROM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)((uint32_t)(int32_t)(def_)),
+#define PAR_STORAGE_U32_FROM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)(0u),
+
+#define PAR_ITEM_U8   PAR_STORAGE_U8_FROM_U8
+#define PAR_ITEM_U16  PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_U32  PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_I8   PAR_STORAGE_U8_FROM_I8
+#define PAR_ITEM_I16  PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_I32  PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_F32  PAR_STORAGE_INIT_NOP
+static par_atomic_u8_t gs_par_u8_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT8)] =
+{
+    #include "../../par_table.def"
+};
+#undef PAR_ITEM_U8
+#undef PAR_ITEM_U16
+#undef PAR_ITEM_U32
+#undef PAR_ITEM_I8
+#undef PAR_ITEM_I16
+#undef PAR_ITEM_I32
+#undef PAR_ITEM_F32
+
+#define PAR_ITEM_U8   PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_U16  PAR_STORAGE_U16_FROM_U16
+#define PAR_ITEM_U32  PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_I8   PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_I16  PAR_STORAGE_U16_FROM_I16
+#define PAR_ITEM_I32  PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_F32  PAR_STORAGE_INIT_NOP
+static par_atomic_u16_t gs_par_u16_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT16)] =
+{
+    #include "../../par_table.def"
+};
+#undef PAR_ITEM_U8
+#undef PAR_ITEM_U16
+#undef PAR_ITEM_U32
+#undef PAR_ITEM_I8
+#undef PAR_ITEM_I16
+#undef PAR_ITEM_I32
+#undef PAR_ITEM_F32
+
+#define PAR_ITEM_U8   PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_U16  PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_U32  PAR_STORAGE_U32_FROM_U32
+#define PAR_ITEM_I8   PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_I16  PAR_STORAGE_INIT_NOP
+#define PAR_ITEM_I32  PAR_STORAGE_U32_FROM_I32
+#define PAR_ITEM_F32  PAR_STORAGE_U32_FROM_F32
+static par_atomic_u32_t gs_par_u32_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT32)] =
+{
+    #include "../../par_table.def"
+};
+#undef PAR_ITEM_U8
+#undef PAR_ITEM_U16
+#undef PAR_ITEM_U32
+#undef PAR_ITEM_I8
+#undef PAR_ITEM_I16
+#undef PAR_ITEM_I32
+#undef PAR_ITEM_F32
+
+#undef PAR_STORAGE_INIT_NOP
+#undef PAR_STORAGE_U8_FROM_U8
+#undef PAR_STORAGE_U8_FROM_I8
+#undef PAR_STORAGE_U16_FROM_U16
+#undef PAR_STORAGE_U16_FROM_I16
+#undef PAR_STORAGE_U32_FROM_U32
+#undef PAR_STORAGE_U32_FROM_I32
+#undef PAR_STORAGE_U32_FROM_F32
 
 /**
  *  Parameter live values divided by its type in RAM
@@ -230,6 +307,28 @@ PAR_PORT_WEAK bool par_port_is_desc_valid(const char * const p_desc)
     return ((NULL == p_desc) || (NULL == strchr(p_desc, ',')));
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Patch F32 defaults into shared u32 storage as bit-patterns
+*
+* @note         Integer defaults are already initialized at definition time.
+*               F32 defaults are patched once after layout offsets are available.
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static void par_patch_f32_defaults_from_table(void)
+{
+    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+    {
+        const par_cfg_t * const p_cfg = par_cfg_get( par_num );
+        if ( ePAR_TYPE_F32 == p_cfg->type )
+        {
+            PAR_SET_F32_PRIV( par_num, p_cfg->def.f32 );
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -479,8 +578,11 @@ par_status_t par_init(void)
         gb_par_id_map_ready = true;
 #endif
 
-        // Set all parameters to default
-        par_set_all_to_default();
+        /* Set all parameters to default
+         * Integer defaults are already initialized at definition time.
+         * F32 defaults are patched once after layout offsets are available.
+        */
+        par_patch_f32_defaults_from_table();
 
         #if ( 1 == PAR_CFG_NVM_EN )
             // Init and load parameters from NVM
