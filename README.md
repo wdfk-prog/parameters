@@ -16,7 +16,7 @@ It is designed for projects that need a clean way to:
 - **Single source of truth** through `par_table.def`
 - **Typed APIs** for `U8`, `I8`, `U16`, `I16`, `U32`, `I32`, and, when enabled, `F32`
 - **Optional metadata** such as name, unit, description, access, ID, and persistence flags
-- **Validation pipeline** with compile-time checks for integer ranges and runtime checks for dynamic rules
+- **Validation pipeline** with compile-time checks for integer ranges and optional runtime hooks for dynamic rules
 - **Static live-value storage** grouped by width instead of heap allocation
 - **Fast external lookup by ID** through a runtime hash map
 - **Optional NVM integration** for persistent parameters
@@ -117,8 +117,9 @@ This repository contains the reusable module core and templates. A real integrat
 
 - `par_cfg.h` includes `par_cfg_port.h` unconditionally, so your build must provide that header.
 - `PAR_CFG_ENABLE_TYPE_F32` controls whether floating-point parameter support, related typed APIs, and `_Generic` float dispatch are compiled in.
+- `PAR_CFG_ENABLE_RUNTIME_VALIDATION` and `PAR_CFG_ENABLE_CHANGE_CALLBACK` control whether normal setters include runtime validation callbacks and on-change callbacks.
 - The module separates **internal parameter enumeration** (`par_num_t`) from **external parameter IDs** (`id`).
-- Fast setter APIs skip part of the safety and observability path, so they should be reserved for tightly controlled hot paths.
+- Fast setter APIs skip part of the safety and observability path, including runtime validation callbacks and on-change callbacks, so they should be reserved for tightly controlled hot paths.
 - NVM support is optional, but when enabled it depends on the external NVM module and on ID and persistence metadata being enabled.
 - `par_init()` applies startup default values directly to live storage. Integer default values from `par_table.def` are compiled into the shared width-based storage arrays, while `F32` default values are applied after layout offsets are available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. Because this startup initialization does not go through the public setter path, it does not invoke runtime validation or on-change callbacks.
 

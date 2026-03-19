@@ -148,6 +148,30 @@ Use **script layout** when your build or tooling already generates fixed layout 
 
 The default backend is C11 atomics. Switch to the port backend only when the default is not a good fit for the target.
 
+### Runtime hooks
+
+Use these options to control whether normal setters include runtime validation and on-change notifications:
+
+```c
+#define PAR_CFG_ENABLE_RUNTIME_VALIDATION ( 1 )
+#define PAR_CFG_ENABLE_CHANGE_CALLBACK    ( 1 )
+```
+
+`PAR_CFG_ENABLE_RUNTIME_VALIDATION` controls whether normal setters call per-parameter validation callbacks registered through `par_register_validation()`.
+
+`PAR_CFG_ENABLE_CHANGE_CALLBACK` controls whether normal setters raise per-parameter change callbacks registered through `par_register_on_change_cb()`.
+
+These options are independent:
+
+- set both to `1` to keep the full normal setter behavior
+- set either one to `0` to compile out that part of the runtime hook path
+- fast setters still skip these hooks regardless of configuration
+
+When `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 0`, `par_register_validation()` is not available.
+
+When `PAR_CFG_ENABLE_CHANGE_CALLBACK = 0`, `par_register_on_change_cb()` is not available.
+
+
 ### F32 type support
 Use `PAR_CFG_ENABLE_TYPE_F32` to control whether `F32` parameters are compiled into the module.
 
@@ -222,9 +246,16 @@ float32_t readback = 0.0f;
 
 The registration APIs work per parameter and take the parameter number directly.
 
+`par_register_on_change_cb()` is available only when `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`.
+
+`par_register_validation()` is available only when `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`.
+
 ### On-change callback
 
+Use this only when `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`.
+
 ```c
+#if (1 == PAR_CFG_ENABLE_CHANGE_CALLBACK)
 static void on_mode_changed(
     const par_num_t par_num,
     const par_type_t new_val,
@@ -238,11 +269,15 @@ static void app_register_callbacks(void)
 {
     par_register_on_change_cb(ePAR_MODE, on_mode_changed);
 }
+#endif
 ```
 
 ### Validation callback
 
+Use this only when `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`.
+
 ```c
+#if (1 == PAR_CFG_ENABLE_RUNTIME_VALIDATION)
 static bool validate_target_temp(const par_num_t par_num, const par_type_t val)
 {
     (void)par_num;
@@ -254,6 +289,7 @@ static void app_register_validation(void)
 {
     par_register_validation(ePAR_TARGET_TEMP, validate_target_temp);
 }
+#endif
 ```
 
 ## Normal vs fast setters
@@ -262,7 +298,12 @@ Use the normal setters unless you have a measured reason not to.
 
 ### Normal setters
 
-Normal setters go through the full parameter path, including checks and side effects such as validation and change tracking.
+Normal setters go through the normal runtime path.
+
+Depending on build-time configuration, that path can include runtime validation callbacks and on-change callbacks:
+
+- runtime validation callbacks are used only when `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`
+- on-change callbacks are raised only when `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`
 
 ```c
 (void)par_set_f32(ePAR_TARGET_TEMP, 25.0f);
@@ -270,8 +311,7 @@ Normal setters go through the full parameter path, including checks and side eff
 
 ### Fast setters
 
-Fast setters are meant for controlled hot paths where you accept reduced safety or observability in exchange for lower overhead.
-
+Fast setters are meant for controlled hot paths where you accept reduced safety or observability in exchange for lower overhead. They do not run runtime validation callbacks or on-change callbacks.
 ```c
 (void)par_set_u16_fast(ePAR_PWM_LIMIT, 1200U);
 ```
@@ -306,6 +346,7 @@ uint32_t baud = 115200U;
 - Assuming the repository already ships a ready-to-build `par_table.def` for your project
 - Disabling `PAR_CFG_ENABLE_TYPE_F32` while keeping `PAR_ITEM_F32(...)` entries in `par_table.def`
 - Assuming `PAR_SET` and `PAR_GET` still accept `float32_t` after F32 support is disabled
+- Registering validation or change callbacks without enabling the matching configuration macro
 
 ### Compile-time error example when F32 support is disabled
 

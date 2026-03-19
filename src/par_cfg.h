@@ -289,6 +289,20 @@
 #endif
 
 /**
+ *  Enable/Disable runtime validation callbacks in normal setters
+ */
+#ifndef PAR_CFG_ENABLE_RUNTIME_VALIDATION
+    #define PAR_CFG_ENABLE_RUNTIME_VALIDATION      ( 1 )
+#endif
+
+/**
+ *  Enable/Disable on-change callbacks in normal setters
+ */
+#ifndef PAR_CFG_ENABLE_CHANGE_CALLBACK
+    #define PAR_CFG_ENABLE_CHANGE_CALLBACK         ( 1 )
+#endif
+
+/**
  *  Enable/Disable parameter range metadata (min/max)
  */
 #ifndef PAR_CFG_ENABLE_RANGE

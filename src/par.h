@@ -332,8 +332,12 @@ par_status_t        par_get_id_by_num   (const par_num_t par_num, uint16_t * con
 #endif
 
 // Registration API
+#if ( 1 == PAR_CFG_ENABLE_CHANGE_CALLBACK )
 void par_register_on_change_cb  (const par_num_t par_num, const pf_par_on_change_cb_t cb);
+#endif
+#if ( 1 == PAR_CFG_ENABLE_RUNTIME_VALIDATION )
 void par_register_validation    (const par_num_t par_num, const pf_par_validation_t validation);
+#endif
 
 #if ( 1 == PAR_CFG_ENABLE_DESC ) && ( 1 == PAR_CFG_ENABLE_DESC_CHECK )
 PAR_PORT_WEAK bool par_port_is_desc_valid(const char * const p_desc);

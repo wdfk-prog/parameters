@@ -10,6 +10,8 @@ This document groups the public API from `src/par.h` by responsibility.
 - ID-based APIs depend on `PAR_CFG_ENABLE_ID = 1`.
 - NVM APIs depend on `PAR_CFG_NVM_EN = 1`.
 - `F32` typed APIs and `_Generic` float dispatch depend on `PAR_CFG_ENABLE_TYPE_F32 = 1`.
+- Validation registration APIs depend on `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`.
+- On-change registration APIs depend on `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`.
 
 ## Compile-time availability notes
 
@@ -22,6 +24,12 @@ The module conditionally compiles parts of the API based on configuration.
   - `par_get_f32()`
   - `par_set_f32_fast()`
   - `float32_t` dispatch through `PAR_SET` and `PAR_GET`
+- `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1` enables:
+  - `par_register_validation()`
+  - runtime validation callbacks in normal setter paths
+- `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1` enables:
+  - `par_register_on_change_cb()`
+  - on-change callbacks in normal setter paths
 
 ## Lifecycle
 
@@ -60,6 +68,8 @@ These are relevant only when mutex support is enabled in the integration.
 | `par_set_u32()` | Set a `U32` parameter. |
 | `par_set_i32()` | Set an `I32` parameter. |
 | `par_set_f32()` | Set an `F32` parameter. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
+
+Normal typed setters may include runtime validation callbacks and on-change callbacks as part of the normal runtime path. Those hook paths are present only when the matching configuration options are enabled.
 
 ## Fast setters
 
@@ -102,7 +112,7 @@ They are different from startup initialization:
 - `par_init()` applies the default values defined in `par_table.def` directly to live storage
 - `par_set_to_default()` and `par_set_all_to_default()` still use the normal runtime value path
 
-That distinction matters if your application depends on validation callbacks, on-change callbacks, or other setter-side effects.
+That distinction matters if your application depends on validation callbacks, on-change callbacks, or other setter-side effects, because those runtime hooks apply only in the normal setter path and only when the matching callback features are enabled.
 
 ## Generic getters
 
@@ -158,10 +168,14 @@ Available only when `PAR_CFG_NVM_EN = 1`.
 
 These APIs register behavior per parameter.
 
+`par_register_on_change_cb()` is available only when `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`.
+
+`par_register_validation()` is available only when `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`.
+
 | Function | Description |
 | --- | --- |
-| `par_register_on_change_cb(par_num, cb)` | Register a change callback for one parameter. |
-| `par_register_validation(par_num, validation)` | Register a validation callback for one parameter. |
+| `par_register_on_change_cb(par_num, cb)` | Register a change callback for one parameter. Available only when `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`. |
+| `par_register_validation(par_num, validation)` | Register a validation callback for one parameter. Available only when `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`. |
 
 Example:
 
@@ -184,12 +198,17 @@ static bool validate_mode(const par_num_t par_num, const par_type_t val)
 
 static void app_hooks_init(void)
 {
+#if ( 1 == PAR_CFG_ENABLE_CHANGE_CALLBACK )
     par_register_on_change_cb(ePAR_MODE, on_mode_change);
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_RUNTIME_VALIDATION )
     par_register_validation(ePAR_MODE, validate_mode);
+#endif
 }
 ```
 
-These hooks affect runtime writes and explicit reset operations. They are not invoked during the internal startup default initialization performed by `par_init()`.
+When enabled, these hooks affect runtime writes and explicit reset operations that use the normal setter path. They are not invoked during the internal startup default initialization performed by `par_init()`.
 
 ## Debug helpers
 

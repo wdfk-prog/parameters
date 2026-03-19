@@ -6,10 +6,12 @@ This document explains how the module is structured internally and how the major
 
 The module separates four concerns:
 
-1. **Parameter definition** through `par_table.def`
+1. **Generated parameter definition** through `par_table.def`, generated enums, and generated config structs
 2. **Core runtime access** through `par.c` and `par.h`
 3. **Layout and storage** through `par_layout.*`
 4. **Optional platform and NVM integration** through `par_if.*`, `par_atomic.h`, and `par_nvm.*`
+
+Runtime validation hooks and on-change hooks are kept separate from the core `par_cfg_t` metadata table and can be compiled out independently.
 
 ```mermaid
 flowchart TD
@@ -187,9 +189,9 @@ Runtime validation is used for checks that are better handled dynamically, inclu
 - `name != NULL` when name metadata is enabled
 - `desc != NULL` when description metadata is enabled
 - description policy checks through `par_port_is_desc_valid()` when enabled
-- per-parameter application validation callbacks
+- per-parameter application validation callbacks when `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`
 
-This split keeps integer configuration errors out of the firmware image while still allowing flexible runtime policies.
+This split keeps integer configuration errors out of the firmware image while still allowing flexible runtime policies. Runtime validation callbacks can be compiled out independently from the rest of the metadata model.
 
 ## ID lookup path
 
@@ -218,15 +220,19 @@ This keeps runtime lookup simple and deterministic, but it also means a conflict
 
 ## Normal path vs fast path
 
-The module exposes both normal setters and fast setters.
+Depending on build-time configuration, the normal path can include runtime validation callbacks and on-change callbacks.
 
 ### Normal setters
 
 Normal setters are the default path. They are intended for ordinary application code where correctness and observability matter more than shaving off a few instructions.
 
+Depending on build-time configuration, the normal path can include runtime validation callbacks and on-change callbacks.
+
 ### Fast setters
 
 Fast setters are specialized APIs for controlled hot paths. They reduce overhead, but they should only be used when the surrounding code already guarantees the assumptions that the full path would normally check.
+
+Fast setters do not execute runtime validation callbacks or on-change callbacks.
 
 ## Optional NVM persistence
 
@@ -246,7 +252,7 @@ Implemented under `src/`:
 
 - parameter storage
 - parameter metadata access
-- validation and callbacks
+- validation and optional runtime callbacks
 - layout handling
 - ID lookup
 - optional NVM support
