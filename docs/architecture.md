@@ -37,8 +37,18 @@ That makes one definition file drive multiple generated artifacts:
 - configuration table access through `par_def.c`
 - compile-time validation for integer parameter ranges
 - compile-time storage group counts for layout
+- fail-fast compile-time rejection for disabled `F32` entries
 
 This design reduces duplication and helps keep enum values, metadata, and storage assumptions aligned.
+
+### Why disabled `F32` still appears in enum expansion
+
+`par_def.h` intentionally keeps enum expansion configuration-independent.
+
+That keeps `par_num_t` generation stable and avoids include-order coupling with `par_cfg.h`.
+
+The fail-fast rule is enforced later in `par_def.c`: if `F32` support is disabled and `par_table.def` still contains `PAR_ITEM_F32(...)`, compilation stops with a static assertion.
+
 
 ## Internal vs external identification
 
@@ -77,7 +87,7 @@ Storage groups:
 
 - 8-bit group for `U8`, `I8`
 - 16-bit group for `U16`, `I16`
-- 32-bit group for `U32`, `I32`, `F32`
+- 32-bit group for `U32`, `I32`, and, when enabled, `F32`
 
 Benefits:
 
@@ -95,7 +105,7 @@ At runtime, each parameter resolves to:
 Live storage is initialized in two phases during startup:
 
 1. Integer default values from `par_table.def` are compiled directly into the shared storage arrays.
-2. `F32` default values are written into the shared 32-bit storage after layout offsets are available.
+2. When `PAR_CFG_ENABLE_TYPE_F32 = 1`, `F32` default values are written into the shared 32-bit storage after layout offsets are available.
 
 This means `par_init()` does not need to apply startup defaults through the public setter path for every parameter.
 
@@ -112,6 +122,7 @@ That ordering contract matters because:
 If the filtered storage order and the runtime layout scan order ever diverge, defaults can be written into the wrong storage positions.
 
 ## Layout subsystem
+When `PAR_CFG_ENABLE_TYPE_F32 = 1`, the layout step also makes it possible to patch `F32` defaults correctly, because floating-point values share the 32-bit storage group and need their final offsets first.
 
 The layout subsystem provides the offset map that connects each parameter to its location in the static typed storage.
 
@@ -163,6 +174,10 @@ Typical checks include:
 - `def <= max`
 
 These checks are generated from `par_table.def`, so invalid integer configurations fail at build time.
+
+`F32` range checks are still not evaluated as compile-time constant expressions.
+
+However, when `PAR_CFG_ENABLE_TYPE_F32 = 0`, any `PAR_ITEM_F32(...)` entry is rejected at compile time through a static assertion. This keeps `par_def.h` configuration-independent while still failing fast in `par_def.c`.
 
 ### Runtime validation
 

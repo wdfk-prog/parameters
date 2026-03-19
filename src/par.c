@@ -144,7 +144,9 @@ static struct
 #define PAR_STORAGE_U16_FROM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u16_t)((uint16_t)(int16_t)(def_)),
 #define PAR_STORAGE_U32_FROM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)((uint32_t)(def_)),
 #define PAR_STORAGE_U32_FROM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)((uint32_t)(int32_t)(def_)),
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 #define PAR_STORAGE_U32_FROM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)(0u),
+#endif
 
 #define PAR_ITEM_U8   PAR_STORAGE_U8_FROM_U8
 #define PAR_ITEM_U16  PAR_STORAGE_INIT_NOP
@@ -190,7 +192,11 @@ static par_atomic_u16_t gs_par_u16_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT
 #define PAR_ITEM_I8   PAR_STORAGE_INIT_NOP
 #define PAR_ITEM_I16  PAR_STORAGE_INIT_NOP
 #define PAR_ITEM_I32  PAR_STORAGE_U32_FROM_I32
-#define PAR_ITEM_F32  PAR_STORAGE_U32_FROM_F32
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
+    #define PAR_ITEM_F32  PAR_STORAGE_U32_FROM_F32
+#else
+    #define PAR_ITEM_F32  PAR_STORAGE_INIT_NOP
+#endif
 static par_atomic_u32_t gs_par_u32_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT32)] =
 {
     #include "../../par_table.def"
@@ -210,7 +216,9 @@ static par_atomic_u32_t gs_par_u32_storage[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT
 #undef PAR_STORAGE_U16_FROM_I16
 #undef PAR_STORAGE_U32_FROM_U32
 #undef PAR_STORAGE_U32_FROM_I32
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 #undef PAR_STORAGE_U32_FROM_F32
+#endif
 
 /**
  *  Parameter live values divided by its type in RAM
@@ -221,7 +229,9 @@ static par_atomic_u16_t *    gpu16_par_value = gs_par_u16_storage;
 static par_atomic_i16_t *    gpi16_par_value = (par_atomic_i16_t *)gs_par_u16_storage;
 static par_atomic_u32_t *    gpu32_par_value = gs_par_u32_storage;
 static par_atomic_i32_t *    gpi32_par_value = (par_atomic_i32_t *)gs_par_u32_storage;
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 static par_atomic_f32_t *    gpf32_par_value = (par_atomic_f32_t *)gs_par_u32_storage;
+#endif
 
 /**
  *  Offset table compatibility alias.
@@ -240,7 +250,9 @@ static par_atomic_f32_t *    gpf32_par_value = (par_atomic_f32_t *)gs_par_u32_st
 #define PAR_GET_I16_PRIV(par_num)       PAR_ATOMIC_LOAD(i16, &gpi16_par_value[g_par_offset[par_num]])
 #define PAR_GET_U32_PRIV(par_num)       PAR_ATOMIC_LOAD(u32, &gpu32_par_value[g_par_offset[par_num]])
 #define PAR_GET_I32_PRIV(par_num)       PAR_ATOMIC_LOAD(i32, &gpi32_par_value[g_par_offset[par_num]])
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 #define PAR_GET_F32_PRIV(par_num)       PAR_ATOMIC_LOAD(f32, &gpf32_par_value[g_par_offset[par_num]])
+#endif
 
 #define PAR_SET_U8_PRIV(par_num, val)   PAR_ATOMIC_STORE(u8, &gpu8_par_value[g_par_offset[par_num]], (val))
 #define PAR_SET_I8_PRIV(par_num, val)   PAR_ATOMIC_STORE(i8, &gpi8_par_value[g_par_offset[par_num]], (val))
@@ -248,7 +260,9 @@ static par_atomic_f32_t *    gpf32_par_value = (par_atomic_f32_t *)gs_par_u32_st
 #define PAR_SET_I16_PRIV(par_num, val)  PAR_ATOMIC_STORE(i16, &gpi16_par_value[g_par_offset[par_num]], (val))
 #define PAR_SET_U32_PRIV(par_num, val)  PAR_ATOMIC_STORE(u32, &gpu32_par_value[g_par_offset[par_num]], (val))
 #define PAR_SET_I32_PRIV(par_num, val)  PAR_ATOMIC_STORE(i32, &gpi32_par_value[g_par_offset[par_num]], (val))
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 #define PAR_SET_F32_PRIV(par_num, val)  PAR_ATOMIC_STORE(f32, &gpf32_par_value[g_par_offset[par_num]], (val))
+#endif
 
 #if ( PAR_CFG_DEBUG_EN )
 
@@ -308,6 +322,7 @@ PAR_PORT_WEAK bool par_port_is_desc_valid(const char * const p_desc)
 }
 #endif
 
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *        Patch F32 defaults into shared u32 storage as bit-patterns
@@ -329,6 +344,7 @@ static void par_patch_f32_defaults_from_table(void)
         }
     }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -513,9 +529,11 @@ static bool par_is_value_changed(const par_num_t par_num, const void * p_val)
             value_changed = (par_get_i32(par_num) != *(int32_t*)p_val);
             break;
 
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
             value_changed = (par_get_f32(par_num) != *(float32_t*)p_val);
             break;
+#endif
 
         case ePAR_TYPE_NUM_OF:
         default:
@@ -582,7 +600,9 @@ par_status_t par_init(void)
          * Integer defaults are already initialized at definition time.
          * F32 defaults are patched once after layout offsets are available.
         */
-        par_patch_f32_defaults_from_table();
+        #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
+            par_patch_f32_defaults_from_table();
+        #endif
 
         #if ( 1 == PAR_CFG_NVM_EN )
             // Init and load parameters from NVM
@@ -714,9 +734,11 @@ par_status_t par_set(const par_num_t par_num, const void * p_val)
             status = par_set_i32( par_num, *(int32_t*) p_val );
             break;
 
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
             status = par_set_f32( par_num, *(float32_t*) p_val );
             break;
+#endif
 
         case ePAR_TYPE_NUM_OF:
         default:
@@ -1091,6 +1113,7 @@ par_status_t par_set_i32(const par_num_t par_num, const int32_t val)
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
 {
     par_status_t status = ePAR_OK;
@@ -1136,6 +1159,7 @@ par_status_t par_set_f32(const par_num_t par_num, const float32_t val)
 
     return status;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1377,6 +1401,7 @@ par_status_t par_set_i32_fast(const par_num_t par_num, const int32_t val)
 * @return       status  - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 par_status_t par_set_f32_fast(const par_num_t par_num, const float32_t val)
 {
     PAR_ASSERT( true == par_is_init());
@@ -1405,6 +1430,7 @@ par_status_t par_set_f32_fast(const par_num_t par_num, const float32_t val)
     return ePAR_OK;
 #endif
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1709,9 +1735,11 @@ par_status_t par_has_changed(const par_num_t par_num, bool *const p_has_changed)
             *p_has_changed = (par_get_i32(par_num) != par_cfg->def.i32);
             break;
 
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
             *p_has_changed = (par_get_f32(par_num) != par_cfg->def.f32);
             break;
+#endif
 
         case ePAR_TYPE_NUM_OF:
         default:
@@ -1769,9 +1797,11 @@ par_status_t par_get(const par_num_t par_num, void * const p_val)
             *(int32_t*) p_val = par_get_i32(par_num);
             break;
 
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
             *(float32_t*) p_val = par_get_f32(par_num);
             break;
+#endif
 
         case ePAR_TYPE_NUM_OF:
         default:
@@ -1944,6 +1974,7 @@ int32_t par_get_i32(const par_num_t par_num)
 * @return       value   - Value of parameter
 */
 ////////////////////////////////////////////////////////////////////////////////
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 float32_t par_get_f32(const par_num_t par_num)
 {
     // Check initialization
@@ -1956,6 +1987,7 @@ float32_t par_get_f32(const par_num_t par_num)
 
     return PAR_GET_F32_PRIV( par_num );
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1998,9 +2030,11 @@ par_status_t par_get_default(const par_num_t par_num, void * const p_val)
             *(int32_t*) p_val = (int32_t) par_get_config(par_num)->def.i32;
             break;
 
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
             *(float32_t*) p_val = (float32_t) par_get_config(par_num)->def.f32;
             break;
+#endif
 
         case ePAR_TYPE_NUM_OF:
         default:
@@ -2041,8 +2075,10 @@ bool par_is_changed(const par_num_t par_num)
         case ePAR_TYPE_I32:
             return (bool) (par_get_i32(par_num) != par_get_config(par_num)->def.i32);
 
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
             return (bool) (par_get_f32(par_num) != par_get_config(par_num)->def.f32);
+#endif
 
         case ePAR_TYPE_NUM_OF:
         default:

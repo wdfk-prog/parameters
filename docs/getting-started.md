@@ -12,6 +12,7 @@ This guide shows how to integrate the `Device Parameters` module into a firmware
    - a platform-specific interface backend
    - a platform-specific atomic backend
    - compile-scan or script-provided layout
+   - whether `F32` parameter support should be compiled in
 5. Call `par_init()` before runtime access.
 6. Use typed APIs or the generic `PAR_SET` and `PAR_GET` macros.
 
@@ -59,6 +60,8 @@ PAR_ITEM_F32(
 ```
 
 Use `template/par_table.deftmp` as the starting point.
+
+This example requires `PAR_CFG_ENABLE_TYPE_F32 = 1`. If `F32` support is disabled, remove all `PAR_ITEM_F32(...)` rows from `par_table.def`.
 
 ### `port/par_cfg_port.h`
 
@@ -145,6 +148,22 @@ Use **script layout** when your build or tooling already generates fixed layout 
 
 The default backend is C11 atomics. Switch to the port backend only when the default is not a good fit for the target.
 
+### F32 type support
+Use `PAR_CFG_ENABLE_TYPE_F32` to control whether `F32` parameters are compiled into the module.
+
+```c
+#define PAR_CFG_ENABLE_TYPE_F32 ( 1 )
+```
+
+Set it to `0` only when your integration does not need floating-point parameters.
+
+When `PAR_CFG_ENABLE_TYPE_F32 = 0`:
+
+* `PAR_ITEM_F32(...)` entries are not allowed in `par_table.def`
+* `par_set_f32()`, `par_get_f32()`, and `par_set_f32_fast()` are not available
+* `PAR_SET` and `PAR_GET` no longer dispatch `float32_t`
+* startup F32 default patching is skipped
+
 ## Initialization
 
 Call `par_init()` before any runtime parameter access.
@@ -165,15 +184,16 @@ If `PAR_CFG_NVM_EN = 1`, NVM loading happens after the module applies default va
 During startup:
 
 - integer default values defined in `par_table.def` are already present in the shared storage arrays at definition time
-- `F32` default values are written after layout offsets are known
+- when `PAR_CFG_ENABLE_TYPE_F32 = 1`, `F32` default values are written after layout offsets are known
 - if NVM support is enabled, persisted values may then overwrite those default values
 
 Do not rely on startup initialization to trigger application callbacks or runtime validation hooks.
 
 ## Reading and writing values
 
-### Use the generic macros in normal application code
+The `F32` examples in this section require `PAR_CFG_ENABLE_TYPE_F32 = 1`.
 
+### Use the generic macros in normal application code
 ```c
 PAR_SET(ePAR_TARGET_TEMP, (float32_t)42.5f);
 
@@ -284,3 +304,34 @@ uint32_t baud = 115200U;
 - Enabling NVM without the external NVM module in the build
 - Writing `par_table.def` entries with duplicate IDs
 - Assuming the repository already ships a ready-to-build `par_table.def` for your project
+- Disabling `PAR_CFG_ENABLE_TYPE_F32` while keeping `PAR_ITEM_F32(...)` entries in `par_table.def`
+- Assuming `PAR_SET` and `PAR_GET` still accept `float32_t` after F32 support is disabled
+
+### Compile-time error example when F32 support is disabled
+
+If `PAR_CFG_ENABLE_TYPE_F32 = 0` and `par_table.def` still contains `PAR_ITEM_F32(...)`, the build fails with a static assertion.
+
+Example:
+
+```log
+def.h:124:51: error: size of array '_static_assert_ePAR_SYS_CPU_LOAD_MAX_f32_type_is_disabled__remove_PAR_ITEM_F32' is negative
+  124 | #define _STATIC_ASSERT(name, expn) typedef char _static_assert_##name[(expn)?1:-1]
+      |                                                   ^~~~~~~~~~~~~~~
+port/par_cfg_port.h:130:44: note: in expansion of macro '_STATIC_ASSERT'
+  130 | #define PAR_PORT_STATIC_ASSERT(name, expn) _STATIC_ASSERT(name, expn)
+      |                                            ^~~~~~~~~~~~~~~~
+src/par_cfg.h:160:53: note: in expansion of macro 'PAR_PORT_STATIC_ASSERT'
+  160 | #define PAR_STATIC_ASSERT(name, expn)               PAR_PORT_STATIC_ASSERT(name, expn);
+      |                                                     ^~~~~~~~~~~~~~~~~~~~~~
+src/par_def.c:73:94: note: in expansion of macro 'PAR_STATIC_ASSERT'
+   73 |     #define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_STATIC_ASSERT(enum_##_f32_type_is_disabled__remove_PAR_ITEM_F32, 0)
+      |                                                                                              ^~~~~~~~~~~~~~~~~
+src/par_def.c:85:23: note: in expansion of macro 'PAR_CHECK_F32'
+   85 | #define PAR_ITEM_F32  PAR_CHECK_F32
+      |                       ^~~~~~~~~~~~~
+par_table.def:189:1: note: in expansion of macro 'PAR_ITEM_F32'
+  189 | PAR_ITEM_F32(ePAR_SYS_CPU_LOAD_MAX, 10011,  "CPU Max. load",               0.0f,        100.0f,     0.0f,       "%",    ePAR_ACCESS_RO,  false,  "Maximum CPU load in %")
+      | ^~~~~~~~~~~~
+```
+
+Fix the table first: remove the `PAR_ITEM_F32(...)` entry or re-enable `PAR_CFG_ENABLE_TYPE_F32`.

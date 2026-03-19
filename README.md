@@ -14,7 +14,7 @@ It is designed for projects that need a clean way to:
 ## What this module provides
 
 - **Single source of truth** through `par_table.def`
-- **Typed APIs** for `U8`, `I8`, `U16`, `I16`, `U32`, `I32`, and `F32`
+- **Typed APIs** for `U8`, `I8`, `U16`, `I16`, `U32`, `I32`, and, when enabled, `F32`
 - **Optional metadata** such as name, unit, description, access, ID, and persistence flags
 - **Validation pipeline** with compile-time checks for integer ranges and runtime checks for dynamic rules
 - **Static live-value storage** grouped by width instead of heap allocation
@@ -34,6 +34,8 @@ It is designed for projects that need a clean way to:
 6. Use `PAR_SET`, `PAR_GET`, or the typed `par_set_*` / `par_get_*` APIs in application code.
 
 A minimal example:
+
+This quick-start example assumes `PAR_CFG_ENABLE_TYPE_F32 = 1`.
 
 ```c
 #include "par.h"
@@ -114,10 +116,11 @@ This repository contains the reusable module core and templates. A real integrat
 ## Key integration notes
 
 - `par_cfg.h` includes `par_cfg_port.h` unconditionally, so your build must provide that header.
+- `PAR_CFG_ENABLE_TYPE_F32` controls whether floating-point parameter support, related typed APIs, and `_Generic` float dispatch are compiled in.
 - The module separates **internal parameter enumeration** (`par_num_t`) from **external parameter IDs** (`id`).
 - Fast setter APIs skip part of the safety and observability path, so they should be reserved for tightly controlled hot paths.
 - NVM support is optional, but when enabled it depends on the external NVM module and on ID and persistence metadata being enabled.
-- `par_init()` applies startup default values directly to live storage. Integer default values from `par_table.def` are compiled into the shared width-based storage arrays, while `F32` default values are applied after layout offsets are available. Because this startup initialization does not go through the public setter path, it does not invoke runtime validation or on-change callbacks.
+- `par_init()` applies startup default values directly to live storage. Integer default values from `par_table.def` are compiled into the shared width-based storage arrays, while `F32` default values are applied after layout offsets are available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. Because this startup initialization does not go through the public setter path, it does not invoke runtime validation or on-change callbacks.
 
 ## Related projects
 

@@ -9,6 +9,10 @@
 *@email     1425075683@qq.com
 *@date      29.01.2026
 *@version   V3.0.1
+*@note      Do not gate F32 in this header.
+*           par_def.h stays config-independent to avoid par_cfg.h include-order issues
+*           and to keep enum definitions stable. Disabled F32 table entries are
+*           rejected in par_def.c at compile time.
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -19,6 +23,11 @@
 
 #ifndef _PAR_DEF_CORE_H_
 #define _PAR_DEF_CORE_H_
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
@@ -31,14 +40,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct par_cfg_s par_cfg_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  *  List of device parameters
  *
  * @note Must be started with 0!
+ * @note Enum expansion is intentionally configuration-independent:
+ *       PAR_ITEM_F32 always maps to PAR_ITEM_ENUM.
+ *       F32 enable/disable fail-fast is enforced in par_def.c.
  */
 #define PAR_ITEM_ENUM(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) enum_,
 enum

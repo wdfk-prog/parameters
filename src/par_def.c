@@ -67,7 +67,11 @@
  * in static assertions as integer constant expressions, and may emit
  * "variably modified '_static_assert_...' at file scope".
  */
-#define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
+    #define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#else
+    #define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_STATIC_ASSERT(enum_##_f32_type_is_disabled__remove_PAR_ITEM_F32, 0)
+#endif
 
 /**
  * Dispatch map for compile-time checks.

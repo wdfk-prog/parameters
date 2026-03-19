@@ -9,6 +9,19 @@ This document groups the public API from `src/par.h` by responsibility.
 - `par_num_t` is the internal parameter index.
 - ID-based APIs depend on `PAR_CFG_ENABLE_ID = 1`.
 - NVM APIs depend on `PAR_CFG_NVM_EN = 1`.
+- `F32` typed APIs and `_Generic` float dispatch depend on `PAR_CFG_ENABLE_TYPE_F32 = 1`.
+
+## Compile-time availability notes
+
+The module conditionally compiles parts of the API based on configuration.
+
+- `PAR_CFG_NVM_EN = 1` enables NVM APIs
+- `PAR_CFG_ENABLE_ID = 1` enables ID-dependent behavior
+- `PAR_CFG_ENABLE_TYPE_F32 = 1` enables:
+  - `par_set_f32()`
+  - `par_get_f32()`
+  - `par_set_f32_fast()`
+  - `float32_t` dispatch through `PAR_SET` and `PAR_GET`
 
 ## Lifecycle
 
@@ -33,7 +46,8 @@ These are relevant only when mutex support is enabled in the integration.
 | --- | --- |
 | `par_set(par_num, p_val)` | Set a parameter from a typed pointer. |
 | `par_set_by_id(id, p_val)` | Set a parameter using its external ID. |
-| `PAR_SET(par_num, value)` | Use C11 `_Generic` to route a typed value to the matching setter. |
+| `PAR_SET(par_num, value)` | Use C11 `_Generic` to route a typed value to the matching setter. `float32_t` dispatch is available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
+
 
 ## Typed setters
 
@@ -45,7 +59,7 @@ These are relevant only when mutex support is enabled in the integration.
 | `par_set_i16()` | Set an `I16` parameter. |
 | `par_set_u32()` | Set a `U32` parameter. |
 | `par_set_i32()` | Set an `I32` parameter. |
-| `par_set_f32()` | Set an `F32` parameter. |
+| `par_set_f32()` | Set an `F32` parameter. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 
 ## Fast setters
 
@@ -57,7 +71,7 @@ These are relevant only when mutex support is enabled in the integration.
 | `par_set_i16_fast()` | Fast set for `I16`. |
 | `par_set_u32_fast()` | Fast set for `U32`. |
 | `par_set_i32_fast()` | Fast set for `I32`. |
-| `par_set_f32_fast()` | Fast set for `F32`. |
+| `par_set_f32_fast()` | Fast set for `F32`. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 
 Use these only in controlled hot paths.
 
@@ -96,7 +110,7 @@ That distinction matters if your application depends on validation callbacks, on
 | --- | --- |
 | `par_get(par_num, p_val)` | Read a parameter into a typed destination pointer. |
 | `par_get_by_id(id, p_val)` | Read a parameter using its external ID. |
-| `PAR_GET(par_num, dest)` | Use C11 `_Generic` to route to the matching typed getter. |
+| `PAR_GET(par_num, dest)` | Use C11 `_Generic` to route a destination variable to the matching getter. `float32_t` dispatch is available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 
 ## Typed getters
 
@@ -108,7 +122,7 @@ That distinction matters if your application depends on validation callbacks, on
 | `par_get_i16()` | Read an `I16` parameter. |
 | `par_get_u32()` | Read a `U32` parameter. |
 | `par_get_i32()` | Read an `I32` parameter. |
-| `par_get_f32()` | Read an `F32` parameter. |
+| `par_get_f32()` | Read an `F32` parameter. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 | `par_get_default(par_num, p_val)` | Read the configured default value for a parameter. |
 
 ## Metadata access

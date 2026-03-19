@@ -189,14 +189,18 @@ par_status_t par_set_u16            (const par_num_t par_num, const uint16_t val
 par_status_t par_set_i16            (const par_num_t par_num, const int16_t val);
 par_status_t par_set_u32            (const par_num_t par_num, const uint32_t val);
 par_status_t par_set_i32            (const par_num_t par_num, const int32_t val);
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 par_status_t par_set_f32            (const par_num_t par_num, const float32_t val);
+#endif
 par_status_t par_set_u8_fast        (const par_num_t par_num, const uint8_t val);
 par_status_t par_set_i8_fast        (const par_num_t par_num, const int8_t val);
 par_status_t par_set_u16_fast       (const par_num_t par_num, const uint16_t val);
 par_status_t par_set_i16_fast       (const par_num_t par_num, const int16_t val);
 par_status_t par_set_u32_fast       (const par_num_t par_num, const uint32_t val);
 par_status_t par_set_i32_fast       (const par_num_t par_num, const int32_t val);
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 par_status_t par_set_f32_fast       (const par_num_t par_num, const float32_t val);
+#endif
 par_status_t par_bitand_set_u8_fast (const par_num_t par_num, const uint8_t val);
 par_status_t par_bitand_set_u16_fast(const par_num_t par_num, const uint16_t val);
 par_status_t par_bitand_set_u32_fast(const par_num_t par_num, const uint32_t val);
@@ -217,17 +221,28 @@ par_status_t par_has_changed        (const par_num_t par_num, bool *const p_has_
  *  @param[in]  par_num - Parameter number (enumeration)
  *  @param[in]  value   - The new value of a parameter
  */
-#define PAR_SET(par_num, value) _Generic((value),       \
-    uint8_t:    par_set_u8,                             \
-    bool:       par_set_u8,                             \
-    uint16_t:   par_set_u16,                            \
-    uint32_t:   par_set_u32,                            \
-    int8_t:     par_set_i8,                             \
-    int16_t:    par_set_i16,                            \
-    int32_t:    par_set_i32,                            \
-    float32_t:  par_set_f32,                            \
-    default:    par_set_f32                             \
-)(par_num, value)
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
+    #define PAR_SET(par_num, value) _Generic((value),       \
+        uint8_t:    par_set_u8,                             \
+        bool:       par_set_u8,                             \
+        uint16_t:   par_set_u16,                            \
+        uint32_t:   par_set_u32,                            \
+        int8_t:     par_set_i8,                             \
+        int16_t:    par_set_i16,                            \
+        int32_t:    par_set_i32,                            \
+        float32_t:  par_set_f32                             \
+    )(par_num, value)
+#else
+    #define PAR_SET(par_num, value) _Generic((value),       \
+        uint8_t:    par_set_u8,                             \
+        bool:       par_set_u8,                             \
+        uint16_t:   par_set_u16,                            \
+        uint32_t:   par_set_u32,                            \
+        int8_t:     par_set_i8,                             \
+        int16_t:    par_set_i16,                            \
+        int32_t:    par_set_i32                             \
+    )(par_num, value)
+#endif
 
 // Getting parameter value API (module must be first initialized before using those func)
 par_status_t par_get            (const par_num_t par_num, void * const p_val);
@@ -240,7 +255,9 @@ uint16_t     par_get_u16        (const par_num_t par_num);
 int16_t      par_get_i16        (const par_num_t par_num);
 uint32_t     par_get_u32        (const par_num_t par_num);
 int32_t      par_get_i32        (const par_num_t par_num);
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 float32_t    par_get_f32        (const par_num_t par_num);
+#endif
 par_status_t par_get_default    (const par_num_t par_num, void * const p_val);
 bool         par_is_changed     (const par_num_t par_num);
 
@@ -254,17 +271,28 @@ bool         par_is_changed     (const par_num_t par_num);
  *  @param[in]   dest    - The destination variable where the value will be stored.
  *                         The type of this variable determines the getter used (e.g., uint8_t, float).
  */
-#define PAR_GET(par_num, dest) _Generic((dest), 	\
-    uint8_t:   dest = par_get_u8(par_num),      	\
-    bool:      dest = par_get_u8(par_num),      	\
-    uint16_t:  dest = par_get_u16(par_num),     	\
-    uint32_t:  dest = par_get_u32(par_num),     	\
-    int8_t:    dest = par_get_i8(par_num),      	\
-    int16_t:   dest = par_get_i16(par_num),     	\
-    int32_t:   dest = par_get_i32(par_num),     	\
-    float32_t: dest = par_get_f32(par_num),     	\
-    default:   dest = par_get_f32(par_num)     	    \
-)
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
+    #define PAR_GET(par_num, dest) _Generic((dest), 	\
+        uint8_t:   dest = par_get_u8(par_num),      	\
+        bool:      dest = par_get_u8(par_num),      	\
+        uint16_t:  dest = par_get_u16(par_num),     	\
+        uint32_t:  dest = par_get_u32(par_num),     	\
+        int8_t:    dest = par_get_i8(par_num),      	\
+        int16_t:   dest = par_get_i16(par_num),     	\
+        int32_t:   dest = par_get_i32(par_num),     	\
+        float32_t: dest = par_get_f32(par_num)        \
+    )
+#else
+    #define PAR_GET(par_num, dest) _Generic((dest), 	\
+        uint8_t:   dest = par_get_u8(par_num),      	\
+        bool:      dest = par_get_u8(par_num),      	\
+        uint16_t:  dest = par_get_u16(par_num),     	\
+        uint32_t:  dest = par_get_u32(par_num),     	\
+        int8_t:    dest = par_get_i8(par_num),      	\
+        int16_t:   dest = par_get_i16(par_num),     	\
+        int32_t:   dest = par_get_i32(par_num)        \
+    )
+#endif
 
 // Parameter configurations API (usage without module init pre-step)
 const par_cfg_t *   par_get_config      (const par_num_t par_num);

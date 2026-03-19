@@ -91,7 +91,9 @@ void par_layout_init(void)
 
             case ePAR_TYPE_U32:
             case ePAR_TYPE_I32:
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
             case ePAR_TYPE_F32:
+#endif
                 gs_runtime_offset[par_it] = scan_count.count32;
                 scan_count.count32++;
                 break;

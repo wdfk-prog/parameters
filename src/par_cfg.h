@@ -284,6 +284,10 @@
     #define PAR_CFG_LAYOUT_STATIC_INCLUDE           "par_layout_static.h"
 #endif
 
+#ifndef PAR_CFG_ENABLE_TYPE_F32
+    #define PAR_CFG_ENABLE_TYPE_F32                ( 1 )
+#endif
+
 /**
  *  Enable/Disable parameter range metadata (min/max)
  */
