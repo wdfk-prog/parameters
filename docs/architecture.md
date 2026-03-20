@@ -171,9 +171,9 @@ Compile-time validation is used for integer parameter types:
 
 Typical checks include:
 
-- `min <= max`
-- `def >= min`
-- `def <= max`
+- `range.min <= range.max`
+- `def >= range.min`
+- `def <= range.max`
 
 These checks are generated from `par_table.def`, so invalid integer configurations fail at build time.
 

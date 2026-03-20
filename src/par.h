@@ -136,8 +136,7 @@ typedef struct par_cfg_s
     const char *    name;       /**<Name of variable */
 #endif
 #if ( 1 == PAR_CFG_ENABLE_RANGE )
-    par_type_t      min;        /**<Minimum value of parameter */
-    par_type_t      max;        /**<Maximum value of parameter */
+    par_range_t     range;      /**<Range of parameter */
 #endif
     par_type_t      def;        /**<Default value of parameter */
 #if ( 1 == PAR_CFG_ENABLE_UNIT )

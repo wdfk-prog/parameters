@@ -148,13 +148,13 @@
 #endif
 
 #if ( 1 == PAR_CFG_ENABLE_RANGE )
-    #define PAR_INIT_RANGE_U8(min_, max_)           .min.u8 = (uint8_t)(min_), .max.u8 = (uint8_t)(max_),
-    #define PAR_INIT_RANGE_U16(min_, max_)          .min.u16 = (uint16_t)(min_), .max.u16 = (uint16_t)(max_),
-    #define PAR_INIT_RANGE_U32(min_, max_)          .min.u32 = (uint32_t)(min_), .max.u32 = (uint32_t)(max_),
-    #define PAR_INIT_RANGE_I8(min_, max_)           .min.i8 = (int8_t)(min_), .max.i8 = (int8_t)(max_),
-    #define PAR_INIT_RANGE_I16(min_, max_)          .min.i16 = (int16_t)(min_), .max.i16 = (int16_t)(max_),
-    #define PAR_INIT_RANGE_I32(min_, max_)          .min.i32 = (int32_t)(min_), .max.i32 = (int32_t)(max_),
-    #define PAR_INIT_RANGE_F32(min_, max_)          .min.f32 = (float32_t)(min_), .max.f32 = (float32_t)(max_),
+    #define PAR_INIT_RANGE_U8(min_, max_)           .range.min.u8  = (uint8_t)(min_),   .range.max.u8 = (uint8_t)(max_),
+    #define PAR_INIT_RANGE_U16(min_, max_)          .range.min.u16 = (uint16_t)(min_),  .range.max.u16 = (uint16_t)(max_),
+    #define PAR_INIT_RANGE_U32(min_, max_)          .range.min.u32 = (uint32_t)(min_),  .range.max.u32 = (uint32_t)(max_),
+    #define PAR_INIT_RANGE_I8(min_, max_)           .range.min.i8  = (int8_t)(min_),    .range.max.i8 = (int8_t)(max_),
+    #define PAR_INIT_RANGE_I16(min_, max_)          .range.min.i16 = (int16_t)(min_),   .range.max.i16 = (int16_t)(max_),
+    #define PAR_INIT_RANGE_I32(min_, max_)          .range.min.i32 = (int32_t)(min_),   .range.max.i32 = (int32_t)(max_),
+    #define PAR_INIT_RANGE_F32(min_, max_)          .range.min.f32 = (float32_t)(min_), .range.max.f32 = (float32_t)(max_),
 #else
     #define PAR_INIT_RANGE_U8(min_, max_)
     #define PAR_INIT_RANGE_U16(min_, max_)

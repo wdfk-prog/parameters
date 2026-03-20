@@ -460,7 +460,11 @@ static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
          * typedef-based static asserts may be treated as non-constant
          * expressions and trigger file-scope VLA warnings.
          */
-        PAR_ASSERT(( ePAR_TYPE_F32 == p_par_cfg[i].type )    ? ((( p_par_cfg[i].min.f32 < p_par_cfg[i].max.f32 ) && ( p_par_cfg[i].def.f32 <= p_par_cfg[i].max.f32 )) && (  p_par_cfg[i].min.f32 <= p_par_cfg[i].def.f32 )) : ( 1 ));
+        PAR_ASSERT(( ePAR_TYPE_F32 == p_par_cfg[i].type ) ? 
+        ((( p_par_cfg[i].range.min.f32 < p_par_cfg[i].range.max.f32 ) && 
+        ( p_par_cfg[i].def.f32 <= p_par_cfg[i].range.max.f32 )) && 
+        (  p_par_cfg[i].range.min.f32 <= p_par_cfg[i].def.f32 )) 
+        : ( 1 ));
 #endif
 
 #if ( 1 == PAR_CFG_ENABLE_NAME )
@@ -2140,8 +2144,7 @@ par_range_t par_get_range(const par_num_t par_num)
 
     if ( NULL != par_cfg )
     {
-        range.min = par_cfg->min;
-        range.max = par_cfg->max;
+        return par_cfg->range;
     }
 
     return range;
