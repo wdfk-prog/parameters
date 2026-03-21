@@ -212,35 +212,16 @@ par_status_t par_set_all_to_default (void);
 par_status_t par_has_changed        (const par_num_t par_num, bool *const p_has_changed);
 
 /**
- *  @brief   Type-generic macro to set a parameter value.
- *
- *          This macro uses C11 _Generic to automatically select the appropriate
- *          setter function based on the data type of the "value" variable.
- *
- *  @param[in]  par_num - Parameter number (enumeration)
- *  @param[in]  value   - The new value of a parameter
+ *  @brief   Typed macro wrappers for parameter set.
  */
+#define PAR_SET_U8(par_num, value)     par_set_u8((par_num), (value))
+#define PAR_SET_I8(par_num, value)     par_set_i8((par_num), (value))
+#define PAR_SET_U16(par_num, value)    par_set_u16((par_num), (value))
+#define PAR_SET_I16(par_num, value)    par_set_i16((par_num), (value))
+#define PAR_SET_U32(par_num, value)    par_set_u32((par_num), (value))
+#define PAR_SET_I32(par_num, value)    par_set_i32((par_num), (value))
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
-    #define PAR_SET(par_num, value) _Generic((value),       \
-        uint8_t:    par_set_u8,                             \
-        bool:       par_set_u8,                             \
-        uint16_t:   par_set_u16,                            \
-        uint32_t:   par_set_u32,                            \
-        int8_t:     par_set_i8,                             \
-        int16_t:    par_set_i16,                            \
-        int32_t:    par_set_i32,                            \
-        float32_t:  par_set_f32                             \
-    )(par_num, value)
-#else
-    #define PAR_SET(par_num, value) _Generic((value),       \
-        uint8_t:    par_set_u8,                             \
-        bool:       par_set_u8,                             \
-        uint16_t:   par_set_u16,                            \
-        uint32_t:   par_set_u32,                            \
-        int8_t:     par_set_i8,                             \
-        int16_t:    par_set_i16,                            \
-        int32_t:    par_set_i32                             \
-    )(par_num, value)
+#define PAR_SET_F32(par_num, value)    par_set_f32((par_num), (value))
 #endif
 
 // Getting parameter value API (module must be first initialized before using those func)
@@ -261,36 +242,16 @@ par_status_t par_get_default    (const par_num_t par_num, void * const p_val);
 bool         par_is_changed     (const par_num_t par_num);
 
 /**
- *  @brief   Type-generic macro to retrieve a parameter value.
- *
- *          This macro uses C11 _Generic to automatically select the appropriate
- *          getter function based on the data type of the "dest" variable.
- *
- *  @param[in]   par_num - The unique identifier (ID) of the parameter to retrieve.
- *  @param[in]   dest    - The destination variable where the value will be stored.
- *                         The type of this variable determines the getter used (e.g., uint8_t, float).
+ *  @brief   Typed macro wrappers for parameter get.
  */
+#define PAR_GET_U8(par_num, dest)      do { (dest) = par_get_u8((par_num)); } while (0)
+#define PAR_GET_I8(par_num, dest)      do { (dest) = par_get_i8((par_num)); } while (0)
+#define PAR_GET_U16(par_num, dest)     do { (dest) = par_get_u16((par_num)); } while (0)
+#define PAR_GET_I16(par_num, dest)     do { (dest) = par_get_i16((par_num)); } while (0)
+#define PAR_GET_U32(par_num, dest)     do { (dest) = par_get_u32((par_num)); } while (0)
+#define PAR_GET_I32(par_num, dest)     do { (dest) = par_get_i32((par_num)); } while (0)
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
-    #define PAR_GET(par_num, dest) _Generic((dest), 	\
-        uint8_t:   dest = par_get_u8(par_num),      	\
-        bool:      dest = par_get_u8(par_num),      	\
-        uint16_t:  dest = par_get_u16(par_num),     	\
-        uint32_t:  dest = par_get_u32(par_num),     	\
-        int8_t:    dest = par_get_i8(par_num),      	\
-        int16_t:   dest = par_get_i16(par_num),     	\
-        int32_t:   dest = par_get_i32(par_num),     	\
-        float32_t: dest = par_get_f32(par_num)        \
-    )
-#else
-    #define PAR_GET(par_num, dest) _Generic((dest), 	\
-        uint8_t:   dest = par_get_u8(par_num),      	\
-        bool:      dest = par_get_u8(par_num),      	\
-        uint16_t:  dest = par_get_u16(par_num),     	\
-        uint32_t:  dest = par_get_u32(par_num),     	\
-        int8_t:    dest = par_get_i8(par_num),      	\
-        int16_t:   dest = par_get_i16(par_num),     	\
-        int32_t:   dest = par_get_i32(par_num)        \
-    )
+#define PAR_GET_F32(par_num, dest)     do { (dest) = par_get_f32((par_num)); } while (0)
 #endif
 
 // Parameter configurations API (usage without module init pre-step)

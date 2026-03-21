@@ -31,7 +31,7 @@ It is designed for projects that need a clean way to:
 3. Provide `port/par_cfg_port.h` in your include path.
 4. Optionally provide `port/par_if_port.c` and `port/par_atomic_port.h` when your platform needs them.
 5. Call `par_init()` before using runtime APIs.
-6. Use `PAR_SET`, `PAR_GET`, or the typed `par_set_*` / `par_get_*` APIs in application code.
+6. Use the typed macro wrappers such as `PAR_SET_U16` and `PAR_GET_U16`, or the typed `par_set_*` / `par_get_*` APIs in application code.
 
 A minimal example:
 
@@ -47,10 +47,10 @@ static void app_init(void)
         /* Handle initialization error */
     }
 
-    PAR_SET(ePAR_CH1_REF_VAL, (float32_t)25.0f);
+    PAR_SET_F32(ePAR_CH1_REF_VAL, (float32_t)25.0f);
 
     float32_t ref_val = 0.0f;
-    PAR_GET(ePAR_CH1_REF_VAL, ref_val);
+    PAR_GET_F32(ePAR_CH1_REF_VAL, ref_val);
 }
 ```
 
@@ -116,7 +116,7 @@ This repository contains the reusable module core and templates. A real integrat
 ## Key integration notes
 
 - `par_cfg.h` includes `par_cfg_port.h` unconditionally, so your build must provide that header.
-- `PAR_CFG_ENABLE_TYPE_F32` controls whether floating-point parameter support, related typed APIs, and `_Generic` float dispatch are compiled in.
+- `PAR_CFG_ENABLE_TYPE_F32` controls whether floating-point parameter support, related typed APIs, and the `PAR_SET_F32` / `PAR_GET_F32` macro wrappers are compiled in.
 - `PAR_CFG_ENABLE_RUNTIME_VALIDATION` and `PAR_CFG_ENABLE_CHANGE_CALLBACK` control whether normal setters include runtime validation callbacks and on-change callbacks.
 - The module separates **internal parameter enumeration** (`par_num_t`) from **external parameter IDs** (`id`).
 - Fast setter APIs skip part of the safety and observability path, including runtime validation callbacks and on-change callbacks, so they should be reserved for tightly controlled hot paths.

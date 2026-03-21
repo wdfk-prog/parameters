@@ -9,7 +9,7 @@ This document groups the public API from `src/par.h` by responsibility.
 - `par_num_t` is the internal parameter index.
 - ID-based APIs depend on `PAR_CFG_ENABLE_ID = 1`.
 - NVM APIs depend on `PAR_CFG_NVM_EN = 1`.
-- `F32` typed APIs and `_Generic` float dispatch depend on `PAR_CFG_ENABLE_TYPE_F32 = 1`.
+- `F32` typed APIs and the `PAR_SET_F32` / `PAR_GET_F32` macro wrappers depend on `PAR_CFG_ENABLE_TYPE_F32 = 1`.
 - Validation registration APIs depend on `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`.
 - On-change registration APIs depend on `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`.
 
@@ -23,7 +23,8 @@ The module conditionally compiles parts of the API based on configuration.
   - `par_set_f32()`
   - `par_get_f32()`
   - `par_set_f32_fast()`
-  - `float32_t` dispatch through `PAR_SET` and `PAR_GET`
+  - `PAR_SET_F32`
+  - `PAR_GET_F32`
 - `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1` enables:
   - `par_register_validation()`
   - runtime validation callbacks in normal setter paths
@@ -48,16 +49,26 @@ The module conditionally compiles parts of the API based on configuration.
 
 These are relevant only when mutex support is enabled in the integration.
 
-## Generic setters
+## Pointer-based setters
 
 | Function | Description |
 | --- | --- |
 | `par_set(par_num, p_val)` | Set a parameter from a typed pointer. |
 | `par_set_by_id(id, p_val)` | Set a parameter using its external ID. |
-| `PAR_SET(par_num, value)` | Use C11 `_Generic` to route a typed value to the matching setter. `float32_t` dispatch is available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 
+## Typed setter macro wrappers
 
-## Typed setters
+| Macro | Description |
+| --- | --- |
+| `PAR_SET_U8(par_num, value)` | Call `par_set_u8()` through a typed macro wrapper. |
+| `PAR_SET_I8(par_num, value)` | Call `par_set_i8()` through a typed macro wrapper. |
+| `PAR_SET_U16(par_num, value)` | Call `par_set_u16()` through a typed macro wrapper. |
+| `PAR_SET_I16(par_num, value)` | Call `par_set_i16()` through a typed macro wrapper. |
+| `PAR_SET_U32(par_num, value)` | Call `par_set_u32()` through a typed macro wrapper. |
+| `PAR_SET_I32(par_num, value)` | Call `par_set_i32()` through a typed macro wrapper. |
+| `PAR_SET_F32(par_num, value)` | Call `par_set_f32()` through a typed macro wrapper. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
+
+## Typed setter functions
 
 | Function | Description |
 | --- | --- |
@@ -114,15 +125,26 @@ They are different from startup initialization:
 
 That distinction matters if your application depends on validation callbacks, on-change callbacks, or other setter-side effects, because those runtime hooks apply only in the normal setter path and only when the matching callback features are enabled.
 
-## Generic getters
+## Pointer-based getters
 
 | Function | Description |
 | --- | --- |
 | `par_get(par_num, p_val)` | Read a parameter into a typed destination pointer. |
 | `par_get_by_id(id, p_val)` | Read a parameter using its external ID. |
-| `PAR_GET(par_num, dest)` | Use C11 `_Generic` to route a destination variable to the matching getter. `float32_t` dispatch is available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 
-## Typed getters
+## Typed getter macro wrappers
+
+| Macro | Description |
+| --- | --- |
+| `PAR_GET_U8(par_num, dest)` | Assign the result of `par_get_u8()` through a typed macro wrapper. |
+| `PAR_GET_I8(par_num, dest)` | Assign the result of `par_get_i8()` through a typed macro wrapper. |
+| `PAR_GET_U16(par_num, dest)` | Assign the result of `par_get_u16()` through a typed macro wrapper. |
+| `PAR_GET_I16(par_num, dest)` | Assign the result of `par_get_i16()` through a typed macro wrapper. |
+| `PAR_GET_U32(par_num, dest)` | Assign the result of `par_get_u32()` through a typed macro wrapper. |
+| `PAR_GET_I32(par_num, dest)` | Assign the result of `par_get_i32()` through a typed macro wrapper. |
+| `PAR_GET_F32(par_num, dest)` | Assign the result of `par_get_f32()` through a typed macro wrapper. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
+
+## Typed getter functions
 
 | Function | Description |
 | --- | --- |

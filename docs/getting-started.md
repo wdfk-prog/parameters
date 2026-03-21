@@ -14,7 +14,7 @@ This guide shows how to integrate the `Device Parameters` module into a firmware
    - compile-scan or script-provided layout
    - whether `F32` parameter support should be compiled in
 5. Call `par_init()` before runtime access.
-6. Use typed APIs or the generic `PAR_SET` and `PAR_GET` macros.
+6. Use typed APIs or the typed macro wrappers such as `PAR_SET_U16` and `PAR_GET_U16`.
 
 ## Required files
 
@@ -185,7 +185,7 @@ When `PAR_CFG_ENABLE_TYPE_F32 = 0`:
 
 * `PAR_ITEM_F32(...)` entries are not allowed in `par_table.def`
 * `par_set_f32()`, `par_get_f32()`, and `par_set_f32_fast()` are not available
-* `PAR_SET` and `PAR_GET` no longer dispatch `float32_t`
+* `PAR_SET_F32` and `PAR_GET_F32` are not available
 * startup F32 default patching is skipped
 
 ## Initialization
@@ -217,12 +217,12 @@ Do not rely on startup initialization to trigger application callbacks or runtim
 
 The `F32` examples in this section require `PAR_CFG_ENABLE_TYPE_F32 = 1`.
 
-### Use the generic macros in normal application code
+### Use the typed macro wrappers in normal application code
 ```c
-PAR_SET(ePAR_TARGET_TEMP, (float32_t)42.5f);
+PAR_SET_F32(ePAR_TARGET_TEMP, (float32_t)42.5f);
 
 float32_t target_temp = 0.0f;
-PAR_GET(ePAR_TARGET_TEMP, target_temp);
+PAR_GET_F32(ePAR_TARGET_TEMP, target_temp);
 ```
 
 ### Use typed APIs when explicitness matters
@@ -345,7 +345,7 @@ uint32_t baud = 115200U;
 - Writing `par_table.def` entries with duplicate IDs
 - Assuming the repository already ships a ready-to-build `par_table.def` for your project
 - Disabling `PAR_CFG_ENABLE_TYPE_F32` while keeping `PAR_ITEM_F32(...)` entries in `par_table.def`
-- Assuming `PAR_SET` and `PAR_GET` still accept `float32_t` after F32 support is disabled
+- Assuming `PAR_SET_F32` and `PAR_GET_F32` are still available after F32 support is disabled
 - Registering validation or change callbacks without enabling the matching configuration macro
 
 ### Compile-time error example when F32 support is disabled
