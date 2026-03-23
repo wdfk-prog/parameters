@@ -135,36 +135,51 @@ static struct
 #endif
 
 /**
- *  Static typed storage backing parameter live values.
+ *  Grouped typed storage backing parameter live values.
+ *
+ * @note  Storage is organized as U8/U16/U32 typed members inside one private
+ *        grouped storage object.
  *
  * @note  Zero-length groups are mapped to size 1 arrays for compiler portability.
- *        Private implementation fragments. Do not include outside par.c.
+ *
+ * @note  Private implementation fragment below must not be included outside par.c.
+ */
+typedef struct
+{
+    par_atomic_u8_t  u8[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT8)];
+    par_atomic_u16_t u16[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT16)];
+    par_atomic_u32_t u32[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT32)];
+} par_storage_groups_t;
+
+/*
+ * Private implementation fragment. Do not include outside par.c.
+ * Defines gs_par_storage with grouped typed initializers.
  */
 #include "par_storage_init.inc"
 
 #if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
 /**
- *  Runtime default mirror storage for raw reset-all API.
+ *  Runtime grouped default mirror storage for raw reset-all API.
  *
- * @note Mirrors are initialized in par_init() from current live defaults
- *       after F32 startup patch and before optional NVM load.
+ * @note  Mirrors are initialized in par_init() from current live defaults
+ *        after F32 startup patch and before optional NVM load.
+ *
+ * @note  Mirror layout matches the grouped live storage object.
  */
-static par_atomic_u8_t  gs_par_u8_default_mirror[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT8)]   = {0};
-static par_atomic_u16_t gs_par_u16_default_mirror[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT16)]  = {0};
-static par_atomic_u32_t gs_par_u32_default_mirror[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT32)]  = {0};
+static par_storage_groups_t gs_par_default_mirror = {0};
 #endif
 
 /**
- *  Parameter live values divided by its type in RAM
+ *  Typed live-value access pointers into grouped storage.
  */
-static par_atomic_u8_t *     gpu8_par_value = gs_par_u8_storage;
-static par_atomic_i8_t *     gpi8_par_value = (par_atomic_i8_t *)gs_par_u8_storage;
-static par_atomic_u16_t *    gpu16_par_value = gs_par_u16_storage;
-static par_atomic_i16_t *    gpi16_par_value = (par_atomic_i16_t *)gs_par_u16_storage;
-static par_atomic_u32_t *    gpu32_par_value = gs_par_u32_storage;
-static par_atomic_i32_t *    gpi32_par_value = (par_atomic_i32_t *)gs_par_u32_storage;
+static par_atomic_u8_t *  const gpu8_par_value  = gs_par_storage.u8;
+static par_atomic_i8_t *  const gpi8_par_value  = (par_atomic_i8_t *)gs_par_storage.u8;
+static par_atomic_u16_t * const gpu16_par_value = gs_par_storage.u16;
+static par_atomic_i16_t * const gpi16_par_value = (par_atomic_i16_t *)gs_par_storage.u16;
+static par_atomic_u32_t * const gpu32_par_value = gs_par_storage.u32;
+static par_atomic_i32_t * const gpi32_par_value = (par_atomic_i32_t *)gs_par_storage.u32;
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
-static par_atomic_f32_t *    gpf32_par_value = (par_atomic_f32_t *)gs_par_u32_storage;
+static par_atomic_f32_t * const gpf32_par_value = (par_atomic_f32_t *)gs_par_storage.u32;
 #endif
 
 /**
@@ -491,9 +506,7 @@ par_status_t par_init(void)
              * Build default mirrors from current live defaults.
              * This snapshot is taken before optional NVM load.
              */
-            memcpy( gs_par_u8_default_mirror,  gs_par_u8_storage,  sizeof(gs_par_u8_storage)  );
-            memcpy( gs_par_u16_default_mirror, gs_par_u16_storage, sizeof(gs_par_u16_storage) );
-            memcpy( gs_par_u32_default_mirror, gs_par_u32_storage, sizeof(gs_par_u32_storage) );
+            memcpy( &gs_par_default_mirror, &gs_par_storage, sizeof(gs_par_storage) );
 #endif
 
         #if ( 1 == PAR_CFG_NVM_EN )
@@ -734,7 +747,8 @@ par_status_t par_set_all_to_default(void)
 *               it avoids per-parameter runtime validation, on-change callback,
 *               and setter-side range handling.
 *
-* @note         Restore is performed per storage width group.
+* @note         Restore is performed as one grouped storage snapshot copy.
+*               Internal U8/U16/U32 width-group storage semantics are preserved.
 *
 * @pre          Parameters must be initialized before usage.
 *
@@ -751,9 +765,7 @@ par_status_t par_reset_all_to_default_raw(void)
         return ePAR_ERROR_MUTEX;
     }
 
-    memcpy( gs_par_u8_storage,  gs_par_u8_default_mirror,  sizeof(gs_par_u8_storage)  );
-    memcpy( gs_par_u16_storage, gs_par_u16_default_mirror, sizeof(gs_par_u16_storage) );
-    memcpy( gs_par_u32_storage, gs_par_u32_default_mirror, sizeof(gs_par_u32_storage) );
+    memcpy( &gs_par_storage, &gs_par_default_mirror, sizeof(gs_par_storage) );
 
     par_release_mutex((par_num_t)0);
 

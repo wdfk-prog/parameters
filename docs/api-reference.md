@@ -115,7 +115,7 @@ Use these only in controlled hot paths.
 | --- | --- |
 | `par_set_to_default(par_num)` | Reset one parameter to its default value. |
 | `par_set_all_to_default()` | Reset all parameters to their default values. |
-| `par_reset_all_to_default_raw()` | Restore all live values from width-group default mirrors (`U8/U16/U32`) via raw memory copy. Available only when `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`. |
+| `par_reset_all_to_default_raw()` | Restore all live values from a grouped default mirror snapshot via raw memory copy. The internal storage model still uses `U8/U16/U32` width groups. Available only when `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`. |
 | `par_has_changed(par_num, p_has_changed)` | Report whether the value differs from its default. |
 | `par_is_changed(par_num)` | Return whether the value differs from its default. |
 

@@ -185,12 +185,13 @@ Use `PAR_CFG_ENABLE_RESET_ALL_RAW` to control whether the raw reset-all API and 
 When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`:
 
 * `par_reset_all_to_default_raw()` is available
-* default mirror arrays are kept for `U8/U16/U32` width groups
-* `F32` defaults are mirrored into the 32-bit group as bit patterns after layout is known
+* a grouped default mirror snapshot is kept in RAM for raw restore
+* the grouped snapshot preserves the internal `U8/U16/U32` width-group storage layout
+* `F32` defaults are mirrored into the 32-bit storage group as bit patterns after layout is known
 
-`par_reset_all_to_default_raw()` restores live values by width-group memory copy and intentionally bypasses runtime validation callbacks, on-change callbacks, and range logic.
+`par_reset_all_to_default_raw()` restores live values by copying the grouped storage snapshot and intentionally bypasses runtime validation callbacks, on-change callbacks, and range logic.
 
-The default mirrors are built before optional NVM load, so `par_reset_all_to_default_raw()` restores configured defaults, not persisted runtime values loaded from NVM.
+The grouped default mirror snapshot is built before optional NVM load, so `par_reset_all_to_default_raw()` restores configured defaults, not persisted runtime values loaded from NVM.
 
 ### F32 type support
 Use `PAR_CFG_ENABLE_TYPE_F32` to control whether `F32` parameters are compiled into the module.
@@ -220,7 +221,7 @@ if (par_init() != ePAR_OK)
 ```
 
 If `PAR_CFG_NVM_EN = 1`, NVM loading happens after the module applies default values from `par_table.def`, so persisted values can overwrite the startup defaults.
-When raw reset-all is enabled, its default mirrors are built before that optional NVM load, so raw reset returns live storage to the configured defaults rather than to persisted NVM-loaded values.
+When raw reset-all is enabled, its grouped default mirror snapshot is built before that optional NVM load, so raw reset returns live storage to the configured defaults rather than to persisted NVM-loaded values.
 
 ### How `par_init()` applies default values
 
@@ -228,8 +229,8 @@ When raw reset-all is enabled, its default mirrors are built before that optiona
 
 During startup:
 
-- integer default values defined in `par_table.def` are already present in the shared storage arrays at definition time
-- when `PAR_CFG_ENABLE_TYPE_F32 = 1`, `F32` default values are written after layout offsets are known
+- integer default values defined in `par_table.def` are already present in the grouped live storage object at definition time
+- when `PAR_CFG_ENABLE_TYPE_F32 = 1`, `F32` default values are written into the grouped 32-bit storage member after layout offsets are known
 - if NVM support is enabled, persisted values may then overwrite those default values
 
 Do not rely on startup initialization to trigger application callbacks or runtime validation hooks.

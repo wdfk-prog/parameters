@@ -106,12 +106,12 @@ At runtime, each parameter resolves to:
 
 Live storage is initialized in two phases during startup:
 
-1. Integer default values from `par_table.def` are compiled directly into the shared storage arrays.
-2. When `PAR_CFG_ENABLE_TYPE_F32 = 1`, `F32` default values are written into the shared 32-bit storage after layout offsets are available.
+1. Integer default values from `par_table.def` are compiled directly into the grouped live storage object in `par.c`.
+2. When `PAR_CFG_ENABLE_TYPE_F32 = 1`, `F32` default values are written into the grouped 32-bit storage member after layout offsets are available.
 
-The compile-time integer storage initializers are emitted through a private include fragment, `par_storage_init.inc`, which is included only by `par.c`.
+The compile-time integer storage initializers are emitted through a private include fragment, `par_storage_init.inc`, which is included only by `par.c` and initializes the grouped storage object (`U8/U16/U32` members).
 
-When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par.c` keeps width-group default mirror storage for raw reset (`U8/U16/U32`).
+When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par.c` keeps a grouped default mirror snapshot for raw reset. The snapshot preserves the same `U8/U16/U32` width-group storage semantics.
 
 This means `par_init()` does not need to apply startup defaults through the public setter path for every parameter.
 
@@ -246,7 +246,7 @@ The bitwise fast helpers are emitted through `par_bitwise_impl.inc`, another pri
 
 When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par_reset_all_to_default_raw()` is available as a storage-level reset path.
 
-It restores live values by three width-group `memcpy` operations (`U8/U16/U32`) from default mirrors, so it bypasses:
+It restores live values by one grouped `memcpy` from the default mirror snapshot, while still preserving the internal `U8/U16/U32` width-group storage model, so it bypasses:
 
 - runtime validation callbacks
 - on-change callbacks
