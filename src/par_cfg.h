@@ -303,6 +303,24 @@
 #endif
 
 /**
+ *  Enable/Disable raw reset-all API and default mirror storage
+ *
+ * @note  When enabled, module compiles par_reset_all_to_default_raw() and
+ *        keeps per-width default mirror arrays in firmware image.
+ *
+ * @note  The raw reset path restores parameter storage directly from the
+ *        default mirrors, so it is typically faster than
+ *        par_set_all_to_default(), which resets parameters one by one through
+ *        the normal runtime setter path.
+ *
+ * @note  The speedup comes from bypassing per-parameter setter-side logic such
+ *        as runtime validation, change callback, and range handling.
+ */
+#ifndef PAR_CFG_ENABLE_RESET_ALL_RAW
+    #define PAR_CFG_ENABLE_RESET_ALL_RAW          ( 1 )
+#endif
+
+/**
  *  Enable/Disable parameter range metadata (min/max)
  */
 #ifndef PAR_CFG_ENABLE_RANGE

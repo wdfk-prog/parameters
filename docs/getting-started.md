@@ -12,7 +12,8 @@ This guide shows how to integrate the `Device Parameters` module into a firmware
    - a platform-specific interface backend
    - a platform-specific atomic backend
    - compile-scan or script-provided layout
-   - whether `F32` parameter support should be compiled in
+   - raw reset-all support
+   - `F32` parameter support
 5. Call `par_init()` before runtime access.
 6. Use typed APIs or the typed macro wrappers such as `PAR_SET_U16` and `PAR_GET_U16`.
 
@@ -174,6 +175,23 @@ When `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 0`, `par_register_validation()` is not
 When `PAR_CFG_ENABLE_CHANGE_CALLBACK = 0`, `par_register_on_change_cb()` is not available.
 
 
+### Raw reset-all API
+Use `PAR_CFG_ENABLE_RESET_ALL_RAW` to control whether the raw reset-all API and default mirror storage are compiled in.
+
+```c
+#define PAR_CFG_ENABLE_RESET_ALL_RAW ( 1 )
+```
+
+When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`:
+
+* `par_reset_all_to_default_raw()` is available
+* default mirror arrays are kept for `U8/U16/U32` width groups
+* `F32` defaults are mirrored into the 32-bit group as bit patterns after layout is known
+
+`par_reset_all_to_default_raw()` restores live values by width-group memory copy and intentionally bypasses runtime validation callbacks, on-change callbacks, and range logic.
+
+The default mirrors are built before optional NVM load, so `par_reset_all_to_default_raw()` restores configured defaults, not persisted runtime values loaded from NVM.
+
 ### F32 type support
 Use `PAR_CFG_ENABLE_TYPE_F32` to control whether `F32` parameters are compiled into the module.
 
@@ -202,6 +220,7 @@ if (par_init() != ePAR_OK)
 ```
 
 If `PAR_CFG_NVM_EN = 1`, NVM loading happens after the module applies default values from `par_table.def`, so persisted values can overwrite the startup defaults.
+When raw reset-all is enabled, its default mirrors are built before that optional NVM load, so raw reset returns live storage to the configured defaults rather than to persisted NVM-loaded values.
 
 ### How `par_init()` applies default values
 

@@ -111,6 +111,8 @@ Live storage is initialized in two phases during startup:
 
 The compile-time integer storage initializers are emitted through a private include fragment, `par_storage_init.inc`, which is included only by `par.c`.
 
+When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par.c` keeps width-group default mirror storage for raw reset (`U8/U16/U32`).
+
 This means `par_init()` does not need to apply startup defaults through the public setter path for every parameter.
 
 ### Ordering contract for shared storage
@@ -239,6 +241,18 @@ Fast setters are specialized APIs for controlled hot paths. They reduce overhead
 Fast setters do not execute runtime validation callbacks or on-change callbacks.
 
 The bitwise fast helpers are emitted through `par_bitwise_impl.inc`, another private include fragment included only by `par.c`.
+
+### Raw reset-all path
+
+When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par_reset_all_to_default_raw()` is available as a storage-level reset path.
+
+It restores live values by three width-group `memcpy` operations (`U8/U16/U32`) from default mirrors, so it bypasses:
+
+- runtime validation callbacks
+- on-change callbacks
+- normal setter range/flow semantics
+
+This path is intentionally separate from `par_set_all_to_default()`, which keeps normal runtime setter behavior.
 
 ## Optional NVM persistence
 

@@ -142,6 +142,18 @@ static struct
  */
 #include "par_storage_init.inc"
 
+#if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
+/**
+ *  Runtime default mirror storage for raw reset-all API.
+ *
+ * @note Mirrors are initialized in par_init() from current live defaults
+ *       after F32 startup patch and before optional NVM load.
+ */
+static par_atomic_u8_t  gs_par_u8_default_mirror[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT8)]   = {0};
+static par_atomic_u16_t gs_par_u16_default_mirror[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT16)]  = {0};
+static par_atomic_u32_t gs_par_u32_default_mirror[PAR_STORAGE_NONZERO(PAR_STORAGE_COUNT32)]  = {0};
+#endif
+
 /**
  *  Parameter live values divided by its type in RAM
  */
@@ -470,9 +482,19 @@ par_status_t par_init(void)
          * Integer defaults are already initialized at definition time.
          * F32 defaults are patched once after layout offsets are available.
         */
-        #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
             par_patch_f32_defaults_from_table();
-        #endif
+#endif
+
+#if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
+            /*
+             * Build default mirrors from current live defaults.
+             * This snapshot is taken before optional NVM load.
+             */
+            memcpy( gs_par_u8_default_mirror,  gs_par_u8_storage,  sizeof(gs_par_u8_storage)  );
+            memcpy( gs_par_u16_default_mirror, gs_par_u16_storage, sizeof(gs_par_u16_storage) );
+            memcpy( gs_par_u32_default_mirror, gs_par_u32_storage, sizeof(gs_par_u32_storage) );
+#endif
 
         #if ( 1 == PAR_CFG_NVM_EN )
             // Init and load parameters from NVM
@@ -681,6 +703,8 @@ par_status_t par_set_to_default(const par_num_t par_num)
 *        Set all parameters to default value
 *
 * @pre    Parameters must be initialised before usage!
+* @note   This function uses normal runtime setter path via par_set_to_default()
+*         and keeps setter semantics.
 *
 * @return    status - Status of operation
 */
@@ -696,6 +720,47 @@ par_status_t par_set_all_to_default(void)
     PAR_DBG_PRINT( "PAR: Setting all parameters to default" );
     return ePAR_OK;
 }
+
+#if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Reset all parameters to default values via raw storage restore
+*
+* @note         Unlike par_set_all_to_default(), this API restores grouped
+*               storage directly from default mirrors instead of iterating over
+*               all parameters through the normal setter path.
+*
+* @note         This path is therefore typically faster for bulk reset, because
+*               it avoids per-parameter runtime validation, on-change callback,
+*               and setter-side range handling.
+*
+* @note         Restore is performed per storage width group.
+*
+* @pre          Parameters must be initialized before usage.
+*
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_status_t par_reset_all_to_default_raw(void)
+{
+    PAR_ASSERT( true == par_is_init());
+    if ( true != par_is_init()) return ePAR_ERROR_INIT;
+
+    if ( ePAR_OK != par_acquire_mutex((par_num_t)0))
+    {
+        return ePAR_ERROR_MUTEX;
+    }
+
+    memcpy( gs_par_u8_storage,  gs_par_u8_default_mirror,  sizeof(gs_par_u8_storage)  );
+    memcpy( gs_par_u16_storage, gs_par_u16_default_mirror, sizeof(gs_par_u16_storage) );
+    memcpy( gs_par_u32_storage, gs_par_u32_default_mirror, sizeof(gs_par_u32_storage) );
+
+    par_release_mutex((par_num_t)0);
+
+    PAR_DBG_PRINT( "PAR: Raw reset all parameters to default" );
+    return ePAR_OK;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**

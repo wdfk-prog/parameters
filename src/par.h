@@ -207,7 +207,27 @@ par_status_t par_bitor_set_u8_fast  (const par_num_t par_num, const uint8_t val)
 par_status_t par_bitor_set_u16_fast (const par_num_t par_num, const uint16_t val);
 par_status_t par_bitor_set_u32_fast (const par_num_t par_num, const uint32_t val);
 par_status_t par_set_to_default     (const par_num_t par_num);
+
+/**
+ *  Reset all parameters through normal runtime setter path.
+ *
+ * @note This path keeps setter semantics (validation/callback/range behavior
+ *       depending on build-time configuration).
+ */
 par_status_t par_set_all_to_default (void);
+#if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
+/**
+ *  Reset all parameters through raw storage restore.
+ *
+ * @note This path is typically faster than par_set_all_to_default(), because
+ *       it restores grouped storage directly instead of resetting parameters
+ *       one by one through the normal setter path.
+ *
+ * @note This path bypasses normal setter hooks (validation, on-change callback,
+ *       and setter-side range behavior).
+ */
+par_status_t par_reset_all_to_default_raw(void);
+#endif
 
 par_status_t par_has_changed        (const par_num_t par_num, bool *const p_has_changed);
 

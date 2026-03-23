@@ -125,6 +125,7 @@ This repository contains the reusable module core and templates. A real integrat
 - Fast setter APIs skip part of the safety and observability path, including runtime validation callbacks and on-change callbacks, so they should be reserved for tightly controlled hot paths.
 - NVM support is optional, but when enabled it depends on the external NVM module and on ID and persistence metadata being enabled.
 - `par_init()` applies startup default values directly to live storage. Integer default values from `par_table.def` are compiled into the shared width-based storage arrays, while `F32` default values are applied after layout offsets are available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. Because this startup initialization does not go through the public setter path, it does not invoke runtime validation or on-change callbacks.
+- `PAR_CFG_ENABLE_RESET_ALL_RAW` controls whether `par_reset_all_to_default_raw()` and the default mirror storage are compiled in. Unlike `par_set_all_to_default()`, the raw reset path restores grouped storage directly and bypasses normal setter hooks, including validation, change callbacks, and setter-side range behavior.
 
 ## Related projects
 

@@ -31,6 +31,8 @@ The module conditionally compiles parts of the API based on configuration.
 - `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1` enables:
   - `par_register_on_change_cb()`
   - on-change callbacks in normal setter paths
+- `PAR_CFG_ENABLE_RESET_ALL_RAW = 1` enables:
+  - `par_reset_all_to_default_raw()`
 
 ## Lifecycle
 
@@ -113,6 +115,7 @@ Use these only in controlled hot paths.
 | --- | --- |
 | `par_set_to_default(par_num)` | Reset one parameter to its default value. |
 | `par_set_all_to_default()` | Reset all parameters to their default values. |
+| `par_reset_all_to_default_raw()` | Restore all live values from width-group default mirrors (`U8/U16/U32`) via raw memory copy. Available only when `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`. |
 | `par_has_changed(par_num, p_has_changed)` | Report whether the value differs from its default. |
 | `par_is_changed(par_num)` | Return whether the value differs from its default. |
 
@@ -122,8 +125,9 @@ They are different from startup initialization:
 
 - `par_init()` applies the default values defined in `par_table.def` directly to live storage
 - `par_set_to_default()` and `par_set_all_to_default()` still use the normal runtime value path
+- `par_reset_all_to_default_raw()` restores storage directly and bypasses normal setter hooks
 
-That distinction matters if your application depends on validation callbacks, on-change callbacks, or other setter-side effects, because those runtime hooks apply only in the normal setter path and only when the matching callback features are enabled.
+That distinction matters if your application depends on validation callbacks, on-change callbacks, range behavior, or other setter-side effects, because those runtime hooks apply only in the normal setter path and only when the matching callback features are enabled.
 
 ## Pointer-based getters
 
