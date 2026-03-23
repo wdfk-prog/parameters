@@ -7,8 +7,8 @@ This document explains how the module is structured internally and how the major
 The module separates four concerns:
 
 1. **Generated parameter definition** through `par_table.def`, generated enums, and generated config structs
-2. **Core runtime access** through `par.c` and `par.h`
-3. **Layout and storage** through `par_layout.*`
+2. **Core runtime access** through `par.c`, `par.h`, and private implementation fragments included only by `par.c`
+3. **Layout and storage** through `par_layout.*` and compile-time storage initialization fragments
 4. **Optional platform and NVM integration** through `par_if.*`, `par_atomic.h`, and `par_nvm.*`
 
 Runtime validation hooks and on-change hooks are kept separate from the core `par_cfg_t` metadata table and can be compiled out independently.
@@ -108,6 +108,8 @@ Live storage is initialized in two phases during startup:
 
 1. Integer default values from `par_table.def` are compiled directly into the shared storage arrays.
 2. When `PAR_CFG_ENABLE_TYPE_F32 = 1`, `F32` default values are written into the shared 32-bit storage after layout offsets are available.
+
+The compile-time integer storage initializers are emitted through a private include fragment, `par_storage_init.inc`, which is included only by `par.c`.
 
 This means `par_init()` does not need to apply startup defaults through the public setter path for every parameter.
 
@@ -228,11 +230,15 @@ Normal setters are the default path. They are intended for ordinary application 
 
 Depending on build-time configuration, the normal path can include runtime validation callbacks and on-change callbacks.
 
+The typed setter/getter implementations are emitted through `par_typed_impl.inc`, a private include fragment included only by `par.c`.
+
 ### Fast setters
 
 Fast setters are specialized APIs for controlled hot paths. They reduce overhead, but they should only be used when the surrounding code already guarantees the assumptions that the full path would normally check.
 
 Fast setters do not execute runtime validation callbacks or on-change callbacks.
+
+The bitwise fast helpers are emitted through `par_bitwise_impl.inc`, another private include fragment included only by `par.c`.
 
 ## Optional NVM persistence
 

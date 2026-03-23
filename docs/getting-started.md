@@ -116,6 +116,8 @@ Provide a generated static layout header only when:
 
 Use `template/par_layout_static.htmp` as the contract for the generated file.
 
+The template includes the required count macros and offset-table declaration. It can also serve as the starting point for a project-specific file header banner.
+
 ## Configuration decisions that matter first
 
 ### NVM support

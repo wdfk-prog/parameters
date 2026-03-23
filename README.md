@@ -76,6 +76,7 @@ parameters/
 │   ├── par.c
 │   ├── par.h
 │   ├── par_atomic.h
+│   ├── par_bitwise_impl.inc
 │   ├── par_cfg.h
 │   ├── par_def.c
 │   ├── par_def.h
@@ -84,7 +85,9 @@ parameters/
 │   ├── par_layout.c
 │   ├── par_layout.h
 │   ├── par_nvm.c
-│   └── par_nvm.h
+│   ├── par_nvm.h
+│   ├── par_storage_init.inc
+│   └── par_typed_impl.inc
 └── template/
     ├── par_cfg_port.htmp
     ├── par_layout_static.htmp
