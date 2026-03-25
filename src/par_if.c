@@ -29,7 +29,86 @@
 
 #if ( 1 == PAR_CFG_IF_PORT_EN )
 
-#include "par_if_port.c"
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Initialize low level interface
+*
+* @note Default weak implementation keeps the interface optional.
+*       Integrator may provide a strong definition in port/par_if_port.c.
+*
+* @return       status - Status of initialization
+*/
+////////////////////////////////////////////////////////////////////////////////
+PAR_PORT_WEAK par_status_t par_if_init(void)
+{
+    return ePAR_OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       De-initialize low level interface
+*
+* @note Default weak implementation keeps the interface optional.
+*       Integrator may provide a strong definition in port/par_if_port.c.
+*
+* @return       status - Status of de-initialization
+*/
+////////////////////////////////////////////////////////////////////////////////
+PAR_PORT_WEAK par_status_t par_if_deinit(void)
+{
+    return ePAR_OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Acquire mutex for specified parameter
+*
+* @note Default weak implementation does not provide locking.
+*       Integrator may provide a strong definition in port/par_if_port.c.
+*
+* @param[in]    par_num - Parameter number (enumeration)
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+PAR_PORT_WEAK par_status_t par_if_aquire_mutex(const par_num_t par_num)
+{
+    (void) par_num;
+    return ePAR_OK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Release mutex for specified parameter
+*
+* @note Default weak implementation does not provide locking.
+*       Integrator may provide a strong definition in port/par_if_port.c.
+*
+* @param[in]    par_num - Parameter number (enumeration)
+*/
+////////////////////////////////////////////////////////////////////////////////
+PAR_PORT_WEAK void par_if_release_mutex(const par_num_t par_num)
+{
+    (void) par_num;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Calculate hash
+*
+* @note Default weak implementation leaves hash output untouched.
+*       Integrator may provide a strong definition in port/par_if_port.c.
+*
+* @param[in]    p_data  - Pointer to data for hash calculation
+* @param[in]    size    - Size of data in bytes
+* @param[in]    p_hash  - Pointer to calculated hash number
+*/
+////////////////////////////////////////////////////////////////////////////////
+PAR_PORT_WEAK void par_if_calc_hash(const uint8_t * const p_data, const uint32_t size, uint8_t * const p_hash)
+{
+    (void) p_data;
+    (void) size;
+    (void) p_hash;
+}
 
 #else
 

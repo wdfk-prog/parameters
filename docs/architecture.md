@@ -338,7 +338,7 @@ Implemented under `src/`:
 Implemented by the integrator as needed:
 
 - `par_cfg_port.h`
-- `par_if_port.c`
+- `par_if_port.c` (optional strong override for the weak defaults in `par_if.c`)
 - `par_atomic_port.h`
 
 This separation makes the core reusable while still allowing the target platform to provide mutexes, logging, assertions, and atomic primitives.

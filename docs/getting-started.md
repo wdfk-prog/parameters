@@ -83,7 +83,8 @@ Use `template/par_cfg_port.htmp` as the starting point.
 
 ### `port/par_if_port.c`
 
-Provide this file only when `PAR_CFG_IF_PORT_EN = 1`.
+Provide this file only when `PAR_CFG_IF_PORT_EN = 1` **and** your target needs to override the core weak defaults.
+Compile it as a normal source file (do not `#include` the `.c` file from core code).
 
 Use it to integrate platform-specific services such as:
 

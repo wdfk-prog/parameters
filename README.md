@@ -108,7 +108,7 @@ This repository contains the reusable module core and templates. A real integrat
 
 ### Optional, depending on configuration
 
-- `port/par_if_port.c` when `PAR_CFG_IF_PORT_EN = 1`
+- `port/par_if_port.c` when `PAR_CFG_IF_PORT_EN = 1` and the target needs stronger platform hooks than the weak defaults in `par_if.c`
 - `port/par_atomic_port.h` when `PAR_ATOMIC_BACKEND = PAR_ATOMIC_BACKEND_PORT`
 - generated static layout header when `PAR_CFG_LAYOUT_SOURCE = PAR_CFG_LAYOUT_SCRIPT`
 - the external NVM module when `PAR_CFG_NVM_EN = 1`
