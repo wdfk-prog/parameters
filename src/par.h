@@ -40,7 +40,7 @@
  */
 #define PAR_VER_MAJOR       ( 3 )
 #define PAR_VER_MINOR       ( 0 )
-#define PAR_VER_DEVELOP     ( 1 )
+#define PAR_VER_DEVELOP     ( 2 )
 
 /**
  *   Parameter status
@@ -50,7 +50,7 @@ enum
     ePAR_OK                 = 0U,           /**<Normal operation */
 
     // Errors
-    ePAR_STATUS_ERROR_MASK  = 0x00FFU,
+    ePAR_STATUS_ERROR_MASK  = 0x01FFU,
     ePAR_ERROR              = 0x0001U,      /**<General parameter error */
     ePAR_ERROR_INIT         = 0x0002U,      /**<Parameter initialization error or usage before initialization */
     ePAR_ERROR_NVM          = 0x0004U,      /**<Parameter storage to NVM error */
@@ -58,13 +58,15 @@ enum
     ePAR_ERROR_TYPE         = 0x0010U,      /**<Using invalid API function for given parameter data type */
     ePAR_ERROR_MUTEX        = 0x0020U,      /**<Acquiring mutex failed  */
     ePAR_ERROR_VALUE        = 0x0040U,      /**<Invalid parameter value (validation failed) */
+    ePAR_ERROR_PARAM        = 0x0080U,      /**<Invalid function argument */
+    ePAR_ERROR_PAR_NUM      = 0x0100U,      /**<Invalid parameter number */
 
     // Warnings
-    ePAR_STATUS_WAR_MASK    = 0xFF00U,
-    ePAR_WAR_SET_TO_DEF     = 0x0100U,      /**<Parameters set to default */
-    ePAR_WAR_NVM_REWRITTEN  = 0x0200U,      /**<NVM parameters area completely re-written */
-    ePAR_WAR_NO_PERSISTANT  = 0x0400U,      /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
-    ePAR_WAR_LIMITED        = 0x0800U,      /**<Parameter value limited within [min,max] */
+    ePAR_STATUS_WAR_MASK    = 0xFE00U,
+    ePAR_WAR_SET_TO_DEF     = 0x0200U,      /**<Parameters set to default */
+    ePAR_WAR_NVM_REWRITTEN  = 0x0400U,      /**<NVM parameters area completely re-written */
+    ePAR_WAR_NO_PERSISTANT  = 0x0800U,      /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
+    ePAR_WAR_LIMITED        = 0x1000U,      /**<Parameter value limited within [min,max] */
 };
 typedef uint16_t par_status_t;
 
@@ -249,30 +251,16 @@ par_status_t par_get            (const par_num_t par_num, void * const p_val);
 #if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_get_by_id      (const uint16_t id, void * const p_val);
 #endif
-uint8_t      par_get_u8         (const par_num_t par_num);
-int8_t       par_get_i8         (const par_num_t par_num);
-uint16_t     par_get_u16        (const par_num_t par_num);
-int16_t      par_get_i16        (const par_num_t par_num);
-uint32_t     par_get_u32        (const par_num_t par_num);
-int32_t      par_get_i32        (const par_num_t par_num);
+par_status_t par_get_u8         (const par_num_t par_num, uint8_t * const p_val);
+par_status_t par_get_i8         (const par_num_t par_num, int8_t * const p_val);
+par_status_t par_get_u16        (const par_num_t par_num, uint16_t * const p_val);
+par_status_t par_get_i16        (const par_num_t par_num, int16_t * const p_val);
+par_status_t par_get_u32        (const par_num_t par_num, uint32_t * const p_val);
+par_status_t par_get_i32        (const par_num_t par_num, int32_t * const p_val);
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
-float32_t    par_get_f32        (const par_num_t par_num);
+par_status_t par_get_f32        (const par_num_t par_num, float32_t * const p_val);
 #endif
 par_status_t par_get_default    (const par_num_t par_num, void * const p_val);
-bool         par_is_changed     (const par_num_t par_num);
-
-/**
- *  @brief   Typed macro wrappers for parameter get.
- */
-#define PAR_GET_U8(par_num, dest)      do { (dest) = par_get_u8((par_num)); } while (0)
-#define PAR_GET_I8(par_num, dest)      do { (dest) = par_get_i8((par_num)); } while (0)
-#define PAR_GET_U16(par_num, dest)     do { (dest) = par_get_u16((par_num)); } while (0)
-#define PAR_GET_I16(par_num, dest)     do { (dest) = par_get_i16((par_num)); } while (0)
-#define PAR_GET_U32(par_num, dest)     do { (dest) = par_get_u32((par_num)); } while (0)
-#define PAR_GET_I32(par_num, dest)     do { (dest) = par_get_i32((par_num)); } while (0)
-#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
-#define PAR_GET_F32(par_num, dest)     do { (dest) = par_get_f32((par_num)); } while (0)
-#endif
 
 // Parameter configurations API (usage without module init pre-step)
 const par_cfg_t *   par_get_config      (const par_num_t par_num);

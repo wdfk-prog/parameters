@@ -10,7 +10,7 @@
 *@author    Matej Otic
 *@email     otic.matej@dancing-bits.com
 *@date      29.01.2026
-*@version   V3.0.1
+*@version   V3.0.2
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -164,12 +164,16 @@ static par_atomic_f32_t * const gpf32_par_value = (par_atomic_f32_t *)gs_par_sto
         "ERROR CRC",
         "ERROR TYPE",
         "ERROR MUTEX",
-        "ERROR_VALUE",
-
+        "ERROR VALUE",
+        "ERROR PARAM",
+        "ERROR PAR NUM",
         "WARN SET TO DEF",
         "WARN NVM REWRITTEN",
         "NO PERSISTENT",
         "LIMITED",
+        "N/A",
+        "N/A",
+        "N/A",
     };
 #endif
 
@@ -183,9 +187,9 @@ static par_status_t     par_runtime_validate_id_table   (const par_cfg_t * const
 #endif
 #endif
 #if ( 1 == PAR_CFG_NVM_EN )
-static bool         par_is_value_changed            (const par_num_t par_num, const void * p_val);
+static par_status_t par_is_value_changed          (const par_num_t par_num, const void * p_val, bool * const p_value_changed);
 #endif /* ( 1 == PAR_CFG_NVM_EN ) */
-static par_status_t     par_check_table_validity        (const par_cfg_t * const p_par_cfg);
+static par_status_t par_check_table_validity      (const par_cfg_t * const p_par_cfg);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -559,35 +563,42 @@ par_status_t par_set(const par_num_t par_num, const void * p_val)
 {
     par_status_t status = ePAR_OK;
 
+    PAR_ASSERT( par_num < ePAR_NUM_OF );
+
+    if ( NULL == p_val )
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
     switch ( par_get_type(par_num))
     {
         case ePAR_TYPE_U8:
-            status = par_set_u8( par_num, *(uint8_t*) p_val );
+            status = par_set_u8( par_num, *(const uint8_t*) p_val );
             break;
 
         case ePAR_TYPE_I8:
-            status = par_set_i8( par_num, *(int8_t*) p_val );
+            status = par_set_i8( par_num, *(const int8_t*) p_val );
             break;
 
         case ePAR_TYPE_U16:
-            status = par_set_u16( par_num, *(uint16_t*) p_val );
+            status = par_set_u16( par_num, *(const uint16_t*) p_val );
             break;
 
         case ePAR_TYPE_I16:
-            status = par_set_i16( par_num, *(int16_t*) p_val );
+            status = par_set_i16( par_num, *(const int16_t*) p_val );
             break;
 
         case ePAR_TYPE_U32:
-            status = par_set_u32( par_num, *(uint32_t*) p_val );
+            status = par_set_u32( par_num, *(const uint32_t*) p_val );
             break;
 
         case ePAR_TYPE_I32:
-            status = par_set_i32( par_num, *(int32_t*) p_val );
+            status = par_set_i32( par_num, *(const int32_t*) p_val );
             break;
 
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
-            status = par_set_f32( par_num, *(float32_t*) p_val );
+            status = par_set_f32( par_num, *(const float32_t*) p_val );
             break;
 #endif
 
@@ -612,16 +623,15 @@ par_status_t par_set(const par_num_t par_num, const void * p_val)
 #if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_set_by_id(const uint16_t id, const void * p_val)
 {
-    par_num_t par_num;
+    par_num_t par_num = 0U;
+    const par_status_t status = par_get_num_by_id( id, &par_num );
 
-    if ( ePAR_OK == par_get_num_by_id( id, &par_num ))
+    if ( ePAR_OK != status )
     {
-        return par_set( par_num, p_val );
+        return status;
     }
-    else
-    {
-        return ePAR_ERROR;
-    }
+
+    return par_set( par_num, p_val );
 }
 #endif
 
@@ -734,38 +744,91 @@ par_status_t par_set_all_to_default(void)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_has_changed(const par_num_t par_num, bool *const p_has_changed)
 {
-    const par_cfg_t * const par_cfg = par_get_config(par_num);
+    const par_cfg_t * par_cfg = NULL;
+
+    PAR_ASSERT( par_num < ePAR_NUM_OF );
+
+    if ( NULL == p_has_changed )
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    if ( true != par_is_init() )
+    {
+        return ePAR_ERROR_INIT;
+    }
+
+    par_cfg = par_get_config(par_num);
+    if ( NULL == par_cfg )
+    {
+        return ePAR_ERROR;
+    }
 
     switch ( par_cfg->type )
     {
         case ePAR_TYPE_U8:
-            *p_has_changed = (par_get_u8(par_num) != par_cfg->def.u8);
+        {
+            uint8_t cur = 0U;
+            const par_status_t status = par_get_u8(par_num, &cur);
+            if ( ePAR_OK != status ) return status;
+            *p_has_changed = (cur != par_cfg->def.u8);
             break;
+        }
 
         case ePAR_TYPE_I8:
-            *p_has_changed = (par_get_i8(par_num) != par_cfg->def.i8);
+        {
+            int8_t cur = 0;
+            const par_status_t status = par_get_i8(par_num, &cur);
+            if ( ePAR_OK != status ) return status;
+            *p_has_changed = (cur != par_cfg->def.i8);
             break;
+        }
 
         case ePAR_TYPE_U16:
-            *p_has_changed = (par_get_u16(par_num) != par_cfg->def.u16);
+        {
+            uint16_t cur = 0U;
+            const par_status_t status = par_get_u16(par_num, &cur);
+            if ( ePAR_OK != status ) return status;
+            *p_has_changed = (cur != par_cfg->def.u16);
             break;
+        }
 
         case ePAR_TYPE_I16:
-            *p_has_changed = (par_get_i16(par_num) != par_cfg->def.i16);
+        {
+            int16_t cur = 0;
+            const par_status_t status = par_get_i16(par_num, &cur);
+            if ( ePAR_OK != status ) return status;
+            *p_has_changed = (cur != par_cfg->def.i16);
             break;
+        }
 
         case ePAR_TYPE_U32:
-            *p_has_changed = (par_get_u32(par_num) != par_cfg->def.u32);
+        {
+            uint32_t cur = 0U;
+            const par_status_t status = par_get_u32(par_num, &cur);
+            if ( ePAR_OK != status ) return status;
+            *p_has_changed = (cur != par_cfg->def.u32);
             break;
+        }
 
         case ePAR_TYPE_I32:
-            *p_has_changed = (par_get_i32(par_num) != par_cfg->def.i32);
+        {
+            int32_t cur = 0;
+            const par_status_t status = par_get_i32(par_num, &cur);
+            if ( ePAR_OK != status ) return status;
+            *p_has_changed = (cur != par_cfg->def.i32);
             break;
+        }
 
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
-            *p_has_changed = (par_get_f32(par_num) != par_cfg->def.f32);
+        {
+            float32_t cur = 0.0f;
+            const par_status_t status = par_get_f32(par_num, &cur);
+            if ( ePAR_OK != status ) return status;
+            *p_has_changed = (cur != par_cfg->def.f32);
             break;
+        }
 #endif
 
         case ePAR_TYPE_NUM_OF:
@@ -798,36 +861,36 @@ par_status_t par_has_changed(const par_num_t par_num, bool *const p_has_changed)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_get(const par_num_t par_num, void * const p_val)
 {
+    PAR_ASSERT( par_num < ePAR_NUM_OF );
+
+    if ( NULL == p_val )
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
     switch ( par_get_type(par_num))
     {
         case ePAR_TYPE_U8:
-            *(uint8_t*) p_val = par_get_u8(par_num);
-            break;
+            return par_get_u8(par_num, (uint8_t*) p_val);
 
         case ePAR_TYPE_I8:
-            *(int8_t*) p_val = par_get_i8(par_num);
-            break;
+            return par_get_i8(par_num, (int8_t*) p_val);
 
         case ePAR_TYPE_U16:
-            *(uint16_t*) p_val = par_get_u16(par_num);
-            break;
+            return par_get_u16(par_num, (uint16_t*) p_val);
 
         case ePAR_TYPE_I16:
-            *(int16_t*) p_val = par_get_i16(par_num);
-            break;
+            return par_get_i16(par_num, (int16_t*) p_val);
 
         case ePAR_TYPE_U32:
-            *(uint32_t*) p_val = par_get_u32(par_num);
-            break;
+            return par_get_u32(par_num, (uint32_t*) p_val);
 
         case ePAR_TYPE_I32:
-            *(int32_t*) p_val = par_get_i32(par_num);
-            break;
+            return par_get_i32(par_num, (int32_t*) p_val);
 
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
-            *(float32_t*) p_val = par_get_f32(par_num);
-            break;
+            return par_get_f32(par_num, (float32_t*) p_val);
 #endif
 
         case ePAR_TYPE_NUM_OF:
@@ -835,8 +898,6 @@ par_status_t par_get(const par_num_t par_num, void * const p_val)
             PAR_ASSERT( 0 );
             return ePAR_ERROR_TYPE;
     }
-
-    return ePAR_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -851,16 +912,15 @@ par_status_t par_get(const par_num_t par_num, void * const p_val)
 #if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_get_by_id(const uint16_t id, void * const p_val)
 {
-    par_num_t par_num;
+    par_num_t par_num = 0U;
+    const par_status_t status = par_get_num_by_id( id, &par_num );
 
-    if ( ePAR_OK == par_get_num_by_id( id, &par_num ))
+    if ( ePAR_OK != status )
     {
-        return par_get( par_num, p_val );
+        return status;
     }
-    else
-    {
-        return ePAR_ERROR;
-    }
+
+    return par_get( par_num, p_val );
 }
 #endif
 
@@ -875,39 +935,52 @@ par_status_t par_get_by_id(const uint16_t id, void * const p_val)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_get_default(const par_num_t par_num, void * const p_val)
 {
-    // Check initialization
-    PAR_ASSERT( true == par_is_init());
+    const par_cfg_t * par_cfg = NULL;
+
+    PAR_ASSERT( par_num < ePAR_NUM_OF );
+
+    if ( NULL == p_val )
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
     if ( true != par_is_init()) return ePAR_ERROR_INIT;
 
-    switch ( par_get_type( par_num ))
+    par_cfg = par_get_config(par_num);
+    if ( NULL == par_cfg )
+    {
+        return ePAR_ERROR;
+    }
+
+    switch ( par_cfg->type )
     {
         case ePAR_TYPE_U8:
-            *(uint8_t*) p_val = (uint8_t) par_get_config(par_num)->def.u8;
+            *(uint8_t*) p_val = (uint8_t) par_cfg->def.u8;
             break;
 
         case ePAR_TYPE_I8:
-            *(int8_t*) p_val = (int8_t) par_get_config(par_num)->def.i8;
+            *(int8_t*) p_val = (int8_t) par_cfg->def.i8;
             break;
 
         case ePAR_TYPE_U16:
-            *(uint16_t*) p_val = (uint16_t) par_get_config(par_num)->def.u16;
+            *(uint16_t*) p_val = (uint16_t) par_cfg->def.u16;
             break;
 
         case ePAR_TYPE_I16:
-            *(int16_t*) p_val = (int16_t) par_get_config(par_num)->def.i16;
+            *(int16_t*) p_val = (int16_t) par_cfg->def.i16;
             break;
 
         case ePAR_TYPE_U32:
-            *(uint32_t*) p_val = (uint32_t) par_get_config(par_num)->def.u32;
+            *(uint32_t*) p_val = (uint32_t) par_cfg->def.u32;
             break;
 
         case ePAR_TYPE_I32:
-            *(int32_t*) p_val = (int32_t) par_get_config(par_num)->def.i32;
+            *(int32_t*) p_val = (int32_t) par_cfg->def.i32;
             break;
 
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
         case ePAR_TYPE_F32:
-            *(float32_t*) p_val = (float32_t) par_get_config(par_num)->def.f32;
+            *(float32_t*) p_val = (float32_t) par_cfg->def.f32;
             break;
 #endif
 
@@ -918,50 +991,6 @@ par_status_t par_get_default(const par_num_t par_num, void * const p_val)
     }
 
     return ePAR_OK;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Check if parameter changed from its default value
-*
-* @param[in]    par_num - Parameter number (enumeration)
-* @return       true if parameter value has been changed
-*/
-////////////////////////////////////////////////////////////////////////////////
-bool par_is_changed(const par_num_t par_num)
-{
-    switch ( par_get_type(par_num))
-    {
-        case ePAR_TYPE_U8:
-            return (bool) (par_get_u8(par_num) != par_get_config(par_num)->def.u8);
-
-        case ePAR_TYPE_I8:
-            return (bool) (par_get_i8(par_num) != par_get_config(par_num)->def.i8);
-
-        case ePAR_TYPE_U16:
-            return (bool) (par_get_u16(par_num) != par_get_config(par_num)->def.u16);
-
-        case ePAR_TYPE_I16:
-            return (bool) (par_get_i16(par_num) != par_get_config(par_num)->def.i16);
-
-        case ePAR_TYPE_U32:
-            return (bool) (par_get_u32(par_num) != par_get_config(par_num)->def.u32);
-
-        case ePAR_TYPE_I32:
-            return (bool) (par_get_i32(par_num) != par_get_config(par_num)->def.i32);
-
-#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
-        case ePAR_TYPE_F32:
-            return (bool) (par_get_f32(par_num) != par_get_config(par_num)->def.f32);
-#endif
-
-        case ePAR_TYPE_NUM_OF:
-        default:
-            PAR_ASSERT( 0 );
-            return false;
-    }
-
-    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1148,13 +1177,27 @@ bool par_is_persistant(const par_num_t par_num)
 #if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
 {
-    if (( NULL != p_par_num ) && ( true == par_is_init() ))
+    if ( NULL == p_par_num )
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    if ( true != par_is_init() )
+    {
+        return ePAR_ERROR_INIT;
+    }
+
     {
         const uint32_t bucket_idx = par_hash_id( id );
         const par_id_map_entry_t * const bucket = &g_par_id_map_static[bucket_idx];
 
         if (( 0u != bucket->used ) && ( id == bucket->id ))
         {
+            if ( bucket->par_num >= ePAR_NUM_OF )
+            {
+                return ePAR_ERROR_PAR_NUM;
+            }
+
             *p_par_num = bucket->par_num;
             return ePAR_OK;
         }
@@ -1174,7 +1217,16 @@ par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
 {
-    if ( NULL != p_id )
+    if ( NULL == p_id )
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    if ( par_num >= ePAR_NUM_OF )
+    {
+        return ePAR_ERROR_PAR_NUM;
+    }
+
     {
         const par_cfg_t * const par_cfg = par_get_config(par_num);
 
@@ -1199,49 +1251,94 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
     * @return       True if parameter value is different from current
     */
     ////////////////////////////////////////////////////////////////////////////////
-    static bool par_is_value_changed(const par_num_t par_num, const void * p_val)
+    static par_status_t par_is_value_changed(const par_num_t par_num, const void * p_val, bool * const p_value_changed)
     {
-        bool value_changed = false;
+        PAR_ASSERT( par_num < ePAR_NUM_OF );
+
+        if (( NULL == p_val ) || ( NULL == p_value_changed ))
+        {
+            return ePAR_ERROR_PARAM;
+        }
+
+        if ( true != par_is_init() )
+        {
+            return ePAR_ERROR_INIT;
+        }
 
         switch ( par_get_type(par_num))
         {
             case ePAR_TYPE_U8:
-                value_changed = (par_get_u8(par_num) != *(uint8_t*)p_val);
+            {
+                uint8_t cur = 0U;
+                const par_status_t status = par_get_u8(par_num, &cur);
+                if ( ePAR_OK != status ) return status;
+                *p_value_changed = (cur != *(const uint8_t*)p_val);
                 break;
+            }
 
             case ePAR_TYPE_I8:
-                value_changed = (par_get_i8(par_num) != *(int8_t*)p_val);
+            {
+                int8_t cur = 0;
+                const par_status_t status = par_get_i8(par_num, &cur);
+                if ( ePAR_OK != status ) return status;
+                *p_value_changed = (cur != *(const int8_t*)p_val);
                 break;
+            }
 
             case ePAR_TYPE_U16:
-                value_changed = (par_get_u16(par_num) != *(uint16_t*)p_val);
+            {
+                uint16_t cur = 0U;
+                const par_status_t status = par_get_u16(par_num, &cur);
+                if ( ePAR_OK != status ) return status;
+                *p_value_changed = (cur != *(const uint16_t*)p_val);
                 break;
+            }
 
             case ePAR_TYPE_I16:
-                value_changed = (par_get_i16(par_num) != *(int16_t*)p_val);
+            {
+                int16_t cur = 0;
+                const par_status_t status = par_get_i16(par_num, &cur);
+                if ( ePAR_OK != status ) return status;
+                *p_value_changed = (cur != *(const int16_t*)p_val);
                 break;
+            }
 
             case ePAR_TYPE_U32:
-                value_changed = (par_get_u32(par_num) != *(uint32_t*)p_val);
+            {
+                uint32_t cur = 0U;
+                const par_status_t status = par_get_u32(par_num, &cur);
+                if ( ePAR_OK != status ) return status;
+                *p_value_changed = (cur != *(const uint32_t*)p_val);
                 break;
+            }
 
             case ePAR_TYPE_I32:
-                value_changed = (par_get_i32(par_num) != *(int32_t*)p_val);
+            {
+                int32_t cur = 0;
+                const par_status_t status = par_get_i32(par_num, &cur);
+                if ( ePAR_OK != status ) return status;
+                *p_value_changed = (cur != *(const int32_t*)p_val);
                 break;
+            }
 
     #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
             case ePAR_TYPE_F32:
-                value_changed = (par_get_f32(par_num) != *(float32_t*)p_val);
+            {
+                float32_t cur = 0.0f;
+                const par_status_t status = par_get_f32(par_num, &cur);
+                if ( ePAR_OK != status ) return status;
+                *p_value_changed = (cur != *(const float32_t*)p_val);
                 break;
+            }
     #endif
 
             case ePAR_TYPE_NUM_OF:
             default:
                 PAR_ASSERT( 0 );
-                break;
+                return ePAR_ERROR_TYPE;
         }
 
-        return value_changed;
+        return ePAR_OK;
     }
     ////////////////////////////////////////////////////////////////////////////////
     /**
@@ -1264,11 +1361,18 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
     ////////////////////////////////////////////////////////////////////////////////
     par_status_t par_set_n_save(const par_num_t par_num, const void * p_val)
     {
-        // Check if parameter value is about to change
-        const bool value_change = par_is_value_changed( par_num, p_val );
+        bool value_change = false;
+        par_status_t status = par_is_value_changed( par_num, p_val, &value_change );
+
+        if ( ePAR_OK != status )
+        {
+            PAR_DBG_PRINT( "PAR: failed to read current value before set_n_save for par_num=%u with status=%s", (unsigned) par_num, par_get_status_str( status ));
+            PAR_ASSERT( 0 );
+            return status;
+        }
 
         // Set parameter
-        par_status_t status = par_set(par_num, p_val);
+        status = par_set(par_num, p_val);
 
         // Parameter set OK and value has been changed -> makes sense to store to NVM
         if (( ePAR_OK == status ) && value_change )

@@ -9,7 +9,7 @@ This document groups the public API from `src/par.h` by responsibility.
 - `par_num_t` is the internal parameter index.
 - ID-based APIs depend on `PAR_CFG_ENABLE_ID = 1`.
 - NVM APIs depend on `PAR_CFG_NVM_EN = 1`.
-- `F32` typed APIs and the `PAR_SET_F32` / `PAR_GET_F32` macro wrappers depend on `PAR_CFG_ENABLE_TYPE_F32 = 1`.
+- `F32` typed APIs depend on `PAR_CFG_ENABLE_TYPE_F32 = 1`.
 - Validation registration APIs depend on `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`.
 - On-change registration APIs depend on `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`.
 
@@ -24,7 +24,6 @@ The module conditionally compiles parts of the API based on configuration.
   - `par_get_f32()`
   - `par_set_f32_fast()`
   - `PAR_SET_F32`
-  - `PAR_GET_F32`
 - `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1` enables:
   - `par_register_validation()`
   - runtime validation callbacks in normal setter paths
@@ -141,29 +140,19 @@ These reset APIs are also different from startup initialization:
 | `par_get(par_num, p_val)` | Read a parameter into a typed destination pointer. |
 | `par_get_by_id(id, p_val)` | Read a parameter using its external ID. |
 
-## Typed getter macro wrappers
-
-| Macro | Description |
-| --- | --- |
-| `PAR_GET_U8(par_num, dest)` | Assign the result of `par_get_u8()` through a typed macro wrapper. |
-| `PAR_GET_I8(par_num, dest)` | Assign the result of `par_get_i8()` through a typed macro wrapper. |
-| `PAR_GET_U16(par_num, dest)` | Assign the result of `par_get_u16()` through a typed macro wrapper. |
-| `PAR_GET_I16(par_num, dest)` | Assign the result of `par_get_i16()` through a typed macro wrapper. |
-| `PAR_GET_U32(par_num, dest)` | Assign the result of `par_get_u32()` through a typed macro wrapper. |
-| `PAR_GET_I32(par_num, dest)` | Assign the result of `par_get_i32()` through a typed macro wrapper. |
-| `PAR_GET_F32(par_num, dest)` | Assign the result of `par_get_f32()` through a typed macro wrapper. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
+Typed getter macros are removed. Call the typed getter functions directly and always check the returned status.
 
 ## Typed getter functions
 
 | Function | Description |
 | --- | --- |
-| `par_get_u8()` | Read a `U8` parameter. |
-| `par_get_i8()` | Read an `I8` parameter. |
-| `par_get_u16()` | Read a `U16` parameter. |
-| `par_get_i16()` | Read an `I16` parameter. |
-| `par_get_u32()` | Read a `U32` parameter. |
-| `par_get_i32()` | Read an `I32` parameter. |
-| `par_get_f32()` | Read an `F32` parameter. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
+| `par_get_u8(par_num, p_val)` | Read a `U8` parameter into `*p_val`. Returns status. |
+| `par_get_i8(par_num, p_val)` | Read an `I8` parameter into `*p_val`. Returns status. |
+| `par_get_u16(par_num, p_val)` | Read a `U16` parameter into `*p_val`. Returns status. |
+| `par_get_i16(par_num, p_val)` | Read an `I16` parameter into `*p_val`. Returns status. |
+| `par_get_u32(par_num, p_val)` | Read a `U32` parameter into `*p_val`. Returns status. |
+| `par_get_i32(par_num, p_val)` | Read an `I32` parameter into `*p_val`. Returns status. |
+| `par_get_f32(par_num, p_val)` | Read an `F32` parameter into `*p_val`. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. Returns status. |
 | `par_get_default(par_num, p_val)` | Read the configured default value for a parameter. |
 
 ## Metadata access
@@ -263,6 +252,8 @@ Common values include:
 - `ePAR_ERROR_TYPE`
 - `ePAR_ERROR_MUTEX`
 - `ePAR_ERROR_VALUE`
+- `ePAR_ERROR_PARAM`
+- `ePAR_ERROR_PAR_NUM`
 - `ePAR_WAR_SET_TO_DEF`
 - `ePAR_WAR_NVM_REWRITTEN`
 - `ePAR_WAR_NO_PERSISTANT`

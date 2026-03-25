@@ -15,7 +15,7 @@ This guide shows how to integrate the `Device Parameters` module into a firmware
    - raw reset-all support
    - `F32` parameter support
 5. Call `par_init()` before runtime access.
-6. Use typed APIs or the typed macro wrappers such as `PAR_SET_U16` and `PAR_GET_U16`.
+6. Use the typed APIs. Getter calls take an explicit output pointer and return `par_status_t`.
 
 ## Required files
 
@@ -214,7 +214,6 @@ When `PAR_CFG_ENABLE_TYPE_F32 = 0`:
 
 * `PAR_ITEM_F32(...)` entries are not allowed in `par_table.def`
 * `par_set_f32()`, `par_get_f32()`, and `par_set_f32_fast()` are not available
-* `PAR_SET_F32` and `PAR_GET_F32` are not available
 * startup F32 default patching is skipped
 
 ## Initialization
@@ -247,19 +246,20 @@ Do not rely on startup initialization to trigger application callbacks or runtim
 
 The `F32` examples in this section require `PAR_CFG_ENABLE_TYPE_F32 = 1`.
 
-### Use the typed macro wrappers in normal application code
+### Use the typed APIs in normal application code
 ```c
-PAR_SET_F32(ePAR_TARGET_TEMP, (float32_t)42.5f);
+(void)par_set_f32(ePAR_TARGET_TEMP, (float32_t)42.5f);
 
 float32_t target_temp = 0.0f;
-PAR_GET_F32(ePAR_TARGET_TEMP, target_temp);
+(void)par_get_f32(ePAR_TARGET_TEMP, &target_temp);
 ```
 
 ### Use typed APIs when explicitness matters
 
 ```c
 (void)par_set_u16(ePAR_PWM_LIMIT, 1024U);
-uint16_t pwm_limit = par_get_u16(ePAR_PWM_LIMIT);
+uint16_t pwm_limit = 0U;
+(void)par_get_u16(ePAR_PWM_LIMIT, &pwm_limit);
 ```
 
 ### Use pointer-based generic APIs only when needed
@@ -377,7 +377,7 @@ uint32_t baud = 115200U;
 - Changing external IDs without rebuilding and checking the compile-time ID-map validation output
 - Assuming the repository already ships a ready-to-build `par_table.def` for your project
 - Disabling `PAR_CFG_ENABLE_TYPE_F32` while keeping `PAR_ITEM_F32(...)` entries in `par_table.def`
-- Assuming `PAR_SET_F32` and `PAR_GET_F32` are still available after F32 support is disabled
+- Assuming `par_set_f32()` and `par_get_f32()` are still available after F32 support is disabled
 - Registering validation or change callbacks without enabling the matching configuration macro
 
 ### Compile-time error example when F32 support is disabled

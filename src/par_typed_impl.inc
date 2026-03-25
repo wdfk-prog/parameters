@@ -101,6 +101,10 @@
         if (true != par_is_init())                                               \
             return ePAR_ERROR_INIT;                                              \
                                                                                  \
+        PAR_ASSERT(par_num < ePAR_NUM_OF);                                       \
+        if (par_num >= ePAR_NUM_OF)                                              \
+            return ePAR_ERROR_PAR_NUM;                                           \
+                                                                                 \
         PAR_ASSERT(ETYPE == par_get_type(par_num));                              \
         if (ETYPE != par_get_type(par_num))                                      \
             return ePAR_ERROR_TYPE;                                              \
@@ -127,6 +131,7 @@ PAR_TYPED_ROWS(PAR_TYPED_IMPL_SETTER)
     par_status_t par_set_##NAME##_fast(const par_num_t par_num, const CTYPE val) \
     {                                                                            \
         PAR_ASSERT(true == par_is_init());                                       \
+        PAR_ASSERT(par_num < ePAR_NUM_OF);                                       \
         PAR_ASSERT(ETYPE == par_get_type(par_num));                              \
         PAR_TYPED_FAST_SET_BODY(PRIV, FIELD, par_num, val);                      \
     }
@@ -134,18 +139,28 @@ PAR_TYPED_ROWS(PAR_TYPED_IMPL_SETTER)
 PAR_TYPED_ROWS(PAR_TYPED_IMPL_FAST_SETTER)
 #undef PAR_TYPED_IMPL_FAST_SETTER
 
-#define PAR_TYPED_IMPL_GETTER(NAME, PRIV, CTYPE, ETYPE, FIELD) \
-    CTYPE par_get_##NAME(const par_num_t par_num)              \
-    {                                                          \
-        PAR_ASSERT(true == par_is_init());                     \
-        if (true != par_is_init())                             \
-            return (CTYPE)ePAR_ERROR_INIT;                     \
-                                                               \
-        PAR_ASSERT(ETYPE == par_get_type(par_num));            \
-        if (ETYPE != par_get_type(par_num))                    \
-            return (CTYPE)ePAR_ERROR_TYPE;                     \
-                                                               \
-        return PAR_GET_##PRIV##_PRIV(par_num);                 \
+/* Generate typed getters: par_get_xxx() */
+#define PAR_TYPED_IMPL_GETTER(NAME, PRIV, CTYPE, ETYPE, FIELD)                   \
+    par_status_t par_get_##NAME(const par_num_t par_num, CTYPE * const p_val)    \
+    {                                                                            \
+        PAR_ASSERT(true == par_is_init());                                       \
+        if (true != par_is_init())                                               \
+            return ePAR_ERROR_INIT;                                              \
+                                                                                 \
+        PAR_ASSERT(par_num < ePAR_NUM_OF);                                       \
+        if (par_num >= ePAR_NUM_OF)                                              \
+            return ePAR_ERROR_PAR_NUM;                                           \
+                                                                                 \
+        PAR_ASSERT(ETYPE == par_get_type(par_num));                              \
+        if (ETYPE != par_get_type(par_num))                                      \
+            return ePAR_ERROR_TYPE;                                              \
+                                                                                 \
+        PAR_ASSERT(NULL != p_val);                                               \
+        if (NULL == p_val)                                                       \
+            return ePAR_ERROR_PARAM;                                             \
+                                                                                 \
+        *p_val = PAR_GET_##PRIV##_PRIV(par_num);                                 \
+        return ePAR_OK;                                                          \
     }
 
 PAR_TYPED_ROWS(PAR_TYPED_IMPL_GETTER)

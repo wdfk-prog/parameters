@@ -31,7 +31,7 @@ It is designed for projects that need a clean way to:
 3. Provide `port/par_cfg_port.h` in your include path.
 4. Optionally provide `port/par_if_port.c` and `port/par_atomic_port.h` when your platform needs them.
 5. Call `par_init()` before using runtime APIs.
-6. Use the typed macro wrappers such as `PAR_SET_U16` and `PAR_GET_U16`, or the typed `par_set_*` / `par_get_*` APIs in application code.
+6. Use the typed `par_set_*` / `par_get_*` APIs in application code. Getter APIs now use an explicit output pointer and return `par_status_t`.
 
 A minimal example:
 
@@ -47,10 +47,13 @@ static void app_init(void)
         /* Handle initialization error */
     }
 
-    PAR_SET_F32(ePAR_CH1_REF_VAL, (float32_t)25.0f);
+    (void)par_set_f32(ePAR_CH1_REF_VAL, (float32_t)25.0f);
 
     float32_t ref_val = 0.0f;
-    PAR_GET_F32(ePAR_CH1_REF_VAL, ref_val);
+    if (par_get_f32(ePAR_CH1_REF_VAL, &ref_val) != ePAR_OK)
+    {
+        /* Handle read error */
+    }
 }
 ```
 
@@ -119,7 +122,7 @@ This repository contains the reusable module core and templates. A real integrat
 ## Key integration notes
 
 - `par_cfg.h` includes `par_cfg_port.h` unconditionally, so your build must provide that header.
-- `PAR_CFG_ENABLE_TYPE_F32` controls whether floating-point parameter support, related typed APIs, and the `PAR_SET_F32` / `PAR_GET_F32` macro wrappers are compiled in.
+- `PAR_CFG_ENABLE_TYPE_F32` controls whether floating-point parameter support and the related typed APIs are compiled in.
 - `PAR_CFG_ENABLE_RUNTIME_VALIDATION` and `PAR_CFG_ENABLE_CHANGE_CALLBACK` control whether normal setters include runtime validation callbacks and on-change callbacks.
 - The module separates **internal parameter enumeration** (`par_num_t`) from **external parameter IDs** (`id`).
 - The current ID lookup implementation uses a one-entry-per-bucket hash map generated at compile time from `par_table.def`. External IDs must therefore be not only unique, but also collision-free under the configured hash geometry. Optional runtime diagnostic scans can be enabled with `PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK` and `PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK` when additional startup logs are useful. See `docs/architecture.md` for the collision rule and avoidance guidance.
