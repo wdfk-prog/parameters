@@ -519,7 +519,7 @@
                          *
                          *     Check if that parameter is still persistent!
                          */
-                        if ( true == par_get_config(par_num)->persistant )
+                        if ( true == par_get_config(par_num)->persistent )
                         {
                             // Check if already in LUT
                             if ( false == par_nvm_is_in_nvm_lut( obj_data.id ))
@@ -570,11 +570,11 @@
             {
                 const par_cfg_t * const par_cfg = par_get_config(par_num);
 
-                if ( true == par_cfg->persistant )
+                if ( true == par_cfg->persistent )
                 {
                     if ( false == par_nvm_is_in_nvm_lut( par_cfg->id ))
                     {
-                        // Is persistant and not jet in NVM lut -> Add to LUT
+                        // Is persistent and not jet in NVM lut -> Add to LUT
                         g_par_nvm_data_obj_addr[per_par_nb].id    = par_cfg->id;
                         g_par_nvm_data_obj_addr[per_par_nb].addr  = obj_addr + ( 8U * ( new_par_cnt + 1U ));
                         g_par_nvm_data_obj_addr[per_par_nb].valid = true;
@@ -620,7 +620,7 @@
 
         for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
         {
-            if ( true == par_get_config(par_num)->persistant )
+            if ( true == par_get_config(par_num)->persistent )
             {
                 num_of_per_par++;
             }
@@ -645,7 +645,7 @@
         {
             const par_cfg_t * const par_cfg = par_get_config( par_num );
 
-            if ( true == par_cfg->persistant )
+            if ( true == par_cfg->persistent )
             {
                 // First parameter
                 if ( 0 == per_par_nb )
@@ -874,7 +874,7 @@
             // No persistent parameters
             else
             {
-                status |= ePAR_WAR_NO_PERSISTANT;
+                status |= ePAR_WAR_NO_PERSISTENT;
                 PAR_DBG_PRINT( "PAR_NVM: No persistent parameters... Nothing to do..." );
             }
         }
@@ -941,7 +941,7 @@
                 const par_cfg_t * const par_cfg = par_get_config( par_num );
 
                 // Is that parameter persistent
-                if ( true == par_cfg->persistant )
+                if ( true == par_cfg->persistent )
                 {
                     // Get current par value
                     par_get( par_num, (uint32_t*) &obj_data.data );
@@ -1010,8 +1010,8 @@
             // Got thru all parameters
             for ( par_num_t par_num = 0U; par_num < ePAR_NUM_OF; par_num++ )
             {
-                // Store only persistant one
-                if ( true == par_is_persistant( par_num ))
+                // Store only persistent one
+                if ( true == par_is_persistent( par_num ))
                 {
                     // Sync will be done later
                     status |= par_nvm_write( par_num, false );

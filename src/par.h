@@ -65,7 +65,7 @@ enum
     ePAR_STATUS_WAR_MASK    = 0xFE00U,
     ePAR_WAR_SET_TO_DEF     = 0x0200U,      /**<Parameters set to default */
     ePAR_WAR_NVM_REWRITTEN  = 0x0400U,      /**<NVM parameters area completely re-written */
-    ePAR_WAR_NO_PERSISTANT  = 0x0800U,      /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
+    ePAR_WAR_NO_PERSISTENT  = 0x0800U,      /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
     ePAR_WAR_LIMITED        = 0x1000U,      /**<Parameter value limited within [min,max] */
 };
 typedef uint16_t par_status_t;
@@ -155,7 +155,7 @@ typedef struct par_cfg_s
     par_access_t    access;     /**<Parameter access from external device point-of-view */
 #endif
 #if ( 1 == PAR_CFG_ENABLE_PERSIST )
-    bool            persistant; /**<Parameter persistence flag */
+    bool            persistent; /**<Parameter persistence flag */
 #endif
 } par_cfg_t;
 
@@ -193,6 +193,16 @@ par_status_t par_set_i32            (const par_num_t par_num, const int32_t val)
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 par_status_t par_set_f32            (const par_num_t par_num, const float32_t val);
 #endif
+/**
+ *  Fast typed setters.
+ *
+ * @note These APIs are performance-oriented public entry points.
+ *       Callers must guarantee the module is initialized, par_num is valid,
+ *       and the selected typed API matches the parameter type.
+ *
+ * @note They intentionally bypass runtime validation callbacks and on-change
+ *       callbacks. Range limiting still follows build-time PAR_CFG_ENABLE_RANGE.
+ */
 par_status_t par_set_u8_fast        (const par_num_t par_num, const uint8_t val);
 par_status_t par_set_i8_fast        (const par_num_t par_num, const int8_t val);
 par_status_t par_set_u16_fast       (const par_num_t par_num, const uint16_t val);
@@ -211,10 +221,13 @@ par_status_t par_bitor_set_u32_fast (const par_num_t par_num, const uint32_t val
 par_status_t par_set_to_default     (const par_num_t par_num);
 
 /**
- *  Reset all parameters through normal runtime setter path.
+ *  Reset all parameters to their default values.
  *
- * @note This path keeps setter semantics (validation/callback/range behavior
- *       depending on build-time configuration).
+ * @note When PAR_CFG_ENABLE_RESET_ALL_RAW = 1, this public API forwards to
+ *       par_reset_all_to_default_raw() for the fastest bulk restore path.
+ *
+ * @note When raw reset is disabled, this API iterates through the normal
+ *       runtime setter path and keeps setter semantics.
  */
 par_status_t par_set_all_to_default (void);
 #if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
@@ -281,7 +294,7 @@ par_type_list_t     par_get_type        (const par_num_t par_num);
 par_access_t        par_get_access      (const par_num_t par_num);
 #endif
 #if ( 1 == PAR_CFG_ENABLE_PERSIST )
-bool                par_is_persistant   (const par_num_t par_num);
+bool                par_is_persistent   (const par_num_t par_num);
 #endif
 #if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t        par_get_num_by_id   (const uint16_t id, par_num_t * const p_par_num);

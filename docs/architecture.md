@@ -308,7 +308,7 @@ It restores live values by one grouped `memcpy` from the default mirror snapshot
 - on-change callbacks
 - normal setter range/flow semantics
 
-This path is intentionally separate from `par_set_all_to_default()`, which keeps normal runtime setter behavior.
+When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par_set_all_to_default()` also uses this raw reset path for performance.
 
 ## Optional NVM persistence
 

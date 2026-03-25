@@ -254,7 +254,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
 #endif
 
 #if ( 1 == PAR_CFG_ENABLE_PERSIST )
-    #define PAR_INIT_PERSIST(pers_)                 .persistant = (pers_),
+    #define PAR_INIT_PERSIST(pers_)                 .persistent = (pers_),
 #else
     #define PAR_INIT_PERSIST(pers_)
 #endif

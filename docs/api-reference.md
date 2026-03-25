@@ -113,25 +113,22 @@ Use these only in controlled hot paths.
 | Function | Description |
 | --- | --- |
 | `par_set_to_default(par_num)` | Reset one parameter to its configured default value through the normal runtime setter path. |
-| `par_set_all_to_default()` | Reset all parameters to their default values. Depending on configuration, this may use either the normal runtime reset path or a raw grouped-storage restore path. |
+| `par_set_all_to_default()` | Reset all parameters to their default values. When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, this public API forwards to the raw grouped-storage reset path for speed. Otherwise it iterates through the normal runtime setter path and aggregates per-parameter status bits. |
 | `par_reset_all_to_default_raw()` | Restore all live values from a grouped default mirror snapshot via raw memory copy. The internal storage model still uses `U8/U16/U32` width groups. Available only when `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`. |
 | `par_has_changed(par_num, p_has_changed)` | Report whether the value differs from its default. |
-| `par_is_changed(par_num)` | Return whether the value differs from its default. |
 
 `par_set_to_default()` always uses the normal runtime setter path.
 
-`par_set_all_to_default()` is configuration-dependent:
+`par_set_all_to_default()` is configuration-dependent. When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, it forwards to `par_reset_all_to_default_raw()` for the fastest bulk restore path. When the raw-reset option is disabled, it iterates through parameters and uses the normal runtime setter path.
 
-- when `PAR_CFG_ENABLE_RESET_ALL_RAW = 0`, it iterates through parameters and resets them through the normal runtime path
-- when `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, it restores the grouped live storage from the internal default mirror through the raw reset-all path
+Use `par_reset_all_to_default_raw()` when you want to call the raw grouped-storage restore path explicitly.
 
-That distinction matters if your application depends on runtime validation callbacks, on-change callbacks, or other setter-side effects.
-
-These reset APIs are also different from startup initialization:
+These reset APIs are different from startup initialization:
 
 - `par_init()` applies startup defaults internally to live storage
-- `par_set_to_default()` always uses runtime setter semantics
-- `par_set_all_to_default()` may bypass per-parameter runtime setter semantics when raw reset-all support is enabled
+- `par_set_to_default()` uses runtime setter semantics for one parameter
+- `par_set_all_to_default()` uses raw restore semantics when raw reset is enabled, otherwise it uses runtime setter semantics
+- `par_reset_all_to_default_raw()` always bypasses per-parameter runtime setter semantics
 
 ## Pointer-based getters
 
@@ -168,8 +165,8 @@ These APIs do not follow the same runtime usage pattern as the value access APIs
 | `par_get_desc(par_num)` | Return the description string when description metadata is enabled. |
 | `par_get_type(par_num)` | Return the parameter type enum. |
 | `par_get_access(par_num)` | Return read-only or read-write access metadata when enabled. |
-| `par_is_persistant(par_num)` | Return whether the parameter is marked persistent when enabled. |
-| `par_get_num_by_id(id, p_par_num)` | Convert an external ID to `par_num_t` through the compile-time generated static ID map. |
+| `par_is_persistent(par_num)` | Return whether the parameter is marked persistent when enabled. |
+| `par_get_num_by_id(id, p_par_num)` | Convert an external ID to `par_num_t` through the compile-time generated static ID map. This metadata API does not require `par_init()`. |
 | `par_get_id_by_num(par_num, p_id)` | Convert `par_num_t` to external ID. |
 
 ## NVM APIs
@@ -256,5 +253,5 @@ Common values include:
 - `ePAR_ERROR_PAR_NUM`
 - `ePAR_WAR_SET_TO_DEF`
 - `ePAR_WAR_NVM_REWRITTEN`
-- `ePAR_WAR_NO_PERSISTANT`
+- `ePAR_WAR_NO_PERSISTENT`
 - `ePAR_WAR_LIMITED`
