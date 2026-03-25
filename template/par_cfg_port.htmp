@@ -1,4 +1,6 @@
 #ifndef _PAR_CFG_PORT_H_
 #define _PAR_CFG_PORT_H_
 /* Optional platform overrides */
+/* #define PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK            ( 0 ) */
+/* #define PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK ( 0 ) */
 #endif

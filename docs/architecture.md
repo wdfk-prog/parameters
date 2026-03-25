@@ -201,7 +201,7 @@ This split keeps integer configuration errors out of the firmware image while st
 
 The module supports ID-based APIs such as `par_get_by_id()` and `par_set_by_id()`.
 
-Because external IDs do not need to be sequential, the runtime builds a hash map during `par_init()`.
+Because external IDs do not need to be sequential, the build generates a static hash map from `par_table.def`. `par_init()` does not build the ID map at runtime.
 
 ```mermaid
 flowchart LR
@@ -217,10 +217,66 @@ The current implementation uses a strict one-entry-per-bucket map.
 
 That means:
 
-- duplicate IDs are rejected
-- hash collisions are rejected during initialization
+- duplicate IDs are rejected by compile-time table checks
+- hash collisions are rejected by compile-time table checks
+- optional runtime diagnostic scans can be enabled to print clearer startup logs for duplicate-ID and bucket-collision issues
 
 This keeps runtime lookup simple and deterministic, but it also means a conflicting ID assignment must be fixed at the source.
+
+### Hash geometry and collision rule
+
+The current ID lookup implementation uses a strict one-entry-per-bucket hash map.
+
+Each external parameter ID is mapped to a bucket with the following multiplicative hash used by both static map generation and optional runtime diagnostics:
+
+```c
+bucket = (((uint32_t)id * PAR_ID_HASH_GOLDEN_RATIO_32) >> (32u - PAR_ID_HASH_BITS));
+```
+
+Where:
+
+* `PAR_ID_HASH_GOLDEN_RATIO_32 = 0x61C88647u`
+* `PAR_ID_HASH_MIN_BUCKETS = 2 * ePAR_NUM_OF`
+* `PAR_ID_HASH_BITS` is the smallest power-of-two bucket geometry that can hold at least `PAR_ID_HASH_MIN_BUCKETS`
+* `PAR_ID_HASH_SIZE = 1u << PAR_ID_HASH_BITS`
+
+This design does **not** support probing or chaining.
+
+That means the current ID map effectively requires the active parameter table to be collision-free under the selected hash geometry:
+
+* two rows with the same `id` are invalid
+* two different `id` values that land in the same bucket are also invalid
+
+In other words, the table must behave like a collision-free mapping for the configured bucket count.
+
+### Compile-time and runtime enforcement
+
+ID validity is enforced primarily at compile time:
+
+1. compile-time duplicate-ID and hash-bucket collision checks in `par_def.c`
+2. compile-time static ID-map generation in `par_id_map_static.c`
+3. optional runtime diagnostic scans in `par.c`
+
+Compile-time checks fail the build early when the parameter table already proves invalid.
+
+Optional runtime scans do not build the ID map. They exist only to provide clearer diagnostic logs during startup when additional field debugging is useful.
+
+### How to avoid hash collisions
+
+When assigning or changing external IDs in `par_table.def`:
+
+1. keep every `id` globally unique
+2. avoid clustered numeric patterns that repeatedly land in the same hash bucket
+3. re-run the build after every ID edit
+4. if a collision is reported, change the conflicting external IDs in `par_table.def`
+5. do not assume that "different IDs" are automatically safe; different IDs can still hash into the same bucket
+
+For the current implementation, avoiding collision means avoiding both:
+
+* duplicate `id`
+* duplicate `PAR_HASH_ID_CONST(id)` result
+
+If frequent ID churn is expected, a probing-based or chained hash map is a more scalable design than relying on a collision-free table.
 
 ## Normal path vs fast path
 

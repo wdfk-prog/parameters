@@ -18,7 +18,7 @@ It is designed for projects that need a clean way to:
 - **Optional metadata** such as name, unit, description, access, ID, and persistence flags
 - **Validation pipeline** with compile-time checks for integer ranges and optional runtime hooks for dynamic rules
 - **Static live-value storage** grouped by width instead of heap allocation
-- **Fast external lookup by ID** through a runtime hash map
+- **Fast external lookup by ID** through a compile-time generated static hash map
 - **Optional NVM integration** for persistent parameters
 - **Portable core + platform hooks** for RTOS, mutex, logging, assertions, and atomic backends
 
@@ -122,6 +122,7 @@ This repository contains the reusable module core and templates. A real integrat
 - `PAR_CFG_ENABLE_TYPE_F32` controls whether floating-point parameter support, related typed APIs, and the `PAR_SET_F32` / `PAR_GET_F32` macro wrappers are compiled in.
 - `PAR_CFG_ENABLE_RUNTIME_VALIDATION` and `PAR_CFG_ENABLE_CHANGE_CALLBACK` control whether normal setters include runtime validation callbacks and on-change callbacks.
 - The module separates **internal parameter enumeration** (`par_num_t`) from **external parameter IDs** (`id`).
+- The current ID lookup implementation uses a one-entry-per-bucket hash map generated at compile time from `par_table.def`. External IDs must therefore be not only unique, but also collision-free under the configured hash geometry. Optional runtime diagnostic scans can be enabled with `PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK` and `PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK` when additional startup logs are useful. See `docs/architecture.md` for the collision rule and avoidance guidance.
 - Fast setter APIs skip part of the safety and observability path, including runtime validation callbacks and on-change callbacks, so they should be reserved for tightly controlled hot paths.
 - NVM support is optional, but when enabled it depends on the external NVM module and on ID and persistence metadata being enabled.
 - `par_init()` applies startup default values directly to live storage. Integer default values from `par_table.def` are compiled into a grouped width-based storage object, while `F32` default values are applied to the 32-bit storage group after layout offsets are available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. Because this startup initialization does not go through the public setter path, it does not invoke runtime validation or on-change callbacks.

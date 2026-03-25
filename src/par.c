@@ -28,55 +28,13 @@
 #include "par.h"
 #include "par_atomic.h"
 #include "par_layout.h"
+#include "par_id_map_static.h"
 #include "par_nvm.h"
 #include "par_if.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
-#if ( 1 == PAR_CFG_ENABLE_ID )
-/*
- * http://www.citi.umich.edu/techreports/reports/citi-tr-00-1.pdf
- *
- * GoldenRatio = ~(Math.pow(2, 32) / ((Math.sqrt(5) - 1) / 2)) + 1
- */
-#define PAR_ID_HASH_GOLDEN_RATIO_32   ( 0x61C88647u )
-
-/**
- *  Minimum number of hash buckets to keep target load factor <= 0.5.
- */
-#define PAR_ID_HASH_MIN_BUCKETS       ((uint32_t)(2u * (uint32_t)ePAR_NUM_OF))
-
-/**
- *  Hash map geometry derived from ePAR_NUM_OF at compile time.
- */
-enum
-{
-    PAR_ID_HASH_BITS =
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 1  )) ? 1u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 2  )) ? 2u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 3  )) ? 3u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 4  )) ? 4u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 5  )) ? 5u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 6  )) ? 6u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 7  )) ? 7u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 8  )) ? 8u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 9  )) ? 9u  :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 10 )) ? 10u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 11 )) ? 11u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 12 )) ? 12u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 13 )) ? 13u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 14 )) ? 14u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 15 )) ? 15u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 16 )) ? 16u :
-        ( PAR_ID_HASH_MIN_BUCKETS <= ( 1u << 17 )) ? 17u : 18u,
-    PAR_ID_HASH_SIZE = ( 1u << PAR_ID_HASH_BITS ),
-};
-
-PAR_STATIC_ASSERT(par_id_hash_size_valid, (PAR_ID_HASH_SIZE >= PAR_ID_HASH_MIN_BUCKETS));
-PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HASH_BITS < 32u)));
-#endif
-
 PAR_STATIC_ASSERT(par_atomic_u8_i8_same_size, sizeof(par_atomic_u8_t) == sizeof(par_atomic_i8_t));
 PAR_STATIC_ASSERT(par_atomic_u8_i8_same_align, PAR_ALIGNOF(par_atomic_u8_t) == PAR_ALIGNOF(par_atomic_i8_t));
 PAR_STATIC_ASSERT(par_atomic_u16_i16_same_size, sizeof(par_atomic_u16_t) == sizeof(par_atomic_i16_t));
@@ -110,28 +68,6 @@ static struct
     pf_par_on_change_cb_t on_change;    /**< On change callback function (or NULL). */
 #endif
 } g_par_cb_table[ePAR_NUM_OF];
-#endif
-
-/**
- *  ID hash map entry.
- */
-#if ( 1 == PAR_CFG_ENABLE_ID )
-    typedef struct
-    {
-        uint16_t  id;
-        par_num_t par_num;
-        uint8_t   used;
-    } par_id_map_entry_t;
-
-    /**
-     *  Runtime ID hash map.
-     */
-    static par_id_map_entry_t g_par_id_map[PAR_ID_HASH_SIZE] = {0};
-
-    /**
-     *  Initialization guard for ID hash map.
-     */
-    static bool gb_par_id_map_ready = false;
 #endif
 
 /**
@@ -242,7 +178,9 @@ static par_atomic_f32_t * const gpf32_par_value = (par_atomic_f32_t *)gs_par_sto
 ////////////////////////////////////////////////////////////////////////////////
 #if ( 1 == PAR_CFG_ENABLE_ID )
 static inline uint32_t  par_hash_id                     (const uint16_t id);
-static par_status_t     par_build_and_validate_id_map   (const par_cfg_t * const p_par_cfg);
+#if (( 1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK ) || ( 1 == PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK ))
+static par_status_t     par_runtime_validate_id_table   (const par_cfg_t * const p_par_cfg);
+#endif
 #endif
 #if ( 1 == PAR_CFG_NVM_EN )
 static bool         par_is_value_changed            (const par_num_t par_num, const void * p_val);
@@ -323,27 +261,34 @@ static void par_bind_storage_layout(void)
 #if ( 1 == PAR_CFG_ENABLE_ID )
 static inline uint32_t par_hash_id(const uint16_t id)
 {
-    return (((uint32_t) id * PAR_ID_HASH_GOLDEN_RATIO_32 ) >> ( 32u - PAR_ID_HASH_BITS ));
+    return PAR_HASH_ID_CONST( id );
 }
 
+#if (( 1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK ) || ( 1 == PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK ))
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Build and validate parameter ID hash map
+*        Run optional runtime diagnostics on the compiled parameter ID table
+*
+* @note         Static ID-map generation and compile-time conflict checks are
+*               always enabled when PAR_CFG_ENABLE_ID = 1. This function exists
+*               only to provide runtime diagnostics and clearer conflict logs.
 *
 * @param[in]    p_par_cfg - Pointer to parameters table
 * @return       status    - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_build_and_validate_id_map(const par_cfg_t * const p_par_cfg)
+static par_status_t par_runtime_validate_id_table(const par_cfg_t * const p_par_cfg)
 {
-    memset( g_par_id_map, 0, sizeof(g_par_id_map) );
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+    par_id_map_entry_t diag_map[PAR_ID_HASH_SIZE];
+    memset(diag_map, 0, sizeof(diag_map));
+
+    for (par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++)
     {
         const uint16_t id = p_par_cfg[par_num].id;
-        const uint32_t bucket_idx = par_hash_id( id );
-        par_id_map_entry_t * const bucket = &g_par_id_map[bucket_idx];
+        const uint32_t bucket_idx = par_hash_id(id);
+        par_id_map_entry_t * const bucket = &diag_map[bucket_idx];
 
-        if ( 0u == bucket->used )
+        if (0u == bucket->used)
         {
             bucket->used = 1u;
             bucket->id = id;
@@ -351,22 +296,29 @@ static par_status_t par_build_and_validate_id_map(const par_cfg_t * const p_par_
             continue;
         }
 
-        if ( bucket->id == id )
+#if (1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK)
+        if (bucket->id == id)
         {
-            PAR_DBG_PRINT( "ERR, Duplicate parameter ID %u!", (unsigned) id );
-            PAR_ASSERT( 0 );
+            PAR_DBG_PRINT("ERR, Duplicate parameter ID %u!", (unsigned)id);
+            PAR_ASSERT(0);
             return ePAR_ERROR_INIT;
         }
+#endif
 
-        PAR_DBG_PRINT( "ERR, Hash collision: ID %u conflicts with ID %u at bucket %u!",
-            (unsigned) id, (unsigned) bucket->id, (unsigned) bucket_idx );
-        PAR_DBG_PRINT( "ERR, Please regenerate IDs or adjust hash parameters." );
-        PAR_ASSERT( 0 );
-        return ePAR_ERROR_INIT;
+#if (1 == PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK)
+        if (bucket->id != id)
+        {
+            PAR_DBG_PRINT("ERR, Hash collision: ID %u conflicts with ID %u at bucket %u!",
+                (unsigned)id, (unsigned)bucket->id, (unsigned)bucket_idx);
+            PAR_ASSERT(0);
+            return ePAR_ERROR_INIT;
+        }
+#endif
     }
 
     return ePAR_OK;
 }
+#endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,9 +333,9 @@ static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
 {
     par_status_t status = ePAR_OK;
 
-#if ( 1 == PAR_CFG_ENABLE_ID )
-    // Build and validate runtime ID hash map
-    status = par_build_and_validate_id_map( p_par_cfg );
+#if ( 1 == PAR_CFG_ENABLE_ID ) && (( 1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK ) || ( 1 == PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK ))
+    // Run optional runtime diagnostics against the compiled static ID map.
+    status = par_runtime_validate_id_table( p_par_cfg );
     if ( ePAR_OK != status )
     {
         return status;
@@ -489,9 +441,6 @@ par_status_t par_init(void)
     if ( ePAR_OK == status )
     {
         gb_is_init = true;
-#if ( 1 == PAR_CFG_ENABLE_ID )
-        gb_par_id_map_ready = true;
-#endif
 
         /* Set all parameters to default
          * Integer defaults are already initialized at definition time.
@@ -541,9 +490,6 @@ par_status_t par_deinit(void)
 
     // Module de-initialized
     gb_is_init = false;
-#if ( 1 == PAR_CFG_ENABLE_ID )
-    gb_par_id_map_ready = false;
-#endif
 
     return status;
 }
@@ -711,29 +657,6 @@ par_status_t par_set_to_default(const par_num_t par_num)
     return par_set(par_num, &(par_get_config(par_num)->def));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/**
-*        Set all parameters to default value
-*
-* @pre    Parameters must be initialised before usage!
-* @note   This function uses normal runtime setter path via par_set_to_default()
-*         and keeps setter semantics.
-*
-* @return    status - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-par_status_t par_set_all_to_default(void)
-{
-    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
-    {
-        // Ignore return as it is not possible to return other that OK
-        (void) par_set_to_default( par_num );
-    }
-
-    PAR_DBG_PRINT( "PAR: Setting all parameters to default" );
-    return ePAR_OK;
-}
-
 #if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -773,6 +696,32 @@ par_status_t par_reset_all_to_default_raw(void)
     return ePAR_OK;
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Set all parameters to default value
+*
+* @pre    Parameters must be initialised before usage!
+* @note   This function uses normal runtime setter path via par_set_to_default()
+*         and keeps setter semantics.
+*
+* @return    status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+par_status_t par_set_all_to_default(void)
+{
+#if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
+    (void) par_reset_all_to_default_raw();
+#else
+    for ( par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++ )
+    {
+        // Ignore return as it is not possible to return other that OK
+        (void) par_set_to_default( par_num );
+    }
+    PAR_DBG_PRINT( "PAR: Setting all parameters to default" );
+#endif
+    return ePAR_OK;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1199,10 +1148,10 @@ bool par_is_persistant(const par_num_t par_num)
 #if ( 1 == PAR_CFG_ENABLE_ID )
 par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
 {
-    if (( NULL != p_par_num ) && ( true == gb_par_id_map_ready ))
+    if (( NULL != p_par_num ) && ( true == par_is_init() ))
     {
         const uint32_t bucket_idx = par_hash_id( id );
-        const par_id_map_entry_t * const bucket = &g_par_id_map[bucket_idx];
+        const par_id_map_entry_t * const bucket = &g_par_id_map_static[bucket_idx];
 
         if (( 0u != bucket->used ) && ( id == bucket->id ))
         {

@@ -355,6 +355,81 @@
     #define PAR_CFG_ENABLE_ID                       ( 1 )
 #endif
 
+#if ( 1 == PAR_CFG_ENABLE_ID )
+/**
+ *  Enable/Disable optional runtime duplicate-ID diagnostic scan.
+ *
+ * @note  Static ID-map generation and compile-time duplicate-ID checking remain
+ *        enabled by default whenever PAR_CFG_ENABLE_ID = 1.
+ */
+#ifndef PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK
+    #define PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK    ( 0 )
+#endif
+
+/**
+ *  Enable/Disable optional runtime ID hash-collision diagnostic scan.
+ *
+ * @note  Static ID-map generation and compile-time hash collision checking
+ *        remain enabled by default whenever PAR_CFG_ENABLE_ID = 1.
+ */
+#ifndef PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK
+    #define PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK ( 0 )
+#endif
+
+/**
+ *  Internal-only ID hash geometry helpers.
+ *
+ * @note  Shared by the compile-time table checks, compile-time static ID-map
+ *        generation, and optional runtime diagnostic scans.
+ *
+ * @note  These helpers define the internal geometry of the core ID lookup map.
+ *        Integrators should not treat them as a stable public extension API.
+ */
+#ifndef PAR_ID_HASH_GOLDEN_RATIO_32
+    #define PAR_ID_HASH_GOLDEN_RATIO_32            ( 0x61C88647u )
+#endif
+
+#ifndef PAR_ID_HASH_MIN_BUCKETS
+    #define PAR_ID_HASH_MIN_BUCKETS                ((uint32_t)(2u * (uint32_t)ePAR_NUM_OF))
+#endif
+
+#ifndef PAR_ID_HASH_BITS_FROM_MIN_BUCKETS
+    #define PAR_ID_HASH_BITS_FROM_MIN_BUCKETS(min_buckets_) \
+        (((min_buckets_) <= ( 1u << 1  )) ? 1u  : \
+         ((min_buckets_) <= ( 1u << 2  )) ? 2u  : \
+         ((min_buckets_) <= ( 1u << 3  )) ? 3u  : \
+         ((min_buckets_) <= ( 1u << 4  )) ? 4u  : \
+         ((min_buckets_) <= ( 1u << 5  )) ? 5u  : \
+         ((min_buckets_) <= ( 1u << 6  )) ? 6u  : \
+         ((min_buckets_) <= ( 1u << 7  )) ? 7u  : \
+         ((min_buckets_) <= ( 1u << 8  )) ? 8u  : \
+         ((min_buckets_) <= ( 1u << 9  )) ? 9u  : \
+         ((min_buckets_) <= ( 1u << 10 )) ? 10u : \
+         ((min_buckets_) <= ( 1u << 11 )) ? 11u : \
+         ((min_buckets_) <= ( 1u << 12 )) ? 12u : \
+         ((min_buckets_) <= ( 1u << 13 )) ? 13u : \
+         ((min_buckets_) <= ( 1u << 14 )) ? 14u : \
+         ((min_buckets_) <= ( 1u << 15 )) ? 15u : \
+         ((min_buckets_) <= ( 1u << 16 )) ? 16u : \
+         ((min_buckets_) <= ( 1u << 17 )) ? 17u : 18u)
+#endif
+
+#ifndef PAR_ID_HASH_BITS
+    #define PAR_ID_HASH_BITS                       PAR_ID_HASH_BITS_FROM_MIN_BUCKETS(PAR_ID_HASH_MIN_BUCKETS)
+#endif
+
+#ifndef PAR_ID_HASH_SIZE
+    #define PAR_ID_HASH_SIZE                       ( 1u << PAR_ID_HASH_BITS )
+#endif
+
+#ifndef PAR_HASH_ID_CONST
+    #define PAR_HASH_ID_CONST(id_)                ((((uint32_t)(id_)) * PAR_ID_HASH_GOLDEN_RATIO_32) >> (32u - PAR_ID_HASH_BITS))
+#endif
+
+PAR_STATIC_ASSERT(par_id_hash_size_valid, (PAR_ID_HASH_SIZE >= PAR_ID_HASH_MIN_BUCKETS));
+PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HASH_BITS < 32u)));
+#endif
+
 /**
  *  Enable/Disable parameter access metadata
  */
@@ -387,6 +462,14 @@
 
 #if ( 1 == PAR_CFG_NVM_EN ) && ( 0 == PAR_CFG_ENABLE_PERSIST )
     #error "Parameter settings invalid: NVM requires PAR_CFG_ENABLE_PERSIST = 1!"
+#endif
+
+#if ( 0 == PAR_CFG_ENABLE_ID ) && ( 1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK )
+    #error "Parameter settings invalid: runtime duplicate-ID diagnostics require PAR_CFG_ENABLE_ID = 1!"
+#endif
+
+#if ( 0 == PAR_CFG_ENABLE_ID ) && ( 1 == PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK )
+    #error "Parameter settings invalid: runtime ID hash-collision diagnostics require PAR_CFG_ENABLE_ID = 1!"
 #endif
 
 #if ( PAR_CFG_LAYOUT_SOURCE != PAR_CFG_LAYOUT_COMPILE_SCAN ) && ( PAR_CFG_LAYOUT_SOURCE != PAR_CFG_LAYOUT_SCRIPT )

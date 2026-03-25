@@ -51,24 +51,24 @@ PAR_ITEM_U8 (ePAR_CH1_STATUS,       10,     "Ch1 Status",                   0U, 
 PAR_ITEM_U8 (ePAR_CH1_FSM_STATE,    11,     "Ch1 FSM State",                0U,         3U,         0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 FSM state. 0-Idle | 1-Measure Vcc | 2-Measure Res | 3-Normal")
 
 /* Channel 1 reference values */
-PAR_ITEM_F32(ePAR_CH1_TSIM,         20,     "Ch1 Ref Temperature",         -20.0f,      350.0f,     0.0f,       "degC", ePAR_ACCESS_RO,  false,  "Channel 1 temperature in degree C")
-PAR_ITEM_F32(ePAR_CH1_RSIM,         21,     "Ch1 Ref Resistance",          920.0f,      2300.0f,    920.0f,     "ohm",  ePAR_ACCESS_RO,  false,  "Channel 1 resistance reference in ohm")
-PAR_ITEM_F32(ePAR_CH1_VOUT,         22,     "Ch1 Ref Vout",                0.85f,       1.58f,      0.85f,      "V",    ePAR_ACCESS_RO,  false,  "Channel 1 output voltage in V")
-PAR_ITEM_F32(ePAR_CH1_ISINK,        23,     "Ch1 Ref Isink",               658.5f,      950.0f,     658.5f,     "uA",   ePAR_ACCESS_RO,  false,  "Channel 1 sink current reference in uA")
-PAR_ITEM_F32(ePAR_CH1_VSET,         24,     "Ch1 Ref Vset",                1.7955f,     2.548f,     1.7955f,    "V",    ePAR_ACCESS_RO,  false,  "Channel 1 Vset (reference) voltage in V")
-PAR_ITEM_F32(ePAR_CH1_VTH,          25,     "Ch1 Ref Vth",                 0.0f,        3.3f,       0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 Vth (thevenin) voltage in V. Equivalent circuit from both DAC combined.")
-PAR_ITEM_F32(ePAR_CH1_VDAC_C,       26,     "Ch1 Ref Vdac Coarse",         0.0f,        3.3f,       0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 Vdac coarse voltage in V")
-PAR_ITEM_F32(ePAR_CH1_VDAC_F,       27,     "Ch1 Ref Vdac Fine",           0.0f,        3.3f,       0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 Vdac fine voltage in V")
-PAR_ITEM_U16(ePAR_CH1_VDAC_F_RAW,   28,     "Ch1 Ref Raw DAC Fine",        0U,          4095U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 raw fine DAC value")
-PAR_ITEM_U16(ePAR_CH1_VDAC_C_RAW,   29,     "Ch1 Ref Raw DAC Coarse",      0U,          4095U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 raw coarse DAC value")
+PAR_ITEM_F32(ePAR_CH1_TSIM,         21,     "Ch1 Ref Temperature",         -20.0f,      350.0f,     0.0f,       "degC", ePAR_ACCESS_RO,  false,  "Channel 1 temperature in degree C")
+PAR_ITEM_F32(ePAR_CH1_RSIM,         22,     "Ch1 Ref Resistance",          920.0f,      2300.0f,    920.0f,     "ohm",  ePAR_ACCESS_RO,  false,  "Channel 1 resistance reference in ohm")
+PAR_ITEM_F32(ePAR_CH1_VOUT,         23,     "Ch1 Ref Vout",                0.85f,       1.58f,      0.85f,      "V",    ePAR_ACCESS_RO,  false,  "Channel 1 output voltage in V")
+PAR_ITEM_F32(ePAR_CH1_ISINK,        24,     "Ch1 Ref Isink",               658.5f,      950.0f,     658.5f,     "uA",   ePAR_ACCESS_RO,  false,  "Channel 1 sink current reference in uA")
+PAR_ITEM_F32(ePAR_CH1_VSET,         25,     "Ch1 Ref Vset",                1.7955f,     2.548f,     1.7955f,    "V",    ePAR_ACCESS_RO,  false,  "Channel 1 Vset (reference) voltage in V")
+PAR_ITEM_F32(ePAR_CH1_VTH,          26,     "Ch1 Ref Vth",                 0.0f,        3.3f,       0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 Vth (thevenin) voltage in V. Equivalent circuit from both DAC combined.")
+PAR_ITEM_F32(ePAR_CH1_VDAC_C,       27,     "Ch1 Ref Vdac Coarse",         0.0f,        3.3f,       0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 Vdac coarse voltage in V")
+PAR_ITEM_F32(ePAR_CH1_VDAC_F,       28,     "Ch1 Ref Vdac Fine",           0.0f,        3.3f,       0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 Vdac fine voltage in V")
+PAR_ITEM_U16(ePAR_CH1_VDAC_F_RAW,   29,     "Ch1 Ref Raw DAC Fine",        0U,          4095U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 raw fine DAC value")
+PAR_ITEM_U16(ePAR_CH1_VDAC_C_RAW,   30,     "Ch1 Ref Raw DAC Coarse",      0U,          4095U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 raw coarse DAC value")
 
 /* Channel 1 measurements */
 PAR_ITEM_F32(ePAR_CH1_CUR,          50,     "Ch1 Act Isink",               0.0f,        5000.0f,    0.0f,       "uA",   ePAR_ACCESS_RO,  false,  "Channel 1 actual current sink value in uA")
-PAR_ITEM_F32(ePAR_CH1_VOL,          51,     "Ch1 Act Vout",                0.0f,        10.0f,      0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 actual output voltage value in V")
-PAR_ITEM_U16(ePAR_CH1_CUR_RAW,      52,     "Ch1 Raw Isink",               0U,          8191U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 raw ADC current value")
-PAR_ITEM_U16(ePAR_CH1_VOL_RAW,      53,     "Ch1 Raw Vout",                0U,          8191U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 raw ADC voltage value")
-PAR_ITEM_F32(ePAR_CH1_AFE_VCC,      54,     "Ch1 AFE Vcc",                 0.0f,        10.0f,      0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 measured AFE Vcc voltage value in V")
-PAR_ITEM_F32(ePAR_CH1_AFE_RES,      55,     "Ch1 AFE Res",                 0.0f,        5.0e3f,     0.0f,       "ohm",  ePAR_ACCESS_RO,  false,  "Channel 1 measured AFE resistance (pull-up + series) value in ohm")
+PAR_ITEM_F32(ePAR_CH1_VOL,          52,     "Ch1 Act Vout",                0.0f,        10.0f,      0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 actual output voltage value in V")
+PAR_ITEM_U16(ePAR_CH1_CUR_RAW,      53,     "Ch1 Raw Isink",               0U,          8191U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 raw ADC current value")
+PAR_ITEM_U16(ePAR_CH1_VOL_RAW,      54,     "Ch1 Raw Vout",                0U,          8191U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 1 raw ADC voltage value")
+PAR_ITEM_F32(ePAR_CH1_AFE_VCC,      55,     "Ch1 AFE Vcc",                 0.0f,        10.0f,      0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 1 measured AFE Vcc voltage value in V")
+PAR_ITEM_F32(ePAR_CH1_AFE_RES,      56,     "Ch1 AFE Res",                 0.0f,        5.0e3f,     0.0f,       "ohm",  ePAR_ACCESS_RO,  false,  "Channel 1 measured AFE resistance (pull-up + series) value in ohm")
 
 
 /* ============================================================================================================================= */
@@ -83,8 +83,8 @@ PAR_ITEM_U8 (ePAR_CH2_REF_SEL,      103,    "Ch2 Reference Selection",      0U, 
 PAR_ITEM_F32(ePAR_CH2_REF_VAL,      104,    "Ch2 Reference Value",         -1E6f,       1E6f,       0.0f,       NULL,   ePAR_ACCESS_RW,  true,   "Channel 2 reference value based on control variable set")
 
 /* Channel 2 status */
-PAR_ITEM_U8 (ePAR_CH2_STATUS,       110,    "Ch2 Status",                   0U,         3U,         3U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 2 status. 0-Normal | 1-Short | 2-Open | 3-Not Connected")
-PAR_ITEM_U8 (ePAR_CH2_FSM_STATE,    111,    "Ch2 FSM State",                0U,         3U,         0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 2 FSM state. 0-Idle | 1-Measure Vcc | 2-Measure Res | 3-Normal")
+PAR_ITEM_U8 (ePAR_CH2_STATUS,       111,    "Ch2 Status",                   0U,         3U,         3U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 2 status. 0-Normal | 1-Short | 2-Open | 3-Not Connected")
+PAR_ITEM_U8 (ePAR_CH2_FSM_STATE,    112,    "Ch2 FSM State",                0U,         3U,         0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 2 FSM state. 0-Idle | 1-Measure Vcc | 2-Measure Res | 3-Normal")
 
 /* Channel 2 reference values */
 PAR_ITEM_F32(ePAR_CH2_TSIM,         120,    "Ch2 Ref Temperature",         -20.0f,      350.0f,     0.0f,       "degC", ePAR_ACCESS_RO,  false,  "Channel 2 temperature in degree C")
@@ -171,12 +171,12 @@ PAR_ITEM_U16(ePAR_CH4_VDAC_F_RAW,   328,    "Ch4 Ref Raw DAC Fine",        0U,  
 PAR_ITEM_U16(ePAR_CH4_VDAC_C_RAW,   329,    "Ch4 Ref Raw DAC Coarse",      0U,          4095U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 4 raw coarse DAC value")
 
 /* Channel 4 measurements */
-PAR_ITEM_F32(ePAR_CH4_CUR,          350,    "Ch4 Act Isink",               0.0f,        5000.0f,    0.0f,       "uA",   ePAR_ACCESS_RO,  false,  "Channel 4 actual current sink value in uA")
-PAR_ITEM_F32(ePAR_CH4_VOL,          351,    "Ch4 Act Vout",                0.0f,        10.0f,      0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 4 actual output voltage value in V")
-PAR_ITEM_U16(ePAR_CH4_CUR_RAW,      352,    "Ch4 Raw Isink",               0U,          8191U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 4 raw ADC current value")
-PAR_ITEM_U16(ePAR_CH4_VOL_RAW,      353,    "Ch4 Raw Vout",                0U,          8191U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 4 raw ADC voltage value")
-PAR_ITEM_F32(ePAR_CH4_AFE_VCC,      354,    "Ch4 AFE Vcc",                 0.0f,        10.0f,      0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 4 measured AFE Vcc voltage value in V")
-PAR_ITEM_F32(ePAR_CH4_AFE_RES,      355,    "Ch4 AFE Res",                 0.0f,        5.0e3f,     0.0f,       "ohm",  ePAR_ACCESS_RO,  false,  "Channel 4 measured AFE resistance (pull-up + series) value in ohm")
+PAR_ITEM_F32(ePAR_CH4_CUR,          360,    "Ch4 Act Isink",               0.0f,        5000.0f,    0.0f,       "uA",   ePAR_ACCESS_RO,  false,  "Channel 4 actual current sink value in uA")
+PAR_ITEM_F32(ePAR_CH4_VOL,          361,    "Ch4 Act Vout",                0.0f,        10.0f,      0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 4 actual output voltage value in V")
+PAR_ITEM_U16(ePAR_CH4_CUR_RAW,      362,    "Ch4 Raw Isink",               0U,          8191U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 4 raw ADC current value")
+PAR_ITEM_U16(ePAR_CH4_VOL_RAW,      363,    "Ch4 Raw Vout",                0U,          8191U,      0U,         NULL,   ePAR_ACCESS_RO,  false,  "Channel 4 raw ADC voltage value")
+PAR_ITEM_F32(ePAR_CH4_AFE_VCC,      364,    "Ch4 AFE Vcc",                 0.0f,        10.0f,      0.0f,       "V",    ePAR_ACCESS_RO,  false,  "Channel 4 measured AFE Vcc voltage value in V")
+PAR_ITEM_F32(ePAR_CH4_AFE_RES,      366,    "Ch4 AFE Res",                 0.0f,        5.0e3f,     0.0f,       "ohm",  ePAR_ACCESS_RO,  false,  "Channel 4 measured AFE resistance (pull-up + series) value in ohm")
 
 
 /* ============================================================================================================================= */
@@ -186,4 +186,4 @@ PAR_ITEM_F32(ePAR_CH4_AFE_RES,      355,    "Ch4 AFE Res",                 0.0f,
 /* System status */
 PAR_ITEM_U32(ePAR_SYS_STATUS,       10000,  "System status",               0U,          UINT32_MAX, 0U,         NULL,   ePAR_ACCESS_RO,  false,  "0-None | For other look at sys_err.h")
 PAR_ITEM_F32(ePAR_SYS_CPU_LOAD,     10010,  "CPU load",                    0.0f,        100.0f,     0.0f,       "%",    ePAR_ACCESS_RO,  false,  "Current CPU load in %")
-PAR_ITEM_F32(ePAR_SYS_CPU_LOAD_MAX, 10011,  "CPU Max. load",               0.0f,        100.0f,     0.0f,       "%",    ePAR_ACCESS_RO,  false,  "Maximum CPU load in %")
+PAR_ITEM_F32(ePAR_SYS_CPU_LOAD_MAX, 10018,  "CPU Max. load",               0.0f,        100.0f,     0.0f,       "%",    ePAR_ACCESS_RO,  false,  "Maximum CPU load in %")

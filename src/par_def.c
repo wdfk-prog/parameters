@@ -105,6 +105,82 @@
 #undef PAR_CHECK_INT_COMMON
 #endif
 
+#if ( 1 == PAR_CFG_ENABLE_ID )
+/**
+ * Compile-time check A: duplicated parameter IDs in par_table.def.
+ *
+ * @note Duplicate ID values trigger duplicated "case" labels.
+ */
+#define PAR_CHECK_ID_DUPLICATE_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  case ((uint32_t)(id_)): break;
+static void par_compile_check_duplicate_ids(void)
+{
+    switch (0u)
+    {
+        #define PAR_ITEM_U8   PAR_CHECK_ID_DUPLICATE_CASE
+        #define PAR_ITEM_U16  PAR_CHECK_ID_DUPLICATE_CASE
+        #define PAR_ITEM_U32  PAR_CHECK_ID_DUPLICATE_CASE
+        #define PAR_ITEM_I8   PAR_CHECK_ID_DUPLICATE_CASE
+        #define PAR_ITEM_I16  PAR_CHECK_ID_DUPLICATE_CASE
+        #define PAR_ITEM_I32  PAR_CHECK_ID_DUPLICATE_CASE
+        #define PAR_ITEM_F32  PAR_CHECK_ID_DUPLICATE_CASE
+        #include "../../par_table.def"
+        #undef PAR_ITEM_U8
+        #undef PAR_ITEM_U16
+        #undef PAR_ITEM_U32
+        #undef PAR_ITEM_I8
+        #undef PAR_ITEM_I16
+        #undef PAR_ITEM_I32
+        #undef PAR_ITEM_F32
+        default: break;
+    }
+}
+
+/**
+ * Compile-time check B: external ID hash-bucket collisions in par_table.def.
+ *
+ * The runtime ID map is a strict one-entry-per-bucket structure and does not
+ * implement probing or chaining.
+ *
+ * Therefore two different external IDs are still invalid when
+ * PAR_HASH_ID_CONST(id_a) == PAR_HASH_ID_CONST(id_b).
+ *
+ * This check intentionally fails the build early by generating duplicated
+ * "case" labels for colliding bucket indices.
+ */
+#define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     case PAR_HASH_ID_CONST(id_): break;
+static void par_compile_check_hash_bucket_collision(void)
+{
+    switch (0u)
+    {
+        #define PAR_ITEM_U8   PAR_CHECK_ID_BUCKET_CASE
+        #define PAR_ITEM_U16  PAR_CHECK_ID_BUCKET_CASE
+        #define PAR_ITEM_U32  PAR_CHECK_ID_BUCKET_CASE
+        #define PAR_ITEM_I8   PAR_CHECK_ID_BUCKET_CASE
+        #define PAR_ITEM_I16  PAR_CHECK_ID_BUCKET_CASE
+        #define PAR_ITEM_I32  PAR_CHECK_ID_BUCKET_CASE
+        #define PAR_ITEM_F32  PAR_CHECK_ID_BUCKET_CASE
+        #include "../../par_table.def"
+        #undef PAR_ITEM_U8
+        #undef PAR_ITEM_U16
+        #undef PAR_ITEM_U32
+        #undef PAR_ITEM_I8
+        #undef PAR_ITEM_I16
+        #undef PAR_ITEM_I32
+        #undef PAR_ITEM_F32
+        default: break;
+    }
+}
+
+/*
+ * Keep compile-check helper functions "used" to avoid unused-function warnings.
+ */
+PAR_STATIC_ASSERT(par_compile_check_duplicate_ids_ref, (sizeof(&par_compile_check_duplicate_ids) > 0u));
+PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_compile_check_hash_bucket_collision) > 0u));
+
+#undef PAR_CHECK_ID_DUPLICATE_CASE
+#undef PAR_CHECK_ID_BUCKET_CASE
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
 ////////////////////////////////////////////////////////////////////////////////

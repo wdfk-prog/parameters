@@ -89,7 +89,10 @@ Use it to integrate platform-specific services such as:
 
 - initialization hooks
 - mutex handling
-- optional table hash support
+- optional platform hooks unrelated to the core ID lookup hash map
+
+The ID lookup hash used by `par_get_by_id()` / `par_set_by_id()` is part of the core module and is generated at compile time, not supplied by `port/par_if_port.c`.
+Do not confuse it with optional table-hash support used by NVM compatibility features.
 
 ### `port/par_atomic_port.h`
 
@@ -132,7 +135,12 @@ Relevant options in `par_cfg.h`:
 - `PAR_CFG_ENABLE_ID`
 - `PAR_CFG_ENABLE_PERSIST`
 
-When NVM is enabled, the external NVM module must be present in the project.
+ID-based lookup is generated statically when `PAR_CFG_ENABLE_ID = 1`. Optional startup diagnostics can be enabled with:
+
+- `PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK`
+- `PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK`
+
+When NVM is enabled, the external NVM module must be present in the project. The parameters module can reuse an already-initialized NVM backend or initialize it on demand and later deinitialize it only when it owns that initialization. Module deinit is best-effort: it attempts NVM and interface cleanup, aggregates status bits, and still clears the top-level module init state.
 
 ### Layout source
 
@@ -365,6 +373,8 @@ uint32_t baud = 115200U;
 - Using fast setters before understanding their tradeoffs
 - Enabling NVM without the external NVM module in the build
 - Writing `par_table.def` entries with duplicate IDs
+- Assigning different external IDs that still resolve to the same ID hash bucket
+- Changing external IDs without rebuilding and checking the compile-time ID-map validation output
 - Assuming the repository already ships a ready-to-build `par_table.def` for your project
 - Disabling `PAR_CFG_ENABLE_TYPE_F32` while keeping `PAR_ITEM_F32(...)` entries in `par_table.def`
 - Assuming `PAR_SET_F32` and `PAR_GET_F32` are still available after F32 support is disabled
@@ -398,3 +408,48 @@ par_table.def:189:1: note: in expansion of macro 'PAR_ITEM_F32'
 ```
 
 Fix the table first: remove the `PAR_ITEM_F32(...)` entry or re-enable `PAR_CFG_ENABLE_TYPE_F32`.
+
+### Compile-time error example when ID hash buckets collide
+
+The build also fails when two different external IDs resolve to the same hash bucket, because the static ID map requires a collision-free table under the configured hash geometry.
+
+This does not mean the IDs are equal.
+It means the current one-entry-per-bucket ID map cannot represent both rows at the same time.
+
+Example:
+
+```log
+par_table.def: In function 'par_compile_check_hash_bucket_collision':
+src/par_def.c:156:105: error: duplicate case value
+  156 | #define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) case PAR_HASH_ID_CONST(id_): break;
+      |                                                                                                         ^~~~
+src/par_def.c:162:31: note: in expansion of macro 'PAR_CHECK_ID_BUCKET_CASE'
+  162 |         #define PAR_ITEM_U16  PAR_CHECK_ID_BUCKET_CASE
+      |                               ^~~~~~~~~~~~~~~~~~~~~~~~
+par_table.def:141:1: note: in expansion of macro 'PAR_ITEM_U16'
+  141 | PAR_ITEM_U16(ePAR_CH3_VOL_RAW, 253, "Ch3 Raw Vout", ...)
+      | ^~~~~~~~~~~~
+src/par_def.c:156:105: note: previously used here
+  156 | #define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) case PAR_HASH_ID_CONST(id_): break;
+      |                                                                                                         ^~~~
+src/par_def.c:167:31: note: in expansion of macro 'PAR_CHECK_ID_BUCKET_CASE'
+  167 |         #define PAR_ITEM_F32  PAR_CHECK_ID_BUCKET_CASE
+      |                               ^~~~~~~~~~~~~~~~~~~~~~~~
+par_table.def:54:1: note: in expansion of macro 'PAR_ITEM_F32'
+   54 | PAR_ITEM_F32(ePAR_CH1_TSIM, 20, "Ch1 Ref Temperature", ...)
+      | ^~~~~~~~~~~~
+```
+
+Read this error as:
+
+* the two IDs are different
+* but `PAR_HASH_ID_CONST(253)` and `PAR_HASH_ID_CONST(20)` produced the same bucket index
+* the current ID map cannot accept both rows
+
+Fix the table first:
+
+1. keep IDs unique
+2. change one of the conflicting external IDs in `par_table.def`
+3. rebuild until the compile-time collision check no longer fails
+
+If collisions become frequent, reconsider the ID assignment policy or replace the one-entry-per-bucket map with a probing-based implementation.

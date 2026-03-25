@@ -38,8 +38,8 @@ The module conditionally compiles parts of the API based on configuration.
 
 | Function | Description |
 | --- | --- |
-| `par_init()` | Initialize the module, validate the table, bind layout/runtime state, apply default values to live storage, and optionally load persisted values from NVM. Startup defaults are applied internally and do not use the public setter path. |
-| `par_deinit()` | Deinitialize the module. |
+| `par_init()` | Initialize the module, validate the table, bind layout/runtime state, optionally run configured runtime ID diagnostics, apply default values to live storage, and optionally load persisted values from NVM. Startup defaults are applied internally and do not use the public setter path. |
+| `par_deinit()` | Best-effort deinitialize the module, including interface-layer resources. It always clears the module init state after attempting child deinit steps. When NVM support is enabled, it only deinitializes the underlying NVM module if this module initialized it. |
 | `par_is_init()` | Return whether the module is initialized. |
 
 ## Mutex helpers
@@ -113,21 +113,26 @@ Use these only in controlled hot paths.
 
 | Function | Description |
 | --- | --- |
-| `par_set_to_default(par_num)` | Reset one parameter to its default value. |
-| `par_set_all_to_default()` | Reset all parameters to their default values. |
+| `par_set_to_default(par_num)` | Reset one parameter to its configured default value through the normal runtime setter path. |
+| `par_set_all_to_default()` | Reset all parameters to their default values. Depending on configuration, this may use either the normal runtime reset path or a raw grouped-storage restore path. |
 | `par_reset_all_to_default_raw()` | Restore all live values from a grouped default mirror snapshot via raw memory copy. The internal storage model still uses `U8/U16/U32` width groups. Available only when `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`. |
 | `par_has_changed(par_num, p_has_changed)` | Report whether the value differs from its default. |
 | `par_is_changed(par_num)` | Return whether the value differs from its default. |
 
-`par_set_to_default()` and `par_set_all_to_default()` are runtime reset APIs.
+`par_set_to_default()` always uses the normal runtime setter path.
 
-They are different from startup initialization:
+`par_set_all_to_default()` is configuration-dependent:
 
-- `par_init()` applies the default values defined in `par_table.def` directly to live storage
-- `par_set_to_default()` and `par_set_all_to_default()` still use the normal runtime value path
-- `par_reset_all_to_default_raw()` restores storage directly and bypasses normal setter hooks
+- when `PAR_CFG_ENABLE_RESET_ALL_RAW = 0`, it iterates through parameters and resets them through the normal runtime path
+- when `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, it restores the grouped live storage from the internal default mirror through the raw reset-all path
 
-That distinction matters if your application depends on validation callbacks, on-change callbacks, range behavior, or other setter-side effects, because those runtime hooks apply only in the normal setter path and only when the matching callback features are enabled.
+That distinction matters if your application depends on runtime validation callbacks, on-change callbacks, or other setter-side effects.
+
+These reset APIs are also different from startup initialization:
+
+- `par_init()` applies startup defaults internally to live storage
+- `par_set_to_default()` always uses runtime setter semantics
+- `par_set_all_to_default()` may bypass per-parameter runtime setter semantics when raw reset-all support is enabled
 
 ## Pointer-based getters
 
@@ -175,7 +180,7 @@ These APIs do not follow the same runtime usage pattern as the value access APIs
 | `par_get_type(par_num)` | Return the parameter type enum. |
 | `par_get_access(par_num)` | Return read-only or read-write access metadata when enabled. |
 | `par_is_persistant(par_num)` | Return whether the parameter is marked persistent when enabled. |
-| `par_get_num_by_id(id, p_par_num)` | Convert an external ID to `par_num_t`. |
+| `par_get_num_by_id(id, p_par_num)` | Convert an external ID to `par_num_t` through the compile-time generated static ID map. |
 | `par_get_id_by_num(par_num, p_id)` | Convert `par_num_t` to external ID. |
 
 ## NVM APIs
