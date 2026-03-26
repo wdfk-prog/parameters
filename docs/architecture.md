@@ -296,7 +296,7 @@ Fast setters are specialized APIs for controlled hot paths. They reduce overhead
 
 Fast setters do not execute runtime validation callbacks or on-change callbacks.
 
-The bitwise fast helpers are emitted through `par_bitwise_impl.inc`, another private include fragment included only by `par.c`.
+The bitwise fast helpers are emitted through `par_bitwise_impl.inc`, another private include fragment included only by `par.c`. They are intentionally scoped as flags-only helpers for `U8` / `U16` / `U32` bitmask parameters and do not preserve normal setter range semantics.
 
 ### Raw reset-all path
 

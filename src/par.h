@@ -160,12 +160,34 @@ typedef struct par_cfg_s
 } par_cfg_t;
 
 /**
- *  Device Parameters on change callback
+ *  Device Parameters on change callback.
+ *
+ *  @note Callback is executed from the normal setter path only. Startup default
+ *        initialization, raw restore paths, fast setters, and bitwise fast
+ *        setters do not invoke this hook.
+ *
+ *  @note Keep callback logic synchronous, short, and non-blocking. Do not
+ *        perform long-running I/O, waits, sleeps, or other operations that may
+ *        extend parameter-module lock hold time.
+ *
+ *  @note Re-entering the parameter module from this callback is an advanced
+ *        usage pattern and must be reviewed carefully at application level.
  */
 typedef void (*pf_par_on_change_cb_t)(const par_num_t par_num, const par_type_t new_val, const par_type_t old_val);
 
 /**
- *  Device Parameters validation
+ *  Device Parameters validation callback.
+ *
+ *  @note Validation is executed from the normal setter path only. Startup
+ *        default initialization, raw restore paths, fast setters, and bitwise
+ *        fast setters do not invoke this hook.
+ *
+ *  @note Keep validation logic synchronous, short, and non-blocking. Do not
+ *        perform long-running I/O, waits, sleeps, or other operations that may
+ *        extend parameter-module lock hold time.
+ *
+ *  @note Re-entering the parameter module from validation is an advanced usage
+ *        pattern and must be reviewed carefully at application level.
  */
 typedef bool (*pf_par_validation_t)(const par_num_t par_num, const par_type_t val);
 
@@ -212,6 +234,20 @@ par_status_t par_set_i32_fast       (const par_num_t par_num, const int32_t val)
 #if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
 par_status_t par_set_f32_fast       (const par_num_t par_num, const float32_t val);
 #endif
+/**
+ *  Fast bitwise setters for flags/bitmask parameters.
+ *
+ *  @note These APIs are intended only for U8/U16/U32 parameters that model
+ *        flags or bitmasks. They are not a general-purpose replacement for the
+ *        normal setter APIs used with ranged numeric values.
+ *
+ *  @note They follow the same trust model as other fast setters: callers must
+ *        guarantee the module is initialized, par_num is valid, and the typed
+ *        API matches the parameter type.
+ *
+ *  @note They intentionally bypass runtime validation callbacks, on-change
+ *        callbacks, and normal setter range semantics.
+ */
 par_status_t par_bitand_set_u8_fast (const par_num_t par_num, const uint8_t val);
 par_status_t par_bitand_set_u16_fast(const par_num_t par_num, const uint16_t val);
 par_status_t par_bitand_set_u32_fast(const par_num_t par_num, const uint32_t val);
@@ -314,9 +350,22 @@ par_status_t        par_get_id_by_num   (const par_num_t par_num, uint16_t * con
 
 // Registration API
 #if ( 1 == PAR_CFG_ENABLE_CHANGE_CALLBACK )
+/**
+ *  Register per-parameter on-change callback used by the normal setter path.
+ *
+ *  @note Registered callback is not used by startup default initialization,
+ *        raw restore paths, fast setters, or bitwise fast setters.
+ */
 void par_register_on_change_cb  (const par_num_t par_num, const pf_par_on_change_cb_t cb);
 #endif
 #if ( 1 == PAR_CFG_ENABLE_RUNTIME_VALIDATION )
+/**
+ *  Register per-parameter runtime validation callback used by the normal
+ *  setter path.
+ *
+ *  @note Registered validation is not used by startup default initialization,
+ *        raw restore paths, fast setters, or bitwise fast setters.
+ */
 void par_register_validation    (const par_num_t par_num, const pf_par_validation_t validation);
 #endif
 

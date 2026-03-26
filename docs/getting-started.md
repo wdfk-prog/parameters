@@ -283,7 +283,7 @@ The registration APIs work per parameter and take the parameter number directly.
 
 ### On-change callback
 
-Use this only when `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`.
+Use this only when `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`. Keep the callback synchronous, short, and non-blocking. Avoid long-running I/O, waits, sleeps, or other operations that may extend parameter-module lock hold time.
 
 ```c
 #if (1 == PAR_CFG_ENABLE_CHANGE_CALLBACK)
@@ -305,7 +305,7 @@ static void app_register_callbacks(void)
 
 ### Validation callback
 
-Use this only when `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`.
+Use this only when `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`. Keep validation logic synchronous, short, and non-blocking. Avoid long-running I/O, waits, sleeps, or other operations that may extend parameter-module lock hold time.
 
 ```c
 #if (1 == PAR_CFG_ENABLE_RUNTIME_VALIDATION)
@@ -348,6 +348,17 @@ Fast setters are meant for controlled hot paths where you accept reduced safety 
 ```
 
 Do not use fast setters as the default API for ordinary application code.
+
+### Bitwise fast setters
+
+Bitwise fast setters are the flags-only variant of the fast path. Use them only for `U8` / `U16` / `U32` parameters that represent bitmasks or status flags. They intentionally bypass runtime validation callbacks, on-change callbacks, and normal setter range semantics.
+
+```c
+(void)par_bitor_set_u32_fast(ePAR_STATUS_FLAGS, STATUS_FLAG_READY);
+(void)par_bitand_set_u32_fast(ePAR_STATUS_FLAGS, (uint32_t)(~STATUS_FLAG_ERROR));
+```
+
+Good fits are enable masks, fault flags, and mode bits. Do not use bitwise fast setters as a substitute for ordinary numeric writes such as temperature, current limits, or thresholds.
 
 ## Persistence to NVM
 

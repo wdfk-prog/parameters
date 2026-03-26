@@ -99,6 +99,8 @@ Use these only in controlled hot paths.
 
 ## Fast bitwise update helpers
 
+These helpers are available for unsigned integer widths and are intended only for controlled, high-frequency updates of flags/bitmask parameters. Treat them as unchecked fast paths, not as general-purpose setters for ranged numeric values.
+
 | Function | Description |
 | --- | --- |
 | `par_bitand_set_u8_fast()` | Fast bitwise AND update for `U8`. |
@@ -225,7 +227,9 @@ static void app_hooks_init(void)
 }
 ```
 
-When enabled, these hooks affect runtime writes and explicit reset operations that use the normal setter path. They are not invoked during the internal startup default initialization performed by `par_init()`.
+When enabled, these hooks affect runtime writes and explicit reset operations that use the normal setter path. They are not invoked during the internal startup default initialization performed by `par_init()`, by raw restore/reset paths, by typed fast setters, or by bitwise fast setters.
+
+Keep both hook types synchronous, short, and non-blocking. Do not perform long-running I/O, waits, sleeps, or other operations that may extend parameter-module lock hold time. Re-entering the parameter module from these hooks is an advanced usage pattern and should be reviewed carefully at application level.
 
 ## Debug helpers
 
