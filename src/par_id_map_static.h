@@ -1,12 +1,12 @@
 /**
  * @file par_id_map_static.h
- * @brief 
+ * @brief
  * @author wdfk-prog ()
  * @version 1.0
  * @date 2026-03-24
- * 
- * @copyright Copyright (c) 2026  
- * 
+ *
+ * @copyright Copyright (c) 2026 Ziga Miklosic. Distributed under the MIT license.
+ *
  * @note :
  * @par Change Log:
  * Date       Version Author      Description
@@ -17,12 +17,12 @@
 
 #include "par.h"
 
-#if ( 1 == PAR_CFG_ENABLE_ID )
+#if (1 == PAR_CFG_ENABLE_ID)
 typedef struct
 {
-    uint16_t  id;
+    uint16_t id;
     par_num_t par_num;
-    uint8_t   used;
+    uint8_t used;
 } par_id_map_entry_t;
 
 extern const par_id_map_entry_t g_par_id_map_static[PAR_ID_HASH_SIZE];

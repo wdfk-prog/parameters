@@ -1,10 +1,24 @@
-/*
- * Private include fragment. Included only by par.c.
+/**
+ * @file par_bitwise_impl.inc
+ * @brief Generate bitwise fast setter implementations.
+ * @author wdfk-prog ()
+ * @version 1.0
+ * @date 2026-03-27
+ *
+ * @copyright Copyright (c) 2026 Ziga Miklosic. Distributed under the MIT license.
+ *
+ * @note :
+ * @par Change Log:
+ * Date       Version Author      Description
+ * 2026-03-27 1.0     wdfk-prog   first version
  */
 
+/**
+ * @brief Private include fragment. Included only by par.c.
+ */
 
-#define PAR_FOR_EACH_BITWISE_OP(M, ...)     \
-    M(bitand, AND, __VA_ARGS__)             \
+#define PAR_FOR_EACH_BITWISE_OP(M, ...) \
+    M(bitand, AND, __VA_ARGS__)         \
     M(bitor, OR, __VA_ARGS__)
 #define PAR_BITWISE_FAST_SET_BODY(ATOMIC_OP, NAME, FIELD, STORAGE, par_num, val)      \
     do                                                                                \
