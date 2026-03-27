@@ -8,7 +8,7 @@ This guide shows how to integrate the `Device Parameters` module into a firmware
 2. Provide `par_table.def` at the package root.
 3. Provide `port/par_cfg_port.h`.
 4. Decide whether you want:
-   - NVM persistence
+   - NVM persistence and which storage backend will implement it
    - a platform-specific interface backend
    - a platform-specific atomic backend
    - compile-scan or script-provided layout
@@ -141,7 +141,14 @@ ID-based lookup is generated statically when `PAR_CFG_ENABLE_ID = 1`. Optional s
 - `PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK`
 - `PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK`
 
-When NVM is enabled, the external NVM module must be present in the project. The parameters module can reuse an already-initialized NVM backend or initialize it on demand and later deinitialize it only when it owns that initialization. Module deinit is best-effort: it attempts NVM and interface cleanup, aggregates status bits, and still clears the top-level module init state.
+When NVM is enabled, the parameters module requires a concrete storage backend implementation. `par_nvm.c` resolves and validates the backend API once during initialization, then uses the mounted callbacks directly for later reads, writes, erases, and sync operations. The package can build the `GeneralEmbeddedCLibraries/nvm` adapter from `parameters/src/backend/`, or the application can provide `par_store_backend_get_api()` itself. The module can reuse an already-initialized backend or initialize it on demand and later deinitialize it only when it owns that initialization. Module deinit is conservative: it attempts backend and interface cleanup, and it clears the top-level module init state only after the owned child deinit steps succeed.
+
+Backend choices:
+
+- enable the packaged `GeneralEmbeddedCLibraries/nvm` adapter
+- provide exactly one application-owned `par_store_backend_get_api()` implementation
+
+If `PAR_CFG_NVM_EN = 1` and no backend implementation is linked, the build fails at link time by design.
 
 ### Layout source
 
@@ -362,7 +369,7 @@ Good fits are enable masks, fault flags, and mode bits. Do not use bitwise fast 
 
 ## Persistence to NVM
 
-When NVM support is enabled, use the NVM APIs for storing current values.
+When NVM support is enabled and a storage backend is linked, use the NVM APIs for storing current values.
 
 ```c
 if (par_save_all() != ePAR_OK)
@@ -383,7 +390,7 @@ uint32_t baud = 115200U;
 - Forgetting to provide `par_cfg_port.h`
 - Treating `par_num_t` as a stable external interface
 - Using fast setters before understanding their tradeoffs
-- Enabling NVM without the external NVM module in the build
+- Enabling NVM without linking any concrete parameter-storage backend
 - Writing `par_table.def` entries with duplicate IDs
 - Assigning different external IDs that still resolve to the same ID hash bucket
 - Changing external IDs without rebuilding and checking the compile-time ID-map validation output

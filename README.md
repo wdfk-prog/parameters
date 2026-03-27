@@ -76,6 +76,9 @@ parameters/
 │   ├── architecture.md
 │   └── getting-started.md
 ├── src/
+│   ├── backend/
+│   │   ├── par_store_backend.h
+│   │   └── par_store_backend_gel_nvm.c
 │   ├── par.c
 │   ├── par.h
 │   ├── par_atomic.h
@@ -111,7 +114,7 @@ This repository contains the reusable module core and templates. A real integrat
 - `port/par_if_port.c` when `PAR_CFG_IF_PORT_EN = 1` and the target needs stronger platform hooks than the weak defaults in `par_if.c`
 - `port/par_atomic_port.h` when `PAR_ATOMIC_BACKEND = PAR_ATOMIC_BACKEND_PORT`
 - generated static layout header when `PAR_CFG_LAYOUT_SOURCE = PAR_CFG_LAYOUT_SCRIPT`
-- the external NVM module when `PAR_CFG_NVM_EN = 1`
+- a concrete storage backend implementation when `PAR_CFG_NVM_EN = 1`
 
 ## When to read which document
 
@@ -127,7 +130,7 @@ This repository contains the reusable module core and templates. A real integrat
 - The module separates **internal parameter enumeration** (`par_num_t`) from **external parameter IDs** (`id`).
 - The current ID lookup implementation uses a one-entry-per-bucket hash map generated at compile time from `par_table.def`. External IDs must therefore be not only unique, but also collision-free under the configured hash geometry. Optional runtime diagnostic scans can be enabled with `PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK` and `PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK` when additional startup logs are useful. See `docs/architecture.md` for the collision rule and avoidance guidance.
 - Unchecked setter APIs skip runtime validation callbacks and on-change callbacks, so they should be reserved for tightly controlled hot paths. Bitwise fast setters are further restricted to `U8` / `U16` / `U32` flags or bitmask parameters. Legacy `*_fast()` names remain as deprecated aliases.
-- NVM support is optional, but when enabled it depends on the external NVM module and on ID and persistence metadata being enabled.
+- NVM support is optional. When enabled, `par_nvm.c` depends on a mounted storage backend interface and on ID and persistence metadata being enabled. The package can build the `GeneralEmbeddedCLibraries/nvm` adapter from `src/backend/`, or the application can provide its own `par_store_backend_get_api()` implementation.
 - `par_init()` applies startup default values directly to live storage. Integer default values from `par_table.def` are compiled into a grouped width-based storage object, while `F32` default values are applied to the 32-bit storage group after layout offsets are available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. Because this startup initialization does not go through the public setter path, it does not invoke runtime validation or on-change callbacks.
 - `PAR_CFG_ENABLE_RESET_ALL_RAW` controls whether raw reset-all support and grouped default mirror snapshot support are enabled.
 

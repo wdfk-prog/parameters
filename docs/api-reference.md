@@ -44,7 +44,7 @@ The module conditionally compiles parts of the API based on configuration.
 | Function | Description |
 | --- | --- |
 | `par_init()` | Initialize the module, validate the table, bind layout/runtime state, optionally run configured runtime ID diagnostics, apply default values to live storage, and optionally load persisted values from NVM. Startup defaults are applied internally and do not use the public setter path. |
-| `par_deinit()` | Best-effort deinitialize the module, including interface-layer resources. It always clears the module init state after attempting child deinit steps. When NVM support is enabled, it only deinitializes the underlying NVM module if this module initialized it. |
+| `par_deinit()` | Deinitialize the module, including interface-layer resources. When NVM support is enabled, it only deinitializes the underlying NVM module if this module initialized it. The top-level init state is cleared only when child deinit steps succeed; if NVM backend deinit fails, the module remains initialized. |
 | `par_is_init()` | Return whether the module is initialized. |
 
 ## Mutex helpers
@@ -179,7 +179,7 @@ These APIs do not follow the same runtime usage pattern as the value access APIs
 
 ## NVM APIs
 
-Available only when `PAR_CFG_NVM_EN = 1`.
+Available only when `PAR_CFG_NVM_EN = 1` and a concrete parameter-storage backend is linked.
 
 | Function | Description |
 | --- | --- |

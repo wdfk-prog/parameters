@@ -322,7 +322,7 @@ When `PAR_CFG_NVM_EN = 1`, the module can persist selected parameters to NVM.
 
 NVM persistence uses the parameter metadata, persistence flags, CRC handling, and table hash validation to detect incompatible or corrupted stored data.
 
-For this feature, the external NVM module must be available in the project.
+For this feature, `par_nvm.c` mounts a parameter-storage backend interface during initialization. The packaged `GeneralEmbeddedCLibraries/nvm` adapter is one option, but the core no longer depends directly on a specific NVM repository layout.
 
 ## Portability model
 
@@ -337,7 +337,7 @@ Implemented under `src/`:
 - validation and optional runtime callbacks
 - layout handling
 - ID lookup
-- optional NVM support
+- optional NVM support and packaged backend adapters under `src/backend/`
 
 ### Port-specific layer
 
@@ -347,4 +347,4 @@ Implemented by the integrator as needed:
 - `par_if_port.c` (optional strong override for the weak defaults in `par_if.c`)
 - `par_atomic_port.h`
 
-This separation makes the core reusable while still allowing the target platform to provide mutexes, logging, assertions, and atomic primitives.
+This separation makes the core reusable while still allowing the target platform to provide mutexes, logging, assertions, and atomic primitives. Packaged storage backend adapters stay with the core source tree because they are reusable module integrations rather than board-specific port code.

@@ -1,0 +1,91 @@
+/**
+ * @file par_store_backend_gel_nvm.c
+ * @brief Adapt GeneralEmbeddedCLibraries/nvm to the packaged parameter-storage backend interface.
+ * @author OpenAI
+ * @version 1.0
+ * @date 2026-03-27
+ *
+ * @details This adapter is optional. Enable it only when the project includes
+ * the GeneralEmbeddedCLibraries/nvm module and a valid PAR_CFG_NVM_REGION is
+ * configured for parameter storage.
+ */
+
+#include "par_cfg.h"
+#include "par_store_backend.h"
+
+#if (1 == PAR_CFG_NVM_EN) && (1 == PAR_CFG_NVM_BACKEND_GEL_EN)
+#include "middleware/nvm/nvm/src/nvm.h"
+
+/**
+ * @brief Verify the expected upstream NVM major/minor API.
+ */
+_Static_assert(2 == NVM_VER_MAJOR);
+_Static_assert(1 <= NVM_VER_MINOR);
+
+static par_status_t par_store_gel_init(void)
+{
+    return (eNVM_OK == nvm_init()) ? ePAR_OK : ePAR_ERROR_INIT;
+}
+
+static par_status_t par_store_gel_deinit(void)
+{
+    return (eNVM_OK == nvm_deinit()) ? ePAR_OK : ePAR_ERROR;
+}
+
+static par_status_t par_store_gel_is_init(bool * const p_is_init)
+{
+    if (NULL == p_is_init)
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    return (eNVM_OK == nvm_is_init(p_is_init)) ? ePAR_OK : ePAR_ERROR_INIT;
+}
+
+static par_status_t par_store_gel_read(const uint32_t addr, const uint32_t size, uint8_t * const p_buf)
+{
+    if (NULL == p_buf)
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    return (eNVM_OK == nvm_read(PAR_CFG_NVM_REGION, addr, size, p_buf)) ? ePAR_OK : ePAR_ERROR_NVM;
+}
+
+static par_status_t par_store_gel_write(const uint32_t addr, const uint32_t size, const uint8_t * const p_buf)
+{
+    if (NULL == p_buf)
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    return (eNVM_OK == nvm_write(PAR_CFG_NVM_REGION, addr, size, p_buf)) ? ePAR_OK : ePAR_ERROR_NVM;
+}
+
+static par_status_t par_store_gel_erase(const uint32_t addr, const uint32_t size)
+{
+    return (eNVM_OK == nvm_erase(PAR_CFG_NVM_REGION, addr, size)) ? ePAR_OK : ePAR_ERROR_NVM;
+}
+
+static par_status_t par_store_gel_sync(void)
+{
+    return (eNVM_OK == nvm_sync(PAR_CFG_NVM_REGION)) ? ePAR_OK : ePAR_ERROR_NVM;
+}
+
+static const par_store_backend_api_t g_par_store_backend_gel =
+{
+    .init = par_store_gel_init,
+    .deinit = par_store_gel_deinit,
+    .is_init = par_store_gel_is_init,
+    .read = par_store_gel_read,
+    .write = par_store_gel_write,
+    .erase = par_store_gel_erase,
+    .sync = par_store_gel_sync,
+    .name = "gel_nvm",
+};
+
+const par_store_backend_api_t * par_store_backend_get_api(void)
+{
+    return &g_par_store_backend_gel;
+}
+#endif /* (1 == PAR_CFG_NVM_EN) && (1 == PAR_CFG_NVM_BACKEND_GEL_EN) */

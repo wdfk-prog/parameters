@@ -62,13 +62,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "middleware/nvm/nvm/src/nvm.h"
-
-/**
- * @brief Check NVM module compatibility.
- */
-_Static_assert(2 == NVM_VER_MAJOR);
-_Static_assert(1 <= NVM_VER_MINOR);
+#include "backend/par_store_backend.h"
 /**
  * @brief Compile-time definitions.
  */
@@ -150,9 +144,17 @@ typedef struct
  */
 static bool gb_is_init = false;
 /**
- * @brief Ownership guard for the underlying NVM module.
+ * @brief Ownership guard for the mounted storage backend.
  */
 static bool gb_is_nvm_owner = false;
+/**
+ * @brief Selected parameter storage backend API.
+ *
+ * @details The backend is resolved once during initialization. The core NVM
+ * logic then uses only this abstract interface and no longer depends on a
+ * specific repository layout.
+ */
+static const par_store_backend_api_t *gp_store = NULL;
 /**
  * @brief Parameter NVM lut.
  */
@@ -184,6 +186,82 @@ static par_status_t par_nvm_write_table_id(const uint8_t * const p_table_id);
 
 static par_status_t par_nvm_init_nvm(void);
 static par_status_t par_nvm_sync(void);
+
+static par_status_t par_nvm_store_read(const uint32_t addr, const uint32_t size, uint8_t * const p_buf);
+static par_status_t par_nvm_store_write(const uint32_t addr, const uint32_t size, const uint8_t * const p_buf);
+static par_status_t par_nvm_store_erase(const uint32_t addr, const uint32_t size);
+static par_status_t par_nvm_store_deinit(void);
+static par_status_t par_nvm_store_is_init(bool * const p_is_init);
+
+/**
+ * @brief Read raw bytes from the selected parameter storage backend.
+ *
+ * @param addr Backend-relative start address.
+ * @param size Number of bytes to read.
+ * @param p_buf Destination buffer.
+ * @return Operation status.
+ */
+static par_status_t par_nvm_store_read(const uint32_t addr, const uint32_t size, uint8_t * const p_buf)
+{
+    if (NULL == p_buf)
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    return gp_store->read(addr, size, p_buf);
+}
+/**
+ * @brief Write raw bytes to the selected parameter storage backend.
+ *
+ * @param addr Backend-relative start address.
+ * @param size Number of bytes to write.
+ * @param p_buf Source buffer.
+ * @return Operation status.
+ */
+static par_status_t par_nvm_store_write(const uint32_t addr, const uint32_t size, const uint8_t * const p_buf)
+{
+    if (NULL == p_buf)
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    return gp_store->write(addr, size, p_buf);
+}
+/**
+ * @brief Erase a raw storage range through the selected backend.
+ *
+ * @param addr Backend-relative start address.
+ * @param size Number of bytes to erase.
+ * @return Operation status.
+ */
+static par_status_t par_nvm_store_erase(const uint32_t addr, const uint32_t size)
+{
+    return gp_store->erase(addr, size);
+}
+/**
+ * @brief Deinitialize the selected backend.
+ *
+ * @return Operation status.
+ */
+static par_status_t par_nvm_store_deinit(void)
+{
+    return gp_store->deinit();
+}
+/**
+ * @brief Query backend initialization state.
+ *
+ * @param p_is_init Destination initialization flag.
+ * @return Operation status.
+ */
+static par_status_t par_nvm_store_is_init(bool * const p_is_init)
+{
+    if (NULL == p_is_init)
+    {
+        return ePAR_ERROR_PARAM;
+    }
+
+    return gp_store->is_init(p_is_init);
+}
 /**
  * @brief Function declarations and definitions.
  */
@@ -236,7 +314,7 @@ static par_status_t par_nvm_corrupt_signature(void)
 {
     par_status_t status = ePAR_OK;
 
-    if (eNVM_OK != nvm_erase(PAR_CFG_NVM_REGION, PAR_NVM_HEAD_SIGN_ADDR, PAR_NVM_SIGN_SIZE))
+    if (ePAR_OK != par_nvm_store_erase(PAR_NVM_HEAD_SIGN_ADDR, PAR_NVM_SIGN_SIZE))
     {
         status = ePAR_ERROR_NVM;
         PAR_DBG_PRINT("PAR_NVM: NVM error during signature corruption!");
@@ -255,7 +333,7 @@ static par_status_t par_nvm_erase_signature(void)
 {
     par_status_t status = ePAR_OK;
 
-    status = nvm_erase(PAR_CFG_NVM_REGION, PAR_NVM_SIGNATURE_ADDR_OFFSET, 4U);
+    status = par_nvm_store_erase(PAR_NVM_HEAD_SIGN_ADDR, PAR_NVM_SIGN_SIZE);
 
     return status;
 }
@@ -277,7 +355,7 @@ static par_status_t par_nvm_check_table_id(const uint8_t * const p_table_id)
     par_status_t status = ePAR_OK;
     uint8_t nvm_table_id[32] = { 0 };
 
-    if (eNVM_OK != nvm_read(eNVM_REGION_EEPROM_RUN_PAR, PAR_NVM_TABLE_ID_ADDR_OFFSET, 32U, (uint8_t *)&nvm_table_id))
+    if (ePAR_OK != par_nvm_store_read(PAR_NVM_HEAD_HASH_ADDR, PAR_NVM_HASH_SIZE, (uint8_t *)&nvm_table_id))
     {
         status = ePAR_ERROR_NVM;
     }
@@ -306,7 +384,7 @@ static par_status_t par_nvm_write_table_id(const uint8_t * const p_table_id)
 {
     par_status_t status = ePAR_OK;
 
-    if (eNVM_OK != nvm_write(eNVM_REGION_EEPROM_RUN_PAR, PAR_NVM_TABLE_ID_ADDR_OFFSET, 32U, p_table_id))
+    if (ePAR_OK != par_nvm_store_write(PAR_NVM_HEAD_HASH_ADDR, PAR_NVM_HASH_SIZE, p_table_id))
     {
         status = ePAR_ERROR_NVM;
     }
@@ -327,7 +405,7 @@ static par_status_t par_nvm_read_header(par_nvm_head_obj_t * const p_head_obj)
 
     PAR_ASSERT(NULL != p_head_obj);
 
-    if (eNVM_OK != nvm_read(PAR_CFG_NVM_REGION, PAR_NVM_HEAD_ADDR, sizeof(par_nvm_head_obj_t), (uint8_t *)p_head_obj))
+    if (ePAR_OK != par_nvm_store_read(PAR_NVM_HEAD_ADDR, sizeof(par_nvm_head_obj_t), (uint8_t *)p_head_obj))
     {
         status = ePAR_ERROR_NVM;
         PAR_DBG_PRINT("PAR_NVM: NVM error during header read!");
@@ -348,7 +426,7 @@ static par_status_t par_nvm_write_header(const uint16_t num_of_par)
     head_obj.obj_nb = num_of_par;
     head_obj.crc = par_nvm_calc_crc((uint8_t *)&head_obj.obj_nb, PAR_NVM_NB_OF_OBJ_SIZE);
     head_obj.sign = PAR_NVM_SIGN;
-    if (eNVM_OK != nvm_write(PAR_CFG_NVM_REGION, PAR_NVM_HEAD_ADDR, sizeof(par_nvm_head_obj_t), (const uint8_t *)&head_obj))
+    if (ePAR_OK != par_nvm_store_write(PAR_NVM_HEAD_ADDR, sizeof(par_nvm_head_obj_t), (const uint8_t *)&head_obj))
     {
         status = ePAR_ERROR_NVM;
         PAR_DBG_PRINT("PAR_NVM: NVM error during header write!");
@@ -461,7 +539,7 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
     uint16_t i = 0;
     uint32_t obj_addr = 0;
     par_nvm_data_obj_t obj_data = { 0 };
-    nvm_status_t nvm_status = eNVM_OK;
+    par_status_t store_status = ePAR_OK;
     uint8_t crc_calc = 0;
     uint16_t per_par_nb = 0;
     uint16_t new_par_cnt = 0;
@@ -469,8 +547,8 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
     {
         /* Each NVM object currently occupies 8 bytes. */
         obj_addr = ((8 * i) + PAR_NVM_FIRST_DATA_OBJ_ADDR);
-        nvm_status = nvm_read(PAR_CFG_NVM_REGION, obj_addr, sizeof(par_nvm_data_obj_t), (uint8_t *)&obj_data);
-        if (eNVM_OK == nvm_status)
+        store_status = par_nvm_store_read(obj_addr, sizeof(par_nvm_data_obj_t), (uint8_t *)&obj_data);
+        if (ePAR_OK == store_status)
         {
             crc_calc = par_nvm_calc_obj_crc(&obj_data);
             if (crc_calc == obj_data.crc)
@@ -513,7 +591,7 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
     {
         for (i = 0; i < ePAR_NUM_OF; i++)
         {
-            const par_cfg_t * const par_cfg = par_get_config(par_num);
+            const par_cfg_t * const par_cfg = par_get_config(i);
 
             if (true == par_cfg->persistent)
             {
@@ -588,6 +666,7 @@ static void par_nvm_build_new_nvm_lut(void)
             }
 
             g_par_nvm_data_obj_addr[per_par_nb].id = par_cfg->id;
+            g_par_nvm_data_obj_addr[per_par_nb].valid = true;
             per_par_nb++;
         }
     }
@@ -634,7 +713,7 @@ static bool par_nvm_is_in_nvm_lut(const uint16_t id)
     return false;
 }
 /**
- * @brief Initialize NVM module.
+ * @brief Resolve, validate, and initialize the mounted storage backend.
  *
  * @return Status of operation.
  */
@@ -643,14 +722,29 @@ static par_status_t par_nvm_init_nvm(void)
     par_status_t status = ePAR_OK;
     bool is_nvm_init = false;
 
+    gp_store = par_store_backend_get_api();
     gb_is_nvm_owner = false;
-    (void)nvm_is_init(&is_nvm_init);
-    if (false == is_nvm_init)
+
+    /* Validate the mounted backend once before any operation callback is used. */
+    if ((NULL == gp_store) || (NULL == gp_store->init) || (NULL == gp_store->deinit) ||
+        (NULL == gp_store->is_init) || (NULL == gp_store->read) || (NULL == gp_store->write) ||
+        (NULL == gp_store->erase) || (NULL == gp_store->sync))
     {
-        if (eNVM_OK != nvm_init())
+        PAR_DBG_PRINT("PAR_NVM: No valid parameter storage backend is wired!");
+        status = ePAR_ERROR_INIT;
+    }
+
+    if (ePAR_OK == status)
+    {
+        status = par_nvm_store_is_init(&is_nvm_init);
+    }
+
+    if ((ePAR_OK == status) && (false == is_nvm_init))
+    {
+        if (ePAR_OK != gp_store->init())
         {
             status = ePAR_ERROR_INIT;
-            PAR_DBG_PRINT("PAR_NVM: NVM module init error!");
+            PAR_DBG_PRINT("PAR_NVM: Parameter storage backend init error!");
         }
         else
         {
@@ -661,7 +755,7 @@ static par_status_t par_nvm_init_nvm(void)
     return status;
 }
 /**
- * @brief Sync NVM module.
+ * @brief Synchronize the mounted storage backend.
  *
  * @return Status of operation.
  */
@@ -669,7 +763,7 @@ static par_status_t par_nvm_sync(void)
 {
     par_status_t status = ePAR_OK;
 
-    if (eNVM_OK != nvm_sync(PAR_CFG_NVM_REGION))
+    if (ePAR_OK != gp_store->sync())
     {
         status = ePAR_ERROR_NVM;
     }
@@ -761,7 +855,7 @@ par_status_t par_nvm_deinit(void)
     {
         if (true == gb_is_nvm_owner)
         {
-            if (eNVM_OK != nvm_deinit())
+            if (ePAR_OK != par_nvm_store_deinit())
             {
                 status = ePAR_ERROR;
             }
@@ -771,6 +865,7 @@ par_status_t par_nvm_deinit(void)
         {
             gb_is_init = false;
             gb_is_nvm_owner = false;
+            gp_store = NULL;
         }
     }
     else
@@ -816,7 +911,7 @@ par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)
                 obj_data.size = 4U;
                 obj_data.crc = par_nvm_calc_obj_crc(&obj_data);
                 par_addr = par_nvm_get_nvm_lut_addr(obj_data.id);
-                if (eNVM_OK != nvm_write(PAR_CFG_NVM_REGION, par_addr, sizeof(par_nvm_data_obj_t), (const uint8_t *)&obj_data))
+                if (ePAR_OK != par_nvm_store_write(par_addr, sizeof(par_nvm_data_obj_t), (const uint8_t *)&obj_data))
                 {
                     status |= ePAR_ERROR_NVM;
                 }
