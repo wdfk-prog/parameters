@@ -50,7 +50,7 @@ enum
     ePAR_OK                 = 0U,           /**<Normal operation */
 
     // Errors
-    ePAR_STATUS_ERROR_MASK  = 0x01FFU,
+    ePAR_STATUS_ERROR_MASK  = 0x03FFU,
     ePAR_ERROR              = 0x0001U,      /**<General parameter error */
     ePAR_ERROR_INIT         = 0x0002U,      /**<Parameter initialization error or usage before initialization */
     ePAR_ERROR_NVM          = 0x0004U,      /**<Parameter storage to NVM error */
@@ -60,13 +60,14 @@ enum
     ePAR_ERROR_VALUE        = 0x0040U,      /**<Invalid parameter value (validation failed) */
     ePAR_ERROR_PARAM        = 0x0080U,      /**<Invalid function argument */
     ePAR_ERROR_PAR_NUM      = 0x0100U,      /**<Invalid parameter number */
+    ePAR_ERROR_ACCESS       = 0x0200U,      /**<Write access denied by parameter access policy */
 
     // Warnings
-    ePAR_STATUS_WAR_MASK    = 0xFE00U,
-    ePAR_WAR_SET_TO_DEF     = 0x0200U,      /**<Parameters set to default */
-    ePAR_WAR_NVM_REWRITTEN  = 0x0400U,      /**<NVM parameters area completely re-written */
-    ePAR_WAR_NO_PERSISTENT  = 0x0800U,      /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
-    ePAR_WAR_LIMITED        = 0x1000U,      /**<Parameter value limited within [min,max] */
+    ePAR_STATUS_WAR_MASK    = 0xFC00U,
+    ePAR_WAR_SET_TO_DEF     = 0x0400U,      /**<Parameters set to default */
+    ePAR_WAR_NVM_REWRITTEN  = 0x0800U,      /**<NVM parameters area completely re-written */
+    ePAR_WAR_NO_PERSISTENT  = 0x1000U,      /**<No persistent parameters -> set PAR_CFG_NVM_EN to 0 */
+    ePAR_WAR_LIMITED        = 0x2000U,      /**<Parameter value limited within [min,max] */
 };
 typedef uint16_t par_status_t;
 
@@ -222,8 +223,9 @@ par_status_t par_set_f32            (const par_num_t par_num, const float32_t va
  *       Callers must guarantee the module is initialized, par_num is valid,
  *       and the selected typed API matches the parameter type.
  *
- * @note They intentionally bypass runtime validation callbacks and on-change
- *       callbacks. Range limiting still follows build-time PAR_CFG_ENABLE_RANGE.
+ * @note They intentionally bypass access enforcement, runtime validation
+ *       callbacks, and on-change callbacks. Range limiting still follows
+ *       build-time PAR_CFG_ENABLE_RANGE.
  */
 par_status_t par_set_u8_fast        (const par_num_t par_num, const uint8_t val);
 par_status_t par_set_i8_fast        (const par_num_t par_num, const int8_t val);
@@ -254,6 +256,14 @@ par_status_t par_bitand_set_u32_fast(const par_num_t par_num, const uint32_t val
 par_status_t par_bitor_set_u8_fast  (const par_num_t par_num, const uint8_t val);
 par_status_t par_bitor_set_u16_fast (const par_num_t par_num, const uint16_t val);
 par_status_t par_bitor_set_u32_fast (const par_num_t par_num, const uint32_t val);
+/**
+ *  Reset one parameter to its configured default value through the internal
+ *  fast typed setter path.
+ *
+ * @note This API bypasses access enforcement, runtime validation callbacks,
+ *       and on-change callbacks. Range limiting still follows the typed fast
+ *       setter behavior.
+ */
 par_status_t par_set_to_default     (const par_num_t par_num);
 
 /**
@@ -262,8 +272,8 @@ par_status_t par_set_to_default     (const par_num_t par_num);
  * @note When PAR_CFG_ENABLE_RESET_ALL_RAW = 1, this public API forwards to
  *       par_reset_all_to_default_raw() for the fastest bulk restore path.
  *
- * @note When raw reset is disabled, this API iterates through the normal
- *       runtime setter path and keeps setter semantics.
+ * @note When raw reset is disabled, this API iterates through
+ *       par_set_to_default(), which uses the internal fast typed setter path.
  */
 par_status_t par_set_all_to_default (void);
 #if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
@@ -327,6 +337,10 @@ const char *        par_get_desc        (const par_num_t par_num);
 #endif
 par_type_list_t     par_get_type        (const par_num_t par_num);
 #if ( 1 == PAR_CFG_ENABLE_ACCESS )
+/**
+ *  Return parameter access metadata used by public setter access enforcement
+ *  when PAR_CFG_ENABLE_ACCESS = 1.
+ */
 par_access_t        par_get_access      (const par_num_t par_num);
 #endif
 #if ( 1 == PAR_CFG_ENABLE_PERSIST )

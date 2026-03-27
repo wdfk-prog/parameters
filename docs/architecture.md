@@ -199,7 +199,7 @@ This split keeps integer configuration errors out of the firmware image while st
 
 ## ID lookup path
 
-The module supports ID-based APIs such as `par_get_by_id()` and `par_set_by_id()`.
+The module supports ID-based APIs such as `par_get_by_id()` and `par_set_by_id()`. All public checked write APIs (`par_set()`, `par_set_by_id()`, and typed setters) now converge on the same checked setter core so access enforcement, runtime validation, and on-change semantics remain consistent across entry points.
 
 Because external IDs do not need to be sequential, the build generates a static hash map from `par_table.def`. `par_init()` does not build the ID map at runtime.
 
@@ -208,7 +208,7 @@ flowchart LR
     A[External ID] --> B[Hash function]
     B --> C[Bucket lookup]
     C --> D[par_num_t]
-    D --> E[Internal parameter access]
+    D --> E[Checked public setter path]
 ```
 
 ### Collision policy
@@ -222,6 +222,12 @@ That means:
 - optional runtime diagnostic scans can be enabled to print clearer startup logs for duplicate-ID and bucket-collision issues
 
 This keeps runtime lookup simple and deterministic, but it also means a conflicting ID assignment must be fixed at the source.
+
+### Access enforcement boundary
+
+`par_get_access()` remains metadata, but the metadata is now consumed by the checked setter core. Public write entry points enforce `ePAR_ACCESS_RW` and reject writes to `ePAR_ACCESS_RO` with `ePAR_ERROR_ACCESS`.
+
+Fast setters and internal restore paths intentionally remain outside that checked boundary. They are used for startup/default/NVM restore flows where the firmware must rehydrate trusted values without invoking public access-control policy.
 
 ### Hash geometry and collision rule
 

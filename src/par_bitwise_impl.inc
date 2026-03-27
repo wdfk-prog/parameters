@@ -16,9 +16,7 @@
 #define PAR_IMPL_BITWISE_FAST_SETTER(OP_NAME, ATOMIC_OP, NAME, CTYPE, ETYPE, FIELD, STORAGE) \
     par_status_t par_##OP_NAME##_set_##NAME##_fast(const par_num_t par_num, const CTYPE val) \
     {                                                                                        \
-        PAR_ASSERT(true == par_is_init());                                                   \
-        PAR_ASSERT(par_num < ePAR_NUM_OF);                                                   \
-        PAR_ASSERT(ETYPE == par_get_type(par_num));                                          \
+        par_assert_fast_typed_preconditions(par_num, ETYPE);                                 \
         PAR_BITWISE_FAST_SET_BODY(ATOMIC_OP, NAME, FIELD, STORAGE, par_num, val);            \
     }
 

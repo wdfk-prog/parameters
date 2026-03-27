@@ -167,11 +167,11 @@ static par_atomic_f32_t * const gpf32_par_value = (par_atomic_f32_t *)gs_par_sto
         "ERROR VALUE",
         "ERROR PARAM",
         "ERROR PAR NUM",
+        "ERROR ACCESS",
         "WARN SET TO DEF",
         "WARN NVM REWRITTEN",
         "NO PERSISTENT",
         "LIMITED",
-        "N/A",
         "N/A",
         "N/A",
     };
@@ -186,8 +186,9 @@ static inline uint32_t  par_hash_id                     (const uint16_t id);
 static par_status_t     par_runtime_validate_id_table   (const par_cfg_t * const p_par_cfg);
 #endif
 #endif
+static par_status_t par_set_checked_core     (const par_num_t par_num, const par_type_list_t expected_type, const par_type_t * const p_typed_val, const void * const p_ptr_val);
 #if ( 1 == PAR_CFG_NVM_EN )
-static par_status_t par_is_value_changed          (const par_num_t par_num, const void * p_val, bool * const p_value_changed);
+static par_status_t par_is_value_changed      (const par_num_t par_num, const void * p_val, bool * const p_value_changed);
 #endif /* ( 1 == PAR_CFG_NVM_EN ) */
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -213,11 +214,12 @@ PAR_PORT_WEAK bool par_port_is_desc_valid(const char * const p_desc)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Validate metadata access for parameter identified by number
+*        Resolve metadata entry for parameter identified by number
 *
-* @note         Metadata access only checks parameter number and table entry.
-*               It intentionally does not require the runtime module to be
-*               initialized, because callers only read compile-time metadata.
+* @note         Metadata resolution only checks parameter number and table
+*               entry. It intentionally does not require the runtime module
+*               to be initialized, because callers only read compile-time
+*               metadata.
 *
 * @param[in]    par_num      - Parameter number (enumeration)
 * @param[in]    p_arg        - Optional pointer argument to validate
@@ -226,7 +228,7 @@ PAR_PORT_WEAK bool par_port_is_desc_valid(const char * const p_desc)
 * @return       status       - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_validate_metadata(const par_num_t par_num, const void * const p_arg, const bool require_arg, const par_cfg_t ** const pp_cfg)
+static par_status_t par_resolve_metadata(const par_num_t par_num, const void * const p_arg, const bool require_arg, const par_cfg_t ** const pp_cfg)
 {
     const par_cfg_t * p_cfg = NULL;
 
@@ -257,11 +259,11 @@ static par_status_t par_validate_metadata(const par_num_t par_num, const void * 
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*        Validate runtime access for parameter identified by number
+*        Resolve runtime metadata entry for parameter identified by number
 *
-* @note         Runtime access extends metadata validation with module init
-*               state validation, because live parameter storage is only valid
-*               after successful par_init().
+* @note         Runtime resolution extends metadata resolution with module
+*               init state validation, because live parameter storage is only
+*               valid after successful par_init().
 *
 * @param[in]    par_num      - Parameter number (enumeration)
 * @param[in]    p_arg        - Optional pointer argument to validate
@@ -270,14 +272,43 @@ static par_status_t par_validate_metadata(const par_num_t par_num, const void * 
 * @return       status       - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static par_status_t par_validate_runtime(const par_num_t par_num, const void * const p_arg, const bool require_arg, const par_cfg_t ** const pp_cfg)
+static par_status_t par_resolve_runtime(const par_num_t par_num, const void * const p_arg, const bool require_arg, const par_cfg_t ** const pp_cfg)
 {
     if ( true != par_is_init() )
     {
         return ePAR_ERROR_INIT;
     }
 
-    return par_validate_metadata( par_num, p_arg, require_arg, pp_cfg );
+    return par_resolve_metadata( par_num, p_arg, require_arg, pp_cfg );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*        Validate expected parameter type against resolved metadata
+*
+* @note         Callers shall resolve metadata first and then validate the
+*               expected parameter type against the resolved configuration.
+*
+* @param[in]    p_cfg          - Resolved parameter configuration entry
+* @param[in]    expected_type  - Expected parameter type for operation
+* @return       status         - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static par_status_t par_validate_expected_type(const par_cfg_t * const p_cfg,
+                                               const par_type_list_t expected_type)
+{
+    if ( NULL == p_cfg )
+    {
+        return ePAR_ERROR;
+    }
+
+    PAR_ASSERT( expected_type == p_cfg->type );
+    if ( expected_type != p_cfg->type )
+    {
+        return ePAR_ERROR_TYPE;
+    }
+
+    return ePAR_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -654,54 +685,15 @@ void par_release_mutex(const par_num_t par_num)
 ////////////////////////////////////////////////////////////////////////////////
 par_status_t par_set(const par_num_t par_num, const void * p_val)
 {
-    par_status_t status = ePAR_OK;
     const par_cfg_t * par_cfg = NULL;
+    const par_status_t status = par_resolve_runtime( par_num, p_val, true, &par_cfg );
 
-    status = par_validate_runtime(par_num, p_val, true, &par_cfg);
     if ( ePAR_OK != status )
     {
         return status;
     }
 
-    switch ( par_cfg->type )
-    {
-        case ePAR_TYPE_U8:
-            status = par_set_u8( par_num, *(const uint8_t*) p_val );
-            break;
-
-        case ePAR_TYPE_I8:
-            status = par_set_i8( par_num, *(const int8_t*) p_val );
-            break;
-
-        case ePAR_TYPE_U16:
-            status = par_set_u16( par_num, *(const uint16_t*) p_val );
-            break;
-
-        case ePAR_TYPE_I16:
-            status = par_set_i16( par_num, *(const int16_t*) p_val );
-            break;
-
-        case ePAR_TYPE_U32:
-            status = par_set_u32( par_num, *(const uint32_t*) p_val );
-            break;
-
-        case ePAR_TYPE_I32:
-            status = par_set_i32( par_num, *(const int32_t*) p_val );
-            break;
-
-#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
-        case ePAR_TYPE_F32:
-            status = par_set_f32( par_num, *(const float32_t*) p_val );
-            break;
-#endif
-
-        case ePAR_TYPE_NUM_OF:
-        default:
-            PAR_ASSERT( 0 );
-            return ePAR_ERROR_TYPE;
-    }
-
-    return status;
+    return par_set_checked_core( par_num, par_cfg->type, NULL, p_val );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,14 +750,59 @@ par_status_t par_set_by_id(const uint16_t id, const void * p_val)
 par_status_t par_set_to_default(const par_num_t par_num)
 {
     const par_cfg_t * par_cfg = NULL;
-    par_status_t status = par_validate_runtime(par_num, NULL, false, &par_cfg);
+    par_status_t status = par_resolve_runtime(par_num, NULL, false, &par_cfg);
 
     if ( ePAR_OK != status )
     {
         return status;
     }
 
-    return par_set(par_num, &par_cfg->def);
+    if ( ePAR_OK != par_acquire_mutex( par_num ))
+    {
+        return ePAR_ERROR_MUTEX;
+    }
+
+    switch ( par_cfg->type )
+    {
+        case ePAR_TYPE_U8:
+            status = par_set_u8_fast( par_num, par_cfg->def.u8 );
+            break;
+
+        case ePAR_TYPE_I8:
+            status = par_set_i8_fast( par_num, par_cfg->def.i8 );
+            break;
+
+        case ePAR_TYPE_U16:
+            status = par_set_u16_fast( par_num, par_cfg->def.u16 );
+            break;
+
+        case ePAR_TYPE_I16:
+            status = par_set_i16_fast( par_num, par_cfg->def.i16 );
+            break;
+
+        case ePAR_TYPE_U32:
+            status = par_set_u32_fast( par_num, par_cfg->def.u32 );
+            break;
+
+        case ePAR_TYPE_I32:
+            status = par_set_i32_fast( par_num, par_cfg->def.i32 );
+            break;
+
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
+        case ePAR_TYPE_F32:
+            status = par_set_f32_fast( par_num, par_cfg->def.f32 );
+            break;
+#endif
+
+        case ePAR_TYPE_NUM_OF:
+        default:
+            PAR_ASSERT( 0 );
+            status = ePAR_ERROR_TYPE;
+            break;
+    }
+
+    par_release_mutex( par_num );
+    return status;
 }
 
 #if ( 1 == PAR_CFG_ENABLE_RESET_ALL_RAW )
@@ -816,7 +853,7 @@ par_status_t par_reset_all_to_default_raw(void)
 * @note         When PAR_CFG_ENABLE_RESET_ALL_RAW = 1, this public API forwards
 *               to par_reset_all_to_default_raw() for maximum reset speed.
 * @note         Otherwise it iterates through parameters and resets them via
-*               par_set_to_default(), preserving normal runtime setter semantics.
+*               par_set_to_default(), preserving fast default-restore semantics.
 *
 * @return       status - Status of operation
 */
@@ -857,7 +894,7 @@ par_status_t par_has_changed(const par_num_t par_num, bool *const p_has_changed)
     const par_cfg_t * par_cfg = NULL;
     par_status_t status = ePAR_OK;
 
-    status = par_validate_runtime(par_num, p_has_changed, true, &par_cfg);
+    status = par_resolve_runtime(par_num, p_has_changed, true, &par_cfg);
     if ( ePAR_OK != status )
     {
         return status;
@@ -963,7 +1000,7 @@ par_status_t par_get(const par_num_t par_num, void * const p_val)
     const par_cfg_t * par_cfg = NULL;
     par_status_t status = ePAR_OK;
 
-    status = par_validate_runtime(par_num, p_val, true, &par_cfg);
+    status = par_resolve_runtime(par_num, p_val, true, &par_cfg);
     if ( ePAR_OK != status )
     {
         return status;
@@ -1039,7 +1076,7 @@ par_status_t par_get_default(const par_num_t par_num, void * const p_val)
     const par_cfg_t * par_cfg = NULL;
     par_status_t status = ePAR_OK;
 
-    status = par_validate_metadata(par_num, p_val, true, &par_cfg);
+    status = par_resolve_metadata(par_num, p_val, true, &par_cfg);
     if ( ePAR_OK != status )
     {
         return status;
@@ -1118,7 +1155,7 @@ const char * par_get_name(const par_num_t par_num)
 {
     const par_cfg_t * par_cfg = NULL;
 
-    if ( ePAR_OK == par_validate_metadata(par_num, NULL, false, &par_cfg))
+    if ( ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
     {
         return par_cfg->name;
     }
@@ -1141,7 +1178,7 @@ par_range_t par_get_range(const par_num_t par_num)
     par_range_t range = {0};
     const par_cfg_t * par_cfg = NULL;
 
-    if ( ePAR_OK == par_validate_metadata(par_num, NULL, false, &par_cfg))
+    if ( ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
     {
         return par_cfg->range;
     }
@@ -1163,7 +1200,7 @@ const char * par_get_unit(const par_num_t par_num)
 {
     const par_cfg_t * par_cfg = NULL;
 
-    if ( ePAR_OK == par_validate_metadata(par_num, NULL, false, &par_cfg))
+    if ( ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
     {
         return par_cfg->unit;
     }
@@ -1185,7 +1222,7 @@ const char * par_get_desc(const par_num_t par_num)
 {
     const par_cfg_t * par_cfg = NULL;
 
-    if ( ePAR_OK == par_validate_metadata(par_num, NULL, false, &par_cfg))
+    if ( ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
     {
         return par_cfg->desc;
     }
@@ -1206,7 +1243,7 @@ par_type_list_t par_get_type(const par_num_t par_num)
 {
     const par_cfg_t * par_cfg = NULL;
 
-    if ( ePAR_OK == par_validate_metadata(par_num, NULL, false, &par_cfg))
+    if ( ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
     {
         return par_cfg->type;
     }
@@ -1227,7 +1264,7 @@ par_access_t par_get_access(const par_num_t par_num)
 {
     const par_cfg_t * par_cfg = NULL;
 
-    if ( ePAR_OK == par_validate_metadata(par_num, NULL, false, &par_cfg))
+    if ( ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
     {
         return par_cfg->access;
     }
@@ -1249,7 +1286,7 @@ bool par_is_persistent(const par_num_t par_num)
 {
     const par_cfg_t * par_cfg = NULL;
 
-    if ( ePAR_OK == par_validate_metadata(par_num, NULL, false, &par_cfg))
+    if ( ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
     {
         return par_cfg->persistent;
     }
@@ -1353,7 +1390,7 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
             return ePAR_ERROR_PARAM;
         }
 
-        status = par_validate_runtime(par_num, NULL, false, &par_cfg);
+        status = par_resolve_runtime(par_num, NULL, false, &par_cfg);
         if ( ePAR_OK != status )
         {
             return status;

@@ -169,6 +169,7 @@
     // Function Prototypes
     ////////////////////////////////////////////////////////////////////////////////
     static par_status_t par_nvm_load_all(const uint16_t num_of_par);
+    static par_status_t par_nvm_restore_fast(const par_num_t par_num, const void * p_val);
 
     static par_status_t par_nvm_corrupt_signature(void);
     static par_status_t par_nvm_read_header      (par_nvm_head_obj_t * const p_head_obj);
@@ -195,6 +196,44 @@
     ////////////////////////////////////////////////////////////////////////////////
     // Functions
     ////////////////////////////////////////////////////////////////////////////////
+
+    static par_status_t par_nvm_restore_fast(const par_num_t par_num, const void * p_val)
+    {
+        if ( NULL == p_val )
+        {
+            return ePAR_ERROR_PARAM;
+        }
+
+        switch ( par_get_type( par_num ) )
+        {
+            case ePAR_TYPE_U8:
+                return par_set_u8_fast( par_num, *(const uint8_t*) p_val );
+
+            case ePAR_TYPE_I8:
+                return par_set_i8_fast( par_num, *(const int8_t*) p_val );
+
+            case ePAR_TYPE_U16:
+                return par_set_u16_fast( par_num, *(const uint16_t*) p_val );
+
+            case ePAR_TYPE_I16:
+                return par_set_i16_fast( par_num, *(const int16_t*) p_val );
+
+            case ePAR_TYPE_U32:
+                return par_set_u32_fast( par_num, *(const uint32_t*) p_val );
+
+            case ePAR_TYPE_I32:
+                return par_set_i32_fast( par_num, *(const int32_t*) p_val );
+
+#if ( 1 == PAR_CFG_ENABLE_TYPE_F32 )
+            case ePAR_TYPE_F32:
+                return par_set_f32_fast( par_num, *(const float32_t*) p_val );
+#endif
+
+            case ePAR_TYPE_NUM_OF:
+            default:
+                return ePAR_ERROR_TYPE;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     /**
@@ -529,8 +568,8 @@
                                 g_par_nvm_data_obj_addr[per_par_nb].addr  = obj_addr;
                                 g_par_nvm_data_obj_addr[per_par_nb].valid = true;
 
-                                // Set parameter
-                                par_set( par_num, &obj_data.data );
+                                // Restore parameter via internal fast path semantics
+                                (void) par_nvm_restore_fast( par_num, &obj_data.data );
 
                                 // Increment current persistent parameter counter
                                 per_par_nb++;

@@ -33,6 +33,12 @@ The module conditionally compiles parts of the API based on configuration.
 - `PAR_CFG_ENABLE_RESET_ALL_RAW = 1` enables:
   - `par_reset_all_to_default_raw()`
 
+
+## Status notes
+
+- `ePAR_ERROR_ACCESS` indicates that a checked public setter rejected a write to an `ePAR_ACCESS_RO` parameter.
+- Warning bit values were shifted to make room for the new access-denied error bit.
+
 ## Lifecycle
 
 | Function | Description |
@@ -54,8 +60,8 @@ These are relevant only when mutex support is enabled in the integration.
 
 | Function | Description |
 | --- | --- |
-| `par_set(par_num, p_val)` | Set a parameter from a typed pointer. |
-| `par_set_by_id(id, p_val)` | Set a parameter using its external ID. |
+| `par_set(par_num, p_val)` | Set a parameter from a typed pointer. This public setter path enforces access policy and returns `ePAR_ERROR_ACCESS` when the target parameter is externally read-only. |
+| `par_set_by_id(id, p_val)` | Set a parameter using its external ID. This path resolves the ID to `par_num_t` and then uses the same checked setter flow as `par_set()`. |
 
 ## Typed setter macro wrappers
 
@@ -81,7 +87,7 @@ These are relevant only when mutex support is enabled in the integration.
 | `par_set_i32()` | Set an `I32` parameter. |
 | `par_set_f32()` | Set an `F32` parameter. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 
-Normal typed setters may include runtime validation callbacks and on-change callbacks as part of the normal runtime path. Those hook paths are present only when the matching configuration options are enabled.
+Normal typed setters are the canonical checked setter path. They enforce access policy and may include runtime validation callbacks and on-change callbacks when the matching configuration options are enabled.
 
 ## Fast setters
 
@@ -95,7 +101,7 @@ Normal typed setters may include runtime validation callbacks and on-change call
 | `par_set_i32_fast()` | Fast set for `I32`. |
 | `par_set_f32_fast()` | Fast set for `F32`. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 
-Use these only in controlled hot paths.
+Use these only in controlled hot paths. Fast setters intentionally bypass access enforcement, runtime validation callbacks, and on-change callbacks.
 
 ## Fast bitwise update helpers
 
@@ -114,22 +120,22 @@ These helpers are available for unsigned integer widths and are intended only fo
 
 | Function | Description |
 | --- | --- |
-| `par_set_to_default(par_num)` | Reset one parameter to its configured default value through the normal runtime setter path. |
-| `par_set_all_to_default()` | Reset all parameters to their default values. When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, this public API forwards to the raw grouped-storage reset path for speed. Otherwise it iterates through the normal runtime setter path and aggregates per-parameter status bits. |
+| `par_set_to_default(par_num)` | Reset one parameter to its configured default value through the internal fast typed setter path. It bypasses access enforcement, validation callbacks, and on-change callbacks. |
+| `par_set_all_to_default()` | Reset all parameters to their default values. When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, this public API forwards to the raw grouped-storage reset path for speed. Otherwise it iterates through `par_set_to_default()` and aggregates per-parameter status bits. |
 | `par_reset_all_to_default_raw()` | Restore all live values from a grouped default mirror snapshot via raw memory copy. The internal storage model still uses `U8/U16/U32` width groups. Available only when `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`. |
 | `par_has_changed(par_num, p_has_changed)` | Report whether the value differs from its default. |
 
-`par_set_to_default()` always uses the normal runtime setter path.
+`par_set_to_default()` always uses the internal fast typed setter path.
 
-`par_set_all_to_default()` is configuration-dependent. When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, it forwards to `par_reset_all_to_default_raw()` for the fastest bulk restore path. When the raw-reset option is disabled, it iterates through parameters and uses the normal runtime setter path.
+`par_set_all_to_default()` is configuration-dependent. When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, it forwards to `par_reset_all_to_default_raw()` for the fastest bulk restore path. When the raw-reset option is disabled, it iterates through parameters and uses the same fast default-restore path as `par_set_to_default()`.
 
 Use `par_reset_all_to_default_raw()` when you want to call the raw grouped-storage restore path explicitly.
 
 These reset APIs are different from startup initialization:
 
 - `par_init()` applies startup defaults internally to live storage
-- `par_set_to_default()` uses runtime setter semantics for one parameter
-- `par_set_all_to_default()` uses raw restore semantics when raw reset is enabled, otherwise it uses runtime setter semantics
+- `par_set_to_default()` uses fast default-restore semantics for one parameter
+- `par_set_all_to_default()` uses raw restore semantics when raw reset is enabled, otherwise it uses the same fast default-restore semantics as `par_set_to_default()`
 - `par_reset_all_to_default_raw()` always bypasses per-parameter runtime setter semantics
 
 ## Pointer-based getters
@@ -166,7 +172,7 @@ These APIs do not follow the same runtime usage pattern as the value access APIs
 | `par_get_unit(par_num)` | Return the engineering unit when unit metadata is enabled. |
 | `par_get_desc(par_num)` | Return the description string when description metadata is enabled. |
 | `par_get_type(par_num)` | Return the parameter type enum. |
-| `par_get_access(par_num)` | Return read-only or read-write access metadata when enabled. |
+| `par_get_access(par_num)` | Return read-only or read-write access metadata when enabled. Public checked setter APIs consume this metadata to enforce write access. |
 | `par_is_persistent(par_num)` | Return whether the parameter is marked persistent when enabled. |
 | `par_get_num_by_id(id, p_par_num)` | Convert an external ID to `par_num_t` through the compile-time generated static ID map. This metadata API does not require `par_init()`. |
 | `par_get_id_by_num(par_num, p_id)` | Convert `par_num_t` to external ID. |
