@@ -20,7 +20,7 @@
 /**
  * @brief Include dependencies.
  */
-#include "par_layout.h"
+#include "layout/par_layout.h"
 #include "par.h"
 /**
  * @brief Compile-time definitions.

@@ -25,7 +25,7 @@
 /**
  * @brief Include dependencies.
  */
-#include "par_if.h"
+#include "port/par_if.h"
 
 #if (1 == PAR_CFG_IF_PORT_EN)
 /**

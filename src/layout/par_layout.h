@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 #include "par_cfg.h"
-#include "par_def.h"
+#include "def/par_def.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -25,7 +25,7 @@
 /**
  * @brief Include dependencies.
  */
-#include "par_def.h"
+#include "def/par_def.h"
 #include "par.h"
 /**
  * @brief Compile-time definitions.

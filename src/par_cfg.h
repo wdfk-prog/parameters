@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "par_def.h"
+#include "def/par_def.h"
 
 /**
  * @brief USER CODE BEGIN...
@@ -60,15 +60,13 @@
 #endif
 
 /**
- * @brief NVM parameter region option.
+ * @brief Enable/Disable the legacy GeneralEmbeddedCLibraries/nvm backend.
  *
- * @note User shall select region based on nvm_cfg.h region.
- * definitions "nvm_region_name_t".
- *
- * Don't care if "PAR_CFG_NVM_EN" set to 0.
+ * @note Keep disabled when the application provides an out-of-package storage
+ * backend, such as the RT-Thread AT24CXX adapter.
  */
-#ifndef PAR_CFG_NVM_REGION
-#define PAR_CFG_NVM_REGION (eNVM_REGION_INT_FLASH_DEV_PAR)
+#ifndef PAR_CFG_NVM_BACKEND_GEL_EN
+#define PAR_CFG_NVM_BACKEND_GEL_EN (0)
 #endif
 
 /**

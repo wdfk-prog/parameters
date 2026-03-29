@@ -4,7 +4,7 @@ This guide shows how to integrate the `Device Parameters` module into a firmware
 
 ## Integration checklist
 
-1. Add `src/*.c` and `src/*.h` to your project.
+1. Add `src/par.c` and the needed sources from `src/def`, `src/layout`, `src/persist`, and `src/port` to your project. Add `src/persist/backend` only when you use the packaged backend adapter.
 2. Provide `par_table.def` at the package root.
 3. Provide `port/par_cfg_port.h`.
 4. Decide whether you want:
@@ -79,6 +79,8 @@ If you do not need platform overrides yet, start with a minimal stub:
 
 Use `template/par_cfg_port.htmp` as the starting point.
 
+Keep `parameters/src` on the compiler include path so application code can include `par.h`. Also add the directory that contains your integration-owned `par_cfg_port.h` (and optionally `par_atomic_port.h`) to the compiler include path.
+
 ## Optional integration files
 
 ### `port/par_if_port.c`
@@ -141,7 +143,7 @@ ID-based lookup is generated statically when `PAR_CFG_ENABLE_ID = 1`. Optional s
 - `PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK`
 - `PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK`
 
-When NVM is enabled, the parameters module requires a concrete storage backend implementation. `par_nvm.c` resolves and validates the backend API once during initialization, then uses the mounted callbacks directly for later reads, writes, erases, and sync operations. The package can build the `GeneralEmbeddedCLibraries/nvm` adapter from `parameters/src/backend/`, or the application can provide `par_store_backend_get_api()` itself. The module can reuse an already-initialized backend or initialize it on demand and later deinitialize it only when it owns that initialization. Module deinit is conservative: it attempts backend and interface cleanup, and it clears the top-level module init state only after the owned child deinit steps succeed.
+When NVM is enabled, the parameters module requires a concrete storage backend implementation. `src/persist/par_nvm.c` resolves and validates the backend API once during initialization, then uses the mounted callbacks directly for later reads, writes, erases, and sync operations. The package can build the `GeneralEmbeddedCLibraries/nvm` adapter from `parameters/src/persist/backend/`, or the application can provide `par_store_backend_get_api()` itself. The module can reuse an already-initialized backend or initialize it on demand and later deinitialize it only when it owns that initialization. Module deinit is conservative: it attempts backend and interface cleanup, and it clears the top-level module init state only after the owned child deinit steps succeed.
 
 Backend choices:
 
@@ -415,10 +417,10 @@ port/par_cfg_port.h:130:44: note: in expansion of macro '_STATIC_ASSERT'
 src/par_cfg.h:160:53: note: in expansion of macro 'PAR_PORT_STATIC_ASSERT'
   160 | #define PAR_STATIC_ASSERT(name, expn)               PAR_PORT_STATIC_ASSERT(name, expn);
       |                                                     ^~~~~~~~~~~~~~~~~~~~~~
-src/par_def.c:73:94: note: in expansion of macro 'PAR_STATIC_ASSERT'
+src/def/par_def.c:73:94: note: in expansion of macro 'PAR_STATIC_ASSERT'
    73 |     #define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_STATIC_ASSERT(enum_##_f32_type_is_disabled__remove_PAR_ITEM_F32, 0)
       |                                                                                              ^~~~~~~~~~~~~~~~~
-src/par_def.c:85:23: note: in expansion of macro 'PAR_CHECK_F32'
+src/def/par_def.c:85:23: note: in expansion of macro 'PAR_CHECK_F32'
    85 | #define PAR_ITEM_F32  PAR_CHECK_F32
       |                       ^~~~~~~~~~~~~
 par_table.def:189:1: note: in expansion of macro 'PAR_ITEM_F32'
@@ -439,19 +441,19 @@ Example:
 
 ```log
 par_table.def: In function 'par_compile_check_hash_bucket_collision':
-src/par_def.c:156:105: error: duplicate case value
+src/def/par_def.c:156:105: error: duplicate case value
   156 | #define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) case PAR_HASH_ID_CONST(id_): break;
       |                                                                                                         ^~~~
-src/par_def.c:162:31: note: in expansion of macro 'PAR_CHECK_ID_BUCKET_CASE'
+src/def/par_def.c:162:31: note: in expansion of macro 'PAR_CHECK_ID_BUCKET_CASE'
   162 |         #define PAR_ITEM_U16  PAR_CHECK_ID_BUCKET_CASE
       |                               ^~~~~~~~~~~~~~~~~~~~~~~~
 par_table.def:141:1: note: in expansion of macro 'PAR_ITEM_U16'
   141 | PAR_ITEM_U16(ePAR_CH3_VOL_RAW, 253, "Ch3 Raw Vout", ...)
       | ^~~~~~~~~~~~
-src/par_def.c:156:105: note: previously used here
+src/def/par_def.c:156:105: note: previously used here
   156 | #define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) case PAR_HASH_ID_CONST(id_): break;
       |                                                                                                         ^~~~
-src/par_def.c:167:31: note: in expansion of macro 'PAR_CHECK_ID_BUCKET_CASE'
+src/def/par_def.c:167:31: note: in expansion of macro 'PAR_CHECK_ID_BUCKET_CASE'
   167 |         #define PAR_ITEM_F32  PAR_CHECK_ID_BUCKET_CASE
       |                               ^~~~~~~~~~~~~~~~~~~~~~~~
 par_table.def:54:1: note: in expansion of macro 'PAR_ITEM_F32'

@@ -25,7 +25,6 @@
  */
 #include <stdint.h>
 #include "par.h"
-#include "par_cfg.h"
 /**
  * @brief Compile-time definitions.
  */

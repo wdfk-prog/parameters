@@ -1,17 +1,19 @@
 /**
  * @file par_store_backend.h
  * @brief Declare the abstract parameter-storage backend interface.
- * @author OpenAI
+ * @author wdfk-prog ()
  * @version 1.0
- * @date 2026-03-27
- *
- * @copyright Copyright (c) 2026.
- *
+ * @date 2026-03-29
+ * 
+ * @copyright Copyright (c) 2026  
+ * 
  * @details par_nvm.c uses this interface instead of depending directly on a
  * concrete NVM repository layout. Integrators may provide any storage backend
  * that supports the required byte-addressable operations.
+ * @par Change Log:
+ * Date       Version Author      Description
+ * 2026-03-29 1.0     wdfk-prog   first version
  */
-
 #ifndef _PAR_STORE_BACKEND_H_
 #define _PAR_STORE_BACKEND_H_
 

@@ -12,7 +12,7 @@
  * Date       Version Author      Description
  * 2026-03-24 1.0     wdfk-prog   first version
  */
-#include "par_id_map_static.h"
+#include "def/par_id_map_static.h"
 
 #if (1 == PAR_CFG_ENABLE_ID)
 

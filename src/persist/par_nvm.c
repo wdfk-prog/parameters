@@ -53,16 +53,16 @@
 /**
  * @brief Include dependencies.
  */
-#include "par_nvm.h"
+#include "persist/par_nvm.h"
 #include "par_cfg.h"
-#include "par_if.h"
+#include "port/par_if.h"
 
 #if ( 1 == PAR_CFG_NVM_EN )
 
 #include <assert.h>
 #include <string.h>
 
-#include "backend/par_store_backend.h"
+#include "persist/backend/par_store_backend.h"
 /**
  * @brief Compile-time definitions.
  */

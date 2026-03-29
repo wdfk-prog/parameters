@@ -7,7 +7,7 @@ This document explains how the module is structured internally and how the major
 The module separates four concerns:
 
 1. **Generated parameter definition** through `par_table.def`, generated enums, and generated config structs
-2. **Core runtime access** through `par.c`, `par.h`, and private implementation fragments included only by `par.c`
+2. **Core runtime access** through `src/par.c`, `src/par.h`, and private implementation fragments included only by `src/par.c`
 3. **Layout and storage** through `par_layout.*` and compile-time storage initialization fragments
 4. **Optional platform and NVM integration** through `par_if.*`, `par_atomic.h`, and `par_nvm.*`
 
@@ -109,7 +109,7 @@ Live storage is initialized in two phases during startup:
 1. Integer default values from `par_table.def` are compiled directly into the grouped live storage object in `par.c`.
 2. When `PAR_CFG_ENABLE_TYPE_F32 = 1`, `F32` default values are written into the grouped 32-bit storage member after layout offsets are available.
 
-The compile-time integer storage initializers are emitted through a private include fragment, `par_storage_init.inc`, which is included only by `par.c` and initializes the grouped storage object (`U8/U16/U32` members).
+The compile-time integer storage initializers are emitted through a private include fragment, `src/detail/par_storage_init.inc`, which is included only by `par.c` and initializes the grouped storage object (`U8/U16/U32` members).
 
 When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par.c` keeps a grouped default mirror snapshot for raw reset. The snapshot preserves the same `U8/U16/U32` width-group storage semantics.
 
@@ -294,7 +294,7 @@ Normal setters are the default path. They are intended for ordinary application 
 
 Depending on build-time configuration, the normal path can include runtime validation callbacks and on-change callbacks.
 
-The typed setter/getter implementations are emitted through `par_typed_impl.inc`, a private include fragment included only by `par.c`.
+The typed setter/getter implementations are emitted through `src/detail/par_typed_impl.inc`, a private include fragment included only by `par.c`.
 
 ### Fast setters
 
@@ -302,7 +302,7 @@ Fast setters are specialized APIs for controlled hot paths. They reduce overhead
 
 Fast setters do not execute runtime validation callbacks or on-change callbacks.
 
-The bitwise fast helpers are emitted through `par_bitwise_impl.inc`, another private include fragment included only by `par.c`. They are intentionally scoped as flags-only helpers for `U8` / `U16` / `U32` bitmask parameters and do not preserve normal setter range semantics.
+The bitwise fast helpers are emitted through `src/detail/par_bitwise_impl.inc`, another private include fragment included only by `par.c`. They are intentionally scoped as flags-only helpers for `U8` / `U16` / `U32` bitmask parameters and do not preserve normal setter range semantics.
 
 ### Raw reset-all path
 
@@ -328,23 +328,26 @@ For this feature, `par_nvm.c` mounts a parameter-storage backend interface durin
 
 The module stays portable by keeping platform-specific logic behind dedicated boundaries.
 
+Header placement follows the same rule: the main public entry header stays at `src/par.h`, while helper headers remain next to the implementation areas that own them. This keeps the package self-contained without introducing a separate `include/` tree before the API surface is stable.
+
 ### Core portable layer
 
-Implemented under `src/`:
+Implemented under layered `src/` subdirectories:
 
-- parameter storage
-- parameter metadata access
-- validation and optional runtime callbacks
-- layout handling
-- ID lookup
-- optional NVM support and packaged backend adapters under `src/backend/`
+- `src/par.c`, `src/par.h`, and `src/par_cfg.h` for public runtime entry points and top-level orchestration
+- `src/def/` for parameter definitions and generated static ID mapping
+- `src/layout/` for storage layout calculation and accessors
+- `src/persist/` for NVM persistence logic
+- `src/persist/backend/` for reusable packaged backend adapters
+- `src/port/` for platform-facing hooks used by the portable core
+- `src/detail/` for private implementation fragments included only by `src/par.c`
 
 ### Port-specific layer
 
 Implemented by the integrator as needed:
 
 - `par_cfg_port.h`
-- `par_if_port.c` (optional strong override for the weak defaults in `par_if.c`)
+- `par_if_port.c` (optional strong override for the weak defaults in `src/port/par_if.c`)
 - `par_atomic_port.h`
 
-This separation makes the core reusable while still allowing the target platform to provide mutexes, logging, assertions, and atomic primitives. Packaged storage backend adapters stay with the core source tree because they are reusable module integrations rather than board-specific port code.
+This separation makes the core reusable while still allowing the target platform to provide mutexes, logging, assertions, and atomic primitives. Packaged storage backend adapters stay inside the `src/persist/backend/` subtree because they are reusable module integrations rather than board-specific port code.

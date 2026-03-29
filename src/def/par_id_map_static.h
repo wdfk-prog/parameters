@@ -1,6 +1,6 @@
 /**
  * @file par_id_map_static.h
- * @brief
+ * @brief Declare the compile-time generated static ID lookup map.
  * @author wdfk-prog ()
  * @version 1.0
  * @date 2026-03-24

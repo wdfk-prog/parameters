@@ -1,17 +1,21 @@
 /**
  * @file par_store_backend_gel_nvm.c
  * @brief Adapt GeneralEmbeddedCLibraries/nvm to the packaged parameter-storage backend interface.
- * @author OpenAI
+ * @author wdfk-prog ()
  * @version 1.0
- * @date 2026-03-27
- *
+ * @date 2026-03-29
+ * 
+ * @copyright Copyright (c) 2026  
+ * 
  * @details This adapter is optional. Enable it only when the project includes
  * the GeneralEmbeddedCLibraries/nvm module and a valid PAR_CFG_NVM_REGION is
  * configured for parameter storage.
+ * @par Change Log:
+ * Date       Version Author      Description
+ * 2026-03-29 1.0     wdfk-prog   first version
  */
-
 #include "par_cfg.h"
-#include "par_store_backend.h"
+#include "persist/backend/par_store_backend.h"
 
 #if (1 == PAR_CFG_NVM_EN) && (1 == PAR_CFG_NVM_BACKEND_GEL_EN)
 #include "middleware/nvm/nvm/src/nvm.h"

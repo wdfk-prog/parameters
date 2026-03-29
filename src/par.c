@@ -24,11 +24,11 @@
 #include <string.h>
 
 #include "par.h"
-#include "par_atomic.h"
-#include "par_layout.h"
-#include "par_id_map_static.h"
-#include "par_nvm.h"
-#include "par_if.h"
+#include "port/par_atomic.h"
+#include "layout/par_layout.h"
+#include "def/par_id_map_static.h"
+#include "persist/par_nvm.h"
+#include "port/par_if.h"
 /**
  * @brief Compile-time definitions.
  */
@@ -83,7 +83,7 @@ typedef struct
  * @brief Private implementation fragment. Do not include outside par.c.
  * @details Defines gs_par_storage with grouped typed initializers.
  */
-#include "par_storage_init.inc"
+#include "detail/par_storage_init.inc"
 
 #if (1 == PAR_CFG_ENABLE_RESET_ALL_RAW)
 /**
@@ -534,6 +534,7 @@ par_status_t par_init(void)
 par_status_t par_deinit(void)
 {
     par_status_t status = ePAR_OK;
+    par_status_t deinit_status = ePAR_OK;
 
     PAR_ASSERT(true == par_is_init());
     if (true != par_is_init())
@@ -592,8 +593,8 @@ void par_release_mutex(const par_num_t par_num)
  * par_set( ePAR_MY_VAR, (float32_t*) &my_val );.
  * @endcode
  *
- * @note Input is parameter number (enumeration) defined in par_cfg.h and not.
- * parameter ID number!
+ * @note Input is the internal parameter number (`par_num_t`) from `par_def.h`,
+ * not the external parameter ID.
  *
  * @param par_num Parameter number (enumeration).
  * @param p_val Pointer to value.
@@ -647,12 +648,12 @@ par_status_t par_set_by_id(const uint16_t id, const void *p_val)
  *
  * @note Private implementation fragment. Do not include outside par.c.
  */
-#include "par_typed_impl.inc"
+#include "detail/par_typed_impl.inc"
 /**
  * @brief Bitwise fast setter implementation.
  * @note Private implementation fragments. Do not include outside par.c.
  */
-#include "par_bitwise_impl.inc"
+#include "detail/par_bitwise_impl.inc"
 /**
  * @brief Set parameter to default value.
  *
@@ -899,8 +900,8 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
  * par_get( ePAR_MY_VAR, (float32_t*) &my_val );.
  * @endcode
  *
- * @note Input is parameter number (enumeration) defined in par_cfg.h and not.
- * parameter ID number!
+ * @note Input is the internal parameter number (`par_num_t`) from `par_def.h`,
+ * not the external parameter ID.
  *
  * @param par_num Parameter number (enumeration).
  * @param p_val Parameter value.
@@ -1361,8 +1362,8 @@ static par_status_t par_is_value_changed(const par_num_t par_num, const void *p_
  * par_set( ePAR_MY_VAR, (float32_t*) &my_val );.
  * @endcode
  *
- * @note Input is parameter number (enumeration) defined in par_cfg.h and not.
- * parameter ID number!
+ * @note Input is the internal parameter number (`par_num_t`) from `par_def.h`,
+ * not the external parameter ID.
  *
  * @param par_num Parameter number (enumeration).
  * @param p_val Pointer to value.
