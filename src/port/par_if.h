@@ -52,12 +52,5 @@ par_status_t par_if_aquire_mutex(const par_num_t par_num);
  * @param par_num Parameter number.
  */
 void par_if_release_mutex(const par_num_t par_num);
-/**
- * @brief Calculate the table hash for parameter metadata.
- * @param p_data Pointer to the input bytes.
- * @param size Number of bytes in p_data.
- * @param p_hash Pointer to the output hash buffer.
- */
-void par_if_calc_hash(const uint8_t * const p_data, const uint32_t size, uint8_t * const p_hash);
 
 #endif /* _PAR_IF_H_ */

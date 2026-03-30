@@ -356,6 +356,12 @@ Fast setters are meant for controlled hot paths where you accept reduced safety 
 (void)par_set_u16_fast(ePAR_PWM_LIMIT, 1200U);
 ```
 
+When you only have a typed value pointer and still want the unchecked path, use the generic fast dispatcher:
+```c
+float32_t value = 12.0f;
+(void)par_set_fast(ePAR_TARGET_TEMP, &value);
+```
+
 Do not use fast setters as the default API for ordinary application code.
 
 ### Bitwise fast setters

@@ -78,22 +78,6 @@ PAR_PORT_WEAK void par_if_release_mutex(const par_num_t par_num)
 {
     (void)par_num;
 }
-/**
- * @brief Calculate hash.
- *
- * @note Default weak implementation leaves hash output untouched.
- * Integrator may provide a strong definition in port/par_if_port.c.
- *
- * @param p_data Pointer to data for hash calculation.
- * @param size Size of data in bytes.
- * @param p_hash Pointer to calculated hash number.
- */
-PAR_PORT_WEAK void par_if_calc_hash(const uint8_t * const p_data, const uint32_t size, uint8_t * const p_hash)
-{
-    (void)p_data;
-    (void)size;
-    (void)p_hash;
-}
 
 #else
 
@@ -223,26 +207,6 @@ void par_if_release_mutex(const par_num_t par_num)
 {
     UNUSED(par_num);
     osMutexRelease(g_par_mutex_id);
-}
-/**
- * @brief Calculate hash.
- *
- * @note User shall provide definition of that function based on used platform!
- *
- * If not being used leave empty.
- *
- * This function does not have an affect if "PAR_CFG_TABLE_ID_CHECK_EN".
- * is set to 0.
- *
- * @param p_data Pointer to data for hash calculation.
- * @param size Size of data in bytes.
- * @return Pointer to calculated hash number.
- */
-void par_if_calc_hash(const uint8_t * const p_data, const uint32_t size, uint8_t * const p_hash)
-{
-    UNUSED(p_data);
-    UNUSED(p_hash);
-    UNUSED(size);
 }
 
 #endif

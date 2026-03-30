@@ -92,6 +92,17 @@
 #endif
 
 /**
+ * @brief Parameter-table ID schema version.
+ *
+ * @note Increase this value when the serialized table-ID composition changes.
+ * The integrator owns this version number and may override it in
+ * port/par_cfg_port.h before this header provides the default.
+ */
+#ifndef PAR_CFG_TABLE_ID_SCHEMA_VER
+#define PAR_CFG_TABLE_ID_SCHEMA_VER (1U)
+#endif
+
+/**
  * @brief Enable/Disable debug mode.
  */
 #ifndef PAR_CFG_DEBUG_EN

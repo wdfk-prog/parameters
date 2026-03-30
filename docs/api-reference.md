@@ -61,6 +61,7 @@ These are relevant only when mutex support is enabled in the integration.
 | Function | Description |
 | --- | --- |
 | `par_set(par_num, p_val)` | Set a parameter from a typed pointer. This public setter path enforces access policy and returns `ePAR_ERROR_ACCESS` when the target parameter is externally read-only. |
+| `par_set_fast(par_num, p_val)` | Set a parameter from a typed pointer through the unchecked fast path. This API resolves the runtime type and then dispatches to the matching `par_set_xxx_fast()` implementation. |
 | `par_set_by_id(id, p_val)` | Set a parameter using its external ID. This path resolves the ID to `par_num_t` and then uses the same checked setter flow as `par_set()`. |
 
 ## Typed setter macro wrappers
@@ -180,6 +181,8 @@ These APIs do not follow the same runtime usage pattern as the value access APIs
 ## NVM APIs
 
 Available only when `PAR_CFG_NVM_EN = 1` and a concrete parameter-storage backend is linked.
+
+When `PAR_CFG_TABLE_ID_CHECK_EN = 1`, `par_nvm_init()` compares a stored 4-byte FNV-1a table-ID against the live table. The table-ID covers `PAR_CFG_TABLE_ID_SCHEMA_VER`, persistent-parameter count, persistent-parameter order, parameter type, and parameter ID for parameters that are actually persisted. Startup first validates header CRC/signature, then validates the table-ID, then loads payload objects only if both checks pass. The collected error bits then drive a centralized recovery flow: NVM access errors restore live RAM values to defaults, while table-ID/header/CRC mismatches restore defaults and rebuild the managed NVM image.
 
 | Function | Description |
 | --- | --- |

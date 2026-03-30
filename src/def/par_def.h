@@ -28,8 +28,13 @@ extern "C" {
  * @brief Include dependencies.
  */
 #include <stdint.h>
+#include <stdbool.h>
 /**
  * @brief Compile-time definitions.
+ *
+ * @note <stdbool.h> is required here because par_table.def uses true/false in
+ * the persistence column, and this header expands that column in
+ * PAR_PERSISTENT_COMPILE_COUNT.
  */
 typedef struct par_cfg_s par_cfg_t;
 /**
@@ -131,6 +136,28 @@ enum
     PAR_LAYOUT_COMPILE_COUNT_SUM = (PAR_LAYOUT_COMPILE_COUNT8 + PAR_LAYOUT_COMPILE_COUNT16 + PAR_LAYOUT_COMPILE_COUNT32)
 };
 
+#define PAR_ITEM_PERSIST_COUNT(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) + ((pers_) ? 1u : 0u)
+enum
+{
+    PAR_PERSISTENT_COMPILE_COUNT = 0u
+#define PAR_ITEM_U8  PAR_ITEM_PERSIST_COUNT
+#define PAR_ITEM_U16 PAR_ITEM_PERSIST_COUNT
+#define PAR_ITEM_U32 PAR_ITEM_PERSIST_COUNT
+#define PAR_ITEM_I8  PAR_ITEM_PERSIST_COUNT
+#define PAR_ITEM_I16 PAR_ITEM_PERSIST_COUNT
+#define PAR_ITEM_I32 PAR_ITEM_PERSIST_COUNT
+#define PAR_ITEM_F32 PAR_ITEM_PERSIST_COUNT
+#include "../../par_table.def"
+#undef PAR_ITEM_U8
+#undef PAR_ITEM_U16
+#undef PAR_ITEM_U32
+#undef PAR_ITEM_I8
+#undef PAR_ITEM_I16
+#undef PAR_ITEM_I32
+#undef PAR_ITEM_F32
+};
+#undef PAR_ITEM_PERSIST_COUNT
+
 #undef PAR_ITEM_COUNT_ONE
 #undef PAR_ITEM_COUNT_ZERO
 /**
@@ -143,6 +170,7 @@ const par_cfg_t *par_cfg_get(const par_num_t par_num);
  * @return Configuration table size.
  */
 uint32_t par_cfg_get_table_size(void);
+
 
 #ifdef __cplusplus
 }

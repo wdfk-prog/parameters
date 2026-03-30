@@ -173,6 +173,32 @@ static void par_assert_fast_typed_preconditions(const par_num_t par_num,
     }
 }
 /**
+ * @brief Validate expected parameter type against resolved metadata.
+ *
+ * @note Callers shall resolve metadata first and then validate the.
+ * expected parameter type against the resolved configuration.
+ *
+ * @param p_cfg Resolved parameter configuration entry.
+ * @param expected_type Expected parameter type for operation.
+ * @return Status of operation.
+ */
+static par_status_t par_validate_expected_type(const par_cfg_t * const p_cfg,
+                                               const par_type_list_t expected_type)
+{
+    if (NULL == p_cfg)
+    {
+        return ePAR_ERROR;
+    }
+
+    PAR_ASSERT(expected_type == p_cfg->type);
+    if (expected_type != p_cfg->type)
+    {
+        return ePAR_ERROR_TYPE;
+    }
+
+    return ePAR_OK;
+}
+/**
  * @brief Checked parameter write core for all public setter APIs.
  *
  * @note This is the single enforcement point for all public write.
@@ -195,17 +221,11 @@ static void par_assert_fast_typed_preconditions(const par_num_t par_num,
  *
  * @return Status of operation.
  */
-static par_status_t par_set_checked_core(const par_num_t par_num,
-                                         const par_type_list_t expected_type,
-                                         const par_type_t * const p_typed_val,
-                                         const void * const p_ptr_val)
+static par_status_t par_set_checked_core(const par_num_t par_num, const par_type_list_t expected_type, const par_type_t * const p_typed_val, const void * const p_ptr_val)
 {
     const par_cfg_t *par_cfg = NULL;
     par_type_t val = { 0 };
-    par_status_t status = par_resolve_runtime(par_num,
-                                              p_ptr_val,
-                                              (NULL == p_typed_val),
-                                              &par_cfg);
+    par_status_t status = par_resolve_runtime(par_num, p_ptr_val, (NULL == p_typed_val), &par_cfg);
 
     if (ePAR_OK != status)
     {
@@ -234,12 +254,12 @@ static par_status_t par_set_checked_core(const par_num_t par_num,
     {
         switch (expected_type)
         {
-            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_U8, uint8_t, u8)
-            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_I8, int8_t, i8)
-            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_U16, uint16_t, u16)
-            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_I16, int16_t, i16)
-            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_U32, uint32_t, u32)
-            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_I32, int32_t, i32)
+            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_U8,  uint8_t,   u8)
+            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_I8,  int8_t,    i8)
+            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_U16, uint16_t,  u16)
+            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_I16, int16_t,   i16)
+            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_U32, uint32_t,  u32)
+            PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_I32, int32_t,   i32)
 #if (1 == PAR_CFG_ENABLE_TYPE_F32)
             PAR_CHECKED_LOAD_FROM_PTR_CASE(ePAR_TYPE_F32, float32_t, f32)
 #endif
@@ -257,8 +277,8 @@ static par_status_t par_set_checked_core(const par_num_t par_num,
 
     switch (expected_type)
     {
-        PAR_CHECKED_SET_CASE(u8, U8, ePAR_TYPE_U8, u8)
-        PAR_CHECKED_SET_CASE(i8, I8, ePAR_TYPE_I8, i8)
+        PAR_CHECKED_SET_CASE(u8,  U8,  ePAR_TYPE_U8,  u8)
+        PAR_CHECKED_SET_CASE(i8,  I8,  ePAR_TYPE_I8,  i8)
         PAR_CHECKED_SET_CASE(u16, U16, ePAR_TYPE_U16, u16)
         PAR_CHECKED_SET_CASE(i16, I16, ePAR_TYPE_I16, i16)
         PAR_CHECKED_SET_CASE(u32, U32, ePAR_TYPE_U32, u32)

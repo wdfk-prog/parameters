@@ -397,6 +397,11 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] = {
  * @brief Table size in bytes.
  */
 static const uint32_t gu32_par_table_size = sizeof(g_par_table);
+
+/**
+ * @brief Compile-time derived number of parameters flagged persistent.
+ */
+const uint16_t g_par_persistent_count = (uint16_t)PAR_PERSISTENT_COMPILE_COUNT;
 /**
  * @brief Function declarations and definitions.
  */

@@ -320,7 +320,11 @@ When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par_set_all_to_default()` also uses th
 
 When `PAR_CFG_NVM_EN = 1`, the module can persist selected parameters to NVM.
 
-NVM persistence uses the parameter metadata, persistence flags, CRC handling, and table hash validation to detect incompatible or corrupted stored data.
+NVM persistence uses per-object CRC plus an optional startup table-ID check to detect incompatible or corrupted stored data.
+
+When `PAR_CFG_TABLE_ID_CHECK_EN = 1`, the module uses a fixed 32-bit FNV-1a digest and stores 4 bytes in the NVM header. The digest covers only metadata that changes binary compatibility of persisted records: `PAR_CFG_TABLE_ID_SCHEMA_VER`, persistent-parameter count, persistent-parameter order, parameter type, and parameter ID. Default values, ranges, names, units, descriptions, and access flags are intentionally excluded because they do not change the serialized NVM object layout used by `par_nvm.c`.
+
+If the stored table-ID mismatches the live table-ID, the module treats the persisted image as incompatible and rebuilds the managed NVM area from current default values and the current schema. This can happen after an intentional schema/version bump, after parameter persistence layout changes, or after stored-image corruption. The recovery action is centralized in `par_nvm_init()`: it accumulates status bits from header validation, table-ID validation, and payload loading, then decides whether to restore defaults only or restore defaults plus rewrite the managed NVM image.
 
 For this feature, `par_nvm.c` mounts a parameter-storage backend interface during initialization. The packaged `GeneralEmbeddedCLibraries/nvm` adapter is one option, but the core no longer depends directly on a specific NVM repository layout.
 

@@ -45,24 +45,25 @@ enum
     ePAR_OK = 0U, /**< Normal operation. */
 
     /* Error status bits. */
-    ePAR_STATUS_ERROR_MASK = 0x03FFU,
-    ePAR_ERROR = 0x0001U,         /**< General parameter error. */
-    ePAR_ERROR_INIT = 0x0002U,    /**< Parameter initialization error or usage before initialization. */
-    ePAR_ERROR_NVM = 0x0004U,     /**< Parameter storage to NVM error. */
-    ePAR_ERROR_CRC = 0x0008U,     /**< Parameter CRC corrupted. */
-    ePAR_ERROR_TYPE = 0x0010U,    /**< Using invalid API function for given parameter data type. */
-    ePAR_ERROR_MUTEX = 0x0020U,   /**< Acquiring mutex failed. */
-    ePAR_ERROR_VALUE = 0x0040U,   /**< Invalid parameter value (validation failed). */
-    ePAR_ERROR_PARAM = 0x0080U,   /**< Invalid function argument. */
-    ePAR_ERROR_PAR_NUM = 0x0100U, /**< Invalid parameter number. */
-    ePAR_ERROR_ACCESS = 0x0200U,  /**< Write access denied by parameter access policy. */
+    ePAR_STATUS_ERROR_MASK = 0x07FFU,
+    ePAR_ERROR = 0x0001U,          /**< General parameter error. */
+    ePAR_ERROR_INIT = 0x0002U,     /**< Parameter initialization error or usage before initialization. */
+    ePAR_ERROR_NVM = 0x0004U,      /**< Parameter storage to NVM error. */
+    ePAR_ERROR_CRC = 0x0008U,      /**< Parameter CRC corrupted. */
+    ePAR_ERROR_TYPE = 0x0010U,     /**< Using invalid API function for given parameter data type. */
+    ePAR_ERROR_MUTEX = 0x0020U,    /**< Acquiring mutex failed. */
+    ePAR_ERROR_VALUE = 0x0040U,    /**< Invalid parameter value (validation failed). */
+    ePAR_ERROR_PARAM = 0x0080U,    /**< Invalid function argument. */
+    ePAR_ERROR_PAR_NUM = 0x0100U,  /**< Invalid parameter number. */
+    ePAR_ERROR_ACCESS = 0x0200U,   /**< Write access denied by parameter access policy. */
+    ePAR_ERROR_TABLE_ID = 0x0400U, /**< Stored parameter-table ID does not match the live table. */
 
     /* Warning status bits. */
-    ePAR_STATUS_WAR_MASK = 0xFC00U,
-    ePAR_WAR_SET_TO_DEF = 0x0400U,    /**< Parameters set to default. */
-    ePAR_WAR_NVM_REWRITTEN = 0x0800U, /**< NVM parameters area completely re-written. */
-    ePAR_WAR_NO_PERSISTENT = 0x1000U, /**< No persistent parameters -> set PAR_CFG_NVM_EN to 0. */
-    ePAR_WAR_LIMITED = 0x2000U,       /**< Parameter value limited within [min,max]. */
+    ePAR_STATUS_WAR_MASK = 0xF800U,
+    ePAR_WAR_SET_TO_DEF = 0x0800U,    /**< Parameters set to default. */
+    ePAR_WAR_NVM_REWRITTEN = 0x1000U, /**< NVM parameters area completely re-written. */
+    ePAR_WAR_NO_PERSISTENT = 0x2000U, /**< No persistent parameters -> set PAR_CFG_NVM_EN to 0. */
+    ePAR_WAR_LIMITED = 0x4000U,       /**< Parameter value limited within [min,max]. */
 };
 typedef uint16_t par_status_t;
 /**
@@ -215,6 +216,22 @@ void par_release_mutex(const par_num_t par_num);
  * @return Operation status.
  */
 par_status_t par_set(const par_num_t par_num, const void *p_val);
+/**
+ * @brief Set one parameter from a typed input pointer through the unchecked fast path.
+ *
+ * @note This generic fast setter validates initialization, parameter number,
+ * and pointer arguments, then dispatches to the matching typed
+ * `par_set_xxx_fast()` implementation.
+ *
+ * @note It intentionally bypasses access enforcement, runtime validation
+ * callbacks, and on-change callbacks. Range limiting still follows
+ * the typed fast setter behavior.
+ *
+ * @param par_num Parameter number.
+ * @param p_val Pointer to the input value.
+ * @return Operation status.
+ */
+par_status_t par_set_fast(const par_num_t par_num, const void *p_val);
 #if (1 == PAR_CFG_ENABLE_ID)
 /**
  * @brief Set one parameter by external parameter ID.

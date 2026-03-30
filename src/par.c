@@ -159,27 +159,19 @@ static const char *gs_status[] = {
     "ERROR PARAM",
     "ERROR PAR NUM",
     "ERROR ACCESS",
+    "ERROR TABLE ID",
     "WARN SET TO DEF",
     "WARN NVM REWRITTEN",
     "NO PERSISTENT",
     "LIMITED",
-    "N/A",
     "N/A",
 };
 #endif
 /**
  * @brief Function declarations.
  */
-#if (1 == PAR_CFG_ENABLE_ID)
-static inline uint32_t par_hash_id(const uint16_t id);
-#if ((1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK) || (1 == PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK))
-static par_status_t par_runtime_validate_id_table(const par_cfg_t * const p_par_cfg);
-#endif
-#endif
 static par_status_t par_set_checked_core(const par_num_t par_num, const par_type_list_t expected_type, const par_type_t * const p_typed_val, const void * const p_ptr_val);
-#if (1 == PAR_CFG_NVM_EN)
-static par_status_t par_is_value_changed(const par_num_t par_num, const void *p_val, bool * const p_value_changed);
-#endif
+
 /**
  * @brief Function declarations and definitions.
  */
@@ -262,32 +254,7 @@ static par_status_t par_resolve_runtime(const par_num_t par_num, const void * co
 
     return par_resolve_metadata(par_num, p_arg, require_arg, pp_cfg);
 }
-/**
- * @brief Validate expected parameter type against resolved metadata.
- *
- * @note Callers shall resolve metadata first and then validate the.
- * expected parameter type against the resolved configuration.
- *
- * @param p_cfg Resolved parameter configuration entry.
- * @param expected_type Expected parameter type for operation.
- * @return Status of operation.
- */
-static par_status_t par_validate_expected_type(const par_cfg_t * const p_cfg,
-                                               const par_type_list_t expected_type)
-{
-    if (NULL == p_cfg)
-    {
-        return ePAR_ERROR;
-    }
 
-    PAR_ASSERT(expected_type == p_cfg->type);
-    if (expected_type != p_cfg->type)
-    {
-        return ePAR_ERROR_TYPE;
-    }
-
-    return ePAR_OK;
-}
 /**
  * @brief Compare two F32 values by raw bit pattern.
  *
@@ -611,6 +578,54 @@ par_status_t par_set(const par_num_t par_num, const void *p_val)
     }
 
     return par_set_checked_core(par_num, par_cfg->type, NULL, p_val);
+}
+/**
+ * @brief Set parameter value through the generic unchecked fast path.
+ *
+ * @param par_num Parameter number (enumeration).
+ * @param p_val Pointer to value.
+ * @return Status of operation.
+ */
+par_status_t par_set_fast(const par_num_t par_num, const void *p_val)
+{
+    const par_cfg_t *par_cfg = NULL;
+    const par_status_t status = par_resolve_runtime(par_num, p_val, true, &par_cfg);
+
+    if (ePAR_OK != status)
+    {
+        return status;
+    }
+
+    switch (par_cfg->type)
+    {
+    case ePAR_TYPE_U8:
+        return par_set_u8_fast(par_num, *(const uint8_t *)p_val);
+
+    case ePAR_TYPE_I8:
+        return par_set_i8_fast(par_num, *(const int8_t *)p_val);
+
+    case ePAR_TYPE_U16:
+        return par_set_u16_fast(par_num, *(const uint16_t *)p_val);
+
+    case ePAR_TYPE_I16:
+        return par_set_i16_fast(par_num, *(const int16_t *)p_val);
+
+    case ePAR_TYPE_U32:
+        return par_set_u32_fast(par_num, *(const uint32_t *)p_val);
+
+    case ePAR_TYPE_I32:
+        return par_set_i32_fast(par_num, *(const int32_t *)p_val);
+
+#if (1 == PAR_CFG_ENABLE_TYPE_F32)
+    case ePAR_TYPE_F32:
+        return par_set_f32_fast(par_num, *(const float32_t *)p_val);
+#endif
+
+    case ePAR_TYPE_NUM_OF:
+    default:
+        PAR_ASSERT(0);
+        return ePAR_ERROR_TYPE;
+    }
 }
 /**
  * @brief Set parameter value by ID.
