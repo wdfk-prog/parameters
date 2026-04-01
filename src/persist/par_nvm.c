@@ -33,7 +33,7 @@
  * Parameter storage is reserved in "Parameters" region of NVM. Look.
  * at the nvm_cfg.h/c module for NVM region descriptions.
  *
- * Parameters stored into NVM in little endianness format.
+ * Parameters stored into NVM in the native byte order of the target platform.
  *
  * For details how parameters are handled in NVM go look at the.
  * documentation.
@@ -41,8 +41,10 @@
  * @note RULES OF "PAR_CFG_TABLE_ID_CHECK_EN" SETTINGS:
  *
  * During development it is normal that the parameter table and the persisted
- * compatibility model evolve. Startup therefore validates the live table-ID
- * against the value stored in NVM when table-ID checking is enabled.
+ * compatibility model evolve. The serialized NVM header therefore stores the
+ * current table-ID digest together with the persistent-object count, and the
+ * header CRC protects both fields. Startup validates the live table-ID against
+ * the stored digest when table-ID checking is enabled.
  *
  * A mismatch means the managed NVM image is no longer compatible with the live
  * firmware image. Typical causes are an intentional schema-version bump, a
@@ -70,21 +72,11 @@
  */
 typedef struct
 {
-    uint32_t sign;      /**< Signature. */
-    uint16_t obj_nb;    /**< Stored data object number. */
-    uint16_t crc;       /**< Header CRC. */
+    uint32_t sign;      /**< Signature in host order. */
+    uint16_t obj_nb;    /**< Stored data object number in host order. */
+    uint32_t table_id;  /**< Stored parameter-table ID in platform-native order. */
+    uint16_t crc;       /**< Header CRC-16 over serialized obj_nb and table_id. */
 } par_nvm_head_obj_t;
-/**
- * @brief Serialized parameter NVM header layout.
- *
- * @details This type models the exact on-storage header prefix: the fixed
- * header followed by the persisted parameter-table hash.
- */
-typedef struct
-{
-    par_nvm_head_obj_t head;                /**< Fixed header prefix. */
-    uint8_t hash[PAR_NVM_TABLE_ID_SIZE];    /**< Parameter-table ID digest. */
-} par_nvm_head_layout_t;
 /**
  * @brief Compile-time definitions.
  */
@@ -99,26 +91,56 @@ typedef struct
  * @note This is offset to reserved NVM region. For absolute address.
  * add that value to NVM start region.
  */
-#define PAR_NVM_HEAD_ADDR      (0x00U)
-#define PAR_NVM_HEAD_SIGN_ADDR (PAR_NVM_HEAD_ADDR + (uint32_t)offsetof(par_nvm_head_layout_t, head.sign))
-#define PAR_NVM_HEAD_HASH_ADDR (PAR_NVM_HEAD_ADDR + (uint32_t)offsetof(par_nvm_head_layout_t, hash))
+#define PAR_NVM_HEAD_ADDR            (0x00U)
+#define PAR_NVM_HEAD_SIGN_ADDR       (PAR_NVM_HEAD_ADDR)
+#define PAR_NVM_HEAD_SIGN_SIZE       ((uint32_t)sizeof(uint32_t))
+#define PAR_NVM_HEAD_OBJ_NB_OFFSET   (PAR_NVM_HEAD_SIGN_SIZE)
+#define PAR_NVM_HEAD_OBJ_NB_SIZE     ((uint32_t)sizeof(uint16_t))
+#define PAR_NVM_HEAD_TABLE_ID_OFFSET (PAR_NVM_HEAD_OBJ_NB_OFFSET + PAR_NVM_HEAD_OBJ_NB_SIZE)
+#define PAR_NVM_HEAD_TABLE_ID_SIZE   ((uint32_t)sizeof(uint32_t))
+#define PAR_NVM_HEAD_CRC_OFFSET      (PAR_NVM_HEAD_TABLE_ID_OFFSET + PAR_NVM_HEAD_TABLE_ID_SIZE)
+#define PAR_NVM_HEAD_CRC_SIZE        ((uint32_t)sizeof(uint16_t))
+#define PAR_NVM_HEAD_SIZE            (PAR_NVM_HEAD_CRC_OFFSET + PAR_NVM_HEAD_CRC_SIZE)
+#define PAR_NVM_FIRST_DATA_OBJ_ADDR  (PAR_NVM_HEAD_ADDR + PAR_NVM_HEAD_SIZE)
 
 /**
- * @brief Parameters first data object start address.
- * @details Unit: byte.
- */
-#define PAR_NVM_FIRST_DATA_OBJ_ADDR (PAR_NVM_HEAD_ADDR + (uint32_t)sizeof(par_nvm_head_layout_t))
-
-/**
- * @brief Parameter NVM data object.
+ * @brief Persisted parameter object layout (current implementation).
+ *
+ * @details Each persistent parameter is serialized as one fixed-size 8-byte
+ * object in the managed NVM area:
+ *
+ * Byte offset:   0       1       2       3       4       5       6       7
+ *              +-------+-------+-------+-------+-------+-------+-------+-------+
+ * Field:       |        id        | size  | crc8  |        data slot       |
+ *              +-------+-------+-------+-------+-------+-------+-------+-------+
+ * Width:       |<---- 2 bytes ---->| 1 B   | 1 B   |<------ 4 bytes ------->|
+ *
+ * Meaning:
+ * - id   : external parameter ID of this persisted entry. Its main value is
+ *          that persisted records stay self-describing instead of depending
+ *          only on fixed slot positions.
+ * - size : payload-width descriptor. The current implementation always writes
+ *          the full 4-byte payload-slot width, so this field does not save
+ *          NVM space yet; it is kept as a descriptor and integrity helper.
+ * - crc  : per-record CRC-8 calculated over the serialized id/size/data bytes.
+ * - data : 32-bit payload slot used to store the parameter value. Even U8/U16
+ *          parameters still occupy the same 4-byte payload slot in NVM.
+ *
+ * @note Live RAM layout and persisted NVM layout are intentionally different.
+ * RAM storage is grouped by value width, while the NVM persistence area is a
+ * linear list of fixed 8-byte objects.
  */
 typedef struct
 {
     uint16_t id;        /**< Parameter ID. */
-    uint8_t size;       /**< Size of parameter data block. */
-    uint8_t crc;        /**< CRC of parameter value. */
-    par_type_t data;    /**< 4-byte storage for parameter value. */
+    uint8_t size;       /**< Payload-width descriptor. */
+    uint8_t crc;        /**< CRC-8 over id, size, and 4-byte payload slot. */
+    par_type_t data;    /**< Fixed 4-byte payload slot for the parameter value. */
 } par_nvm_data_obj_t;
+
+#define PAR_NVM_DATA_OBJ_STRIDE ((uint32_t)sizeof(par_nvm_data_obj_t))
+#define PAR_NVM_DATA_SLOT_SIZE  ((uint8_t)sizeof(((par_nvm_data_obj_t *)0)->data))
+
 /**
  * @brief Parameter NVM LUT talbe.
  */
@@ -154,124 +176,9 @@ static par_nvm_lut_t g_par_nvm_data_obj_addr[ePAR_NUM_OF] = { 0 };
 /**
  * @brief Function declarations.
  */
-static par_status_t par_nvm_load_all(const uint16_t num_of_par);
-static par_status_t par_nvm_restore_fast(const par_num_t par_num, const void *p_val);
-
-static par_status_t par_nvm_read_header(par_nvm_head_obj_t * const p_head_obj);
-static par_status_t par_nvm_write_header(const uint16_t num_of_par);
-static par_status_t par_nvm_validate_header(uint16_t * const p_num_of_par);
-
-static uint16_t par_nvm_calc_crc(const uint8_t * const p_data, const uint8_t size);
+static uint16_t par_nvm_calc_head_crc(const par_nvm_head_obj_t * const p_head_obj);
 static uint8_t par_nvm_calc_obj_crc(const par_nvm_data_obj_t * const p_obj);
-
-static void par_nvm_build_new_nvm_lut(void);
-static uint32_t par_nvm_get_nvm_lut_addr(const uint16_t id);
 static bool par_nvm_is_in_nvm_lut(const uint16_t id);
-
-#if (1 == PAR_CFG_TABLE_ID_CHECK_EN)
-static par_status_t par_nvm_check_table_id(const uint32_t table_id);
-static par_status_t par_nvm_write_table_id(const uint32_t table_id);
-#endif
-
-static par_status_t par_nvm_init_nvm(void);
-
-/**
- * @brief Function declarations and definitions.
- */
-static par_status_t par_nvm_restore_fast(const par_num_t par_num, const void *p_val)
-{
-    if (NULL == p_val)
-    {
-        return ePAR_ERROR_PARAM;
-    }
-
-    switch (par_get_type(par_num))
-    {
-    case ePAR_TYPE_U8:
-        return par_set_u8_fast(par_num, *(const uint8_t *)p_val);
-
-    case ePAR_TYPE_I8:
-        return par_set_i8_fast(par_num, *(const int8_t *)p_val);
-
-    case ePAR_TYPE_U16:
-        return par_set_u16_fast(par_num, *(const uint16_t *)p_val);
-
-    case ePAR_TYPE_I16:
-        return par_set_i16_fast(par_num, *(const int16_t *)p_val);
-
-    case ePAR_TYPE_U32:
-        return par_set_u32_fast(par_num, *(const uint32_t *)p_val);
-
-    case ePAR_TYPE_I32:
-        return par_set_i32_fast(par_num, *(const int32_t *)p_val);
-
-#if (1 == PAR_CFG_ENABLE_TYPE_F32)
-    case ePAR_TYPE_F32:
-        return par_set_f32_fast(par_num, *(const float32_t *)p_val);
-#endif
-
-    case ePAR_TYPE_NUM_OF:
-    default:
-        return ePAR_ERROR_TYPE;
-    }
-}
-#if (1 == PAR_CFG_TABLE_ID_CHECK_EN)
-/**
- * @brief Check unique parameter table ID.
- *
- * @details This function compares the stored 32-bit little-endian table-ID
- * value with the live value calculated from the current parameter table.
- *
- * @param table_id Host-endian live table-ID value.
- * @return Status of operation.
- */
-static par_status_t par_nvm_check_table_id(const uint32_t table_id)
-{
-    par_status_t status = ePAR_OK;
-    uint32_t stored_table_id = 0U;
-    const par_status_t store_status = gp_store->read(PAR_NVM_HEAD_HASH_ADDR, PAR_NVM_TABLE_ID_SIZE, (uint8_t *)&stored_table_id);
-
-    if (ePAR_OK == store_status)
-    {
-        const uint32_t expected_table_id = par_nvm_table_id_to_storage(table_id);
-
-        if (stored_table_id != expected_table_id)
-        {
-            status = ePAR_ERROR_TABLE_ID;
-        }
-    }
-    else
-    {
-        status = ePAR_ERROR_NVM;
-        PAR_DBG_PRINT("PAR_NVM: table-ID read failed, %u", (unsigned)store_status);
-    }
-
-    return status;
-}
-/**
- * @brief Write unique parameter table ID to NVM.
- *
- * @param table_id Host-endian live table-ID value.
- * @return Status of operation.
- */
-static par_status_t par_nvm_write_table_id(const uint32_t table_id)
-{
-    par_status_t status = ePAR_OK;
-    const uint32_t stored_table_id = par_nvm_table_id_to_storage(table_id);
-    const par_status_t store_status = gp_store->write(PAR_NVM_HEAD_HASH_ADDR,
-                                                      PAR_NVM_TABLE_ID_SIZE,
-                                                      (const uint8_t *)&stored_table_id);
-
-    if (ePAR_OK != store_status)
-    {
-        status = ePAR_ERROR_NVM;
-        PAR_DBG_PRINT("PAR_NVM: table-ID write failed, %u", (unsigned)store_status);
-    }
-
-    return status;
-}
-
-#endif /* 1 == PAR_CFG_TABLE_ID_CHECK_EN */
 /**
  * @brief Read parameter NVM header.
  *
@@ -281,24 +188,33 @@ static par_status_t par_nvm_write_table_id(const uint32_t table_id)
 static par_status_t par_nvm_read_header(par_nvm_head_obj_t * const p_head_obj)
 {
     par_status_t status = ePAR_OK;
+    uint8_t head_buf[PAR_NVM_HEAD_SIZE] = { 0U };
 
     PAR_ASSERT(NULL != p_head_obj);
 
+    const par_status_t store_status = gp_store->read(PAR_NVM_HEAD_ADDR, PAR_NVM_HEAD_SIZE, head_buf);
+    if (ePAR_OK != store_status)
     {
-        const par_status_t store_status = gp_store->read(PAR_NVM_HEAD_ADDR,
-                                                         (uint32_t)sizeof(par_nvm_head_obj_t),
-                                                         (uint8_t *)p_head_obj);
-        if (ePAR_OK != store_status)
-        {
-            status = ePAR_ERROR_NVM;
-            PAR_DBG_PRINT("PAR_NVM: header read failed, %u", (unsigned)store_status);
-        }
+        status = ePAR_ERROR_NVM;
+        PAR_DBG_PRINT("PAR_NVM: header read failed, %u", (unsigned)store_status);
+    }
+    else
+    {
+        memcpy(&p_head_obj->sign, &head_buf[PAR_NVM_HEAD_SIGN_ADDR], sizeof(p_head_obj->sign));
+        memcpy(&p_head_obj->obj_nb, &head_buf[PAR_NVM_HEAD_OBJ_NB_OFFSET], sizeof(p_head_obj->obj_nb));
+        memcpy(&p_head_obj->table_id, &head_buf[PAR_NVM_HEAD_TABLE_ID_OFFSET], sizeof(p_head_obj->table_id));
+        memcpy(&p_head_obj->crc, &head_buf[PAR_NVM_HEAD_CRC_OFFSET], sizeof(p_head_obj->crc));
     }
 
     return status;
 }
 /**
  * @brief Write parameter NVM header.
+ *
+ * @details The serialized header always stores the current table-ID digest
+ * in the native byte order of the running target.
+ * The compatibility comparison against the live digest still runs only when
+ * table-ID checking is enabled.
  *
  * @param num_of_par Number of persistent parameters that are stored in NVM.
  * @return Status of operation.
@@ -307,25 +223,19 @@ static par_status_t par_nvm_write_header(const uint16_t num_of_par)
 {
     par_status_t status = ePAR_OK;
     par_nvm_head_obj_t head_obj = { 0 };
-
-#if (1 == PAR_CFG_TABLE_ID_CHECK_EN)
-    const uint32_t table_id = par_nvm_table_id_calc();
-
-    status = par_nvm_write_table_id(table_id);
-    if (ePAR_OK != status)
-    {
-        PAR_DBG_PRINT("PAR_NVM: table-ID write failed, %u", (unsigned)status);
-        return status;
-    }
-#endif
+    uint8_t head_buf[PAR_NVM_HEAD_SIZE] = { 0U };
 
     head_obj.obj_nb = num_of_par;
-    head_obj.crc = par_nvm_calc_crc((uint8_t *)&head_obj.obj_nb, sizeof(head_obj.obj_nb));
+    head_obj.table_id = par_nvm_table_id_calc();
+    head_obj.crc = par_nvm_calc_head_crc(&head_obj);
     head_obj.sign = PAR_NVM_SIGN;
 
-    const par_status_t store_status = gp_store->write(PAR_NVM_HEAD_ADDR,
-                                                      (uint32_t)sizeof(par_nvm_head_obj_t),
-                                                      (const uint8_t *)&head_obj);
+    memcpy(&head_buf[PAR_NVM_HEAD_SIGN_ADDR], &head_obj.sign, sizeof(head_obj.sign));
+    memcpy(&head_buf[PAR_NVM_HEAD_OBJ_NB_OFFSET], &head_obj.obj_nb, sizeof(head_obj.obj_nb));
+    memcpy(&head_buf[PAR_NVM_HEAD_TABLE_ID_OFFSET], &head_obj.table_id, sizeof(head_obj.table_id));
+    memcpy(&head_buf[PAR_NVM_HEAD_CRC_OFFSET], &head_obj.crc, sizeof(head_obj.crc));
+
+    const par_status_t store_status = gp_store->write(PAR_NVM_HEAD_ADDR, PAR_NVM_HEAD_SIZE, head_buf);
     if (ePAR_OK != store_status)
     {
         status = ePAR_ERROR_NVM;
@@ -340,26 +250,28 @@ static par_status_t par_nvm_write_header(const uint16_t num_of_par)
 /**
  * @brief Validate parameter NVM header.
  *
- * @param p_num_of_par Pointer to number of persistent parameters that are stored in NVM.
+ * @details The header CRC covers both the stored persistent-object count and
+ * the stored table-ID digest bytes. This distinguishes header corruption from
+ * a valid-but-incompatible table-ID mismatch.
+ *
+ * @param p_head_obj Pointer to validated header structure.
  * @return Status of operation.
  */
-static par_status_t par_nvm_validate_header(uint16_t * const p_num_of_par)
+static par_status_t par_nvm_validate_header(par_nvm_head_obj_t * const p_head_obj)
 {
     par_status_t status = ePAR_OK;
-    par_nvm_head_obj_t obj_head = { 0 };
-    uint16_t crc_calc = 0;
-    status = par_nvm_read_header(&obj_head);
+    uint16_t crc_calc = 0U;
+
+    status = par_nvm_read_header(p_head_obj);
     if (ePAR_ERROR_NVM != status)
     {
-        if (PAR_NVM_SIGN == obj_head.sign)
+        if (PAR_NVM_SIGN == p_head_obj->sign)
         {
-            crc_calc = par_nvm_calc_crc((uint8_t *)&obj_head.obj_nb, sizeof(obj_head.obj_nb));
-            if (crc_calc == obj_head.crc)
+            crc_calc = par_nvm_calc_head_crc(p_head_obj);
+            if (crc_calc == p_head_obj->crc)
             {
-                *p_num_of_par = obj_head.obj_nb;
-                PAR_DBG_PRINT("PAR_NVM: HVM header OK! Nb. of stored obj: %d", obj_head.obj_nb);
+                PAR_DBG_PRINT("PAR_NVM: NVM header OK! Nb. of stored obj: %d", p_head_obj->obj_nb);
             }
-
             else
             {
                 status = ePAR_ERROR_CRC;
@@ -376,56 +288,51 @@ static par_status_t par_nvm_validate_header(uint16_t * const p_num_of_par)
     return status;
 }
 /**
- * @brief Calculate CRC-16.
+ * @brief Calculate serialized-header CRC-16.
  *
- * @param p_data Pointer to data.
- * @param size Size of data to calc crc.
- * @return Calculated CRC.
+ * @details The header CRC is accumulated field-by-field over the serialized
+ * native-order bytes of obj_nb and table_id. This avoids hashing compiler
+ * padding bytes inside par_nvm_head_obj_t while intentionally keeping the
+ * persisted format and table-ID comparison tied to the current target
+ * architecture.
+ *
+ * @param p_head_obj Pointer to header object.
+ * @return Calculated CRC-16 value.
  */
-static uint16_t par_nvm_calc_crc(const uint8_t * const p_data, const uint8_t size)
+static uint16_t par_nvm_calc_head_crc(const par_nvm_head_obj_t * const p_head_obj)
 {
-    const uint16_t poly = 0x1021U;    // CRC-16-CCITT
-    const uint16_t seed = 0x1234U;    // Custom seed
-    uint16_t crc16 = seed;
-    PAR_ASSERT(NULL != p_data);
-    PAR_ASSERT(size > 0);
+    uint16_t crc = PAR_IF_CRC16_INIT;
 
-    for (uint8_t i = 0; i < size; i++)
-    {
-        crc16 = (crc16 ^ (p_data[i] << 8U));
+    PAR_ASSERT(NULL != p_head_obj);
 
-        for (uint8_t j = 0U; j < 8U; j++)
-        {
-            if (crc16 & 0x8000)
-            {
-                crc16 = ((crc16 << 1U) ^ poly);
-            }
-            else
-            {
-                crc16 = (crc16 << 1U);
-            }
-        }
-    }
+    crc = par_if_crc16_accumulate(crc, (const uint8_t * const)&p_head_obj->obj_nb, (uint32_t)sizeof(p_head_obj->obj_nb));
+    crc = par_if_crc16_accumulate(crc, (const uint8_t * const)&p_head_obj->table_id, (uint32_t)sizeof(p_head_obj->table_id));
 
-    return crc16;
+    return crc;
 }
 /**
- * @brief Calculate parameter data object CRC.
+ * @brief Calculate per-record CRC-8 over serialized id/size/data bytes.
+ *
+ * @details The record CRC is accumulated field-by-field over the serialized
+ * native-order bytes of id, size, and the fixed 4-byte payload slot.
  *
  * @param p_obj Pointer to data object.
- * @return Calculated CRC.
+ * @return Calculated CRC-8 value.
  */
 static uint8_t par_nvm_calc_obj_crc(const par_nvm_data_obj_t * const p_obj)
 {
-    uint16_t crc = 0;
-    uint8_t rtn_crc = 0;
+    uint32_t data_raw = 0U;
+    uint8_t crc = PAR_IF_CRC8_INIT;
 
-    crc = par_nvm_calc_crc((const uint8_t *)&p_obj->id, 2U);
-    crc ^= par_nvm_calc_crc((const uint8_t *)&p_obj->size, 1U);
-    crc ^= par_nvm_calc_crc((const uint8_t *)&p_obj->data.u8, 4U);
-    rtn_crc = (crc & 0xFFU);
+    PAR_ASSERT(NULL != p_obj);
 
-    return rtn_crc;
+    memcpy(&data_raw, &p_obj->data, sizeof(data_raw));
+
+    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&p_obj->id, (uint32_t)sizeof(p_obj->id));
+    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&p_obj->size, (uint32_t)sizeof(p_obj->size));
+    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&data_raw, (uint32_t)sizeof(data_raw));
+
+    return crc;
 }
 /**
  * @brief Load all parameters value from NVM.
@@ -446,8 +353,8 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
     uint16_t new_par_cnt = 0;
     for (i = 0; i < num_of_par; i++)
     {
-        /* Each NVM object currently occupies 8 bytes. */
-        obj_addr = ((8 * i) + PAR_NVM_FIRST_DATA_OBJ_ADDR);
+        /* NVM persistence is a dense linear array of fixed 8-byte objects. */
+        obj_addr = ((PAR_NVM_DATA_OBJ_STRIDE * i) + PAR_NVM_FIRST_DATA_OBJ_ADDR);
         store_status = gp_store->read(obj_addr, (uint32_t)sizeof(par_nvm_data_obj_t), (uint8_t *)&obj_data);
         if (ePAR_OK == store_status)
         {
@@ -465,7 +372,7 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
                             g_par_nvm_data_obj_addr[per_par_nb].addr = obj_addr;
                             g_par_nvm_data_obj_addr[per_par_nb].valid = true;
                             /* Restore through the internal fast path. */
-                            (void)par_nvm_restore_fast(par_num, &obj_data.data);
+                            (void)par_set_fast(par_num, &obj_data.data);
                             per_par_nb++;
                         }
                     }
@@ -501,7 +408,7 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
                 {
                     /* Extend the LUT for newly added persistent parameters. */
                     g_par_nvm_data_obj_addr[per_par_nb].id = par_cfg->id;
-                    g_par_nvm_data_obj_addr[per_par_nb].addr = obj_addr + (8U * (new_par_cnt + 1U));
+                    g_par_nvm_data_obj_addr[per_par_nb].addr = obj_addr + (PAR_NVM_DATA_OBJ_STRIDE * (new_par_cnt + 1U));
                     g_par_nvm_data_obj_addr[per_par_nb].valid = true;
                     par_save(i);
 
@@ -534,8 +441,12 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
     return status;
 }
 /**
- * @brief Build new parameter NVM LUT table.
-
+ * @brief Build a fresh NVM lookup table from the live persistent set.
+ *
+ * @details The LUT maps external parameter IDs to their fixed-record address in
+ * the linear persisted-object array. This keeps load/save paths anchored on ID
+ * instead of assuming that a given parameter meaning is tied permanently to one
+ * absolute slot position.
  */
 static void par_nvm_build_new_nvm_lut(void)
 {
@@ -551,10 +462,10 @@ static void par_nvm_build_new_nvm_lut(void)
                 g_par_nvm_data_obj_addr[per_par_nb].addr = PAR_NVM_FIRST_DATA_OBJ_ADDR;
             }
 
-            /* NVM data objects currently use a fixed 8-byte stride. */
+            /* NVM persistence uses a linear list of fixed-size 8-byte objects. */
             else
             {
-                g_par_nvm_data_obj_addr[per_par_nb].addr = (g_par_nvm_data_obj_addr[per_par_nb - 1].addr + 8U);
+                g_par_nvm_data_obj_addr[per_par_nb].addr = (g_par_nvm_data_obj_addr[per_par_nb - 1].addr + PAR_NVM_DATA_OBJ_STRIDE);
             }
 
             g_par_nvm_data_obj_addr[per_par_nb].id = par_cfg->id;
@@ -666,6 +577,8 @@ static par_status_t par_nvm_init_nvm(void)
  * The recovery flow is centralized and cumulative:
  * - header validation runs first;
  * - table-ID validation runs only when the header is valid;
+ * - header CRC validation covers both the stored object count and the stored
+ *   table-ID digest bytes;
  * - payload loading runs only when both checks pass;
  * - then the collected error bits decide whether startup should restore live
  *   RAM values to defaults only, or restore defaults and also rebuild the
@@ -680,7 +593,7 @@ par_status_t par_nvm_init(void)
 {
     par_status_t status = ePAR_OK;
     par_status_t detect_status = ePAR_OK;
-    uint16_t obj_nb = 0U;
+    par_nvm_head_obj_t head_obj = { 0 };
     uint16_t per_par_nb = 0U;
     bool need_set_default = false;
     bool need_rewrite_nvm = false;
@@ -700,21 +613,24 @@ par_status_t par_nvm_init(void)
     }
 
     /* Step 1: validate header */
-    detect_status = par_nvm_validate_header(&obj_nb);
+    detect_status = par_nvm_validate_header(&head_obj);
 
 #if (1 == PAR_CFG_TABLE_ID_CHECK_EN)
     /* Step 2: validate table-ID only when header is valid */
     if (ePAR_OK == (detect_status & ePAR_STATUS_ERROR_MASK))
     {
         const uint32_t live_table_id = par_nvm_table_id_calc();
-        detect_status |= par_nvm_check_table_id(live_table_id);
+        if (head_obj.table_id != live_table_id)
+        {
+            detect_status |= ePAR_ERROR_TABLE_ID;
+        }
     }
 #endif
 
     /* Step 3: load payload only when previous checks are valid */
     if (ePAR_OK == (detect_status & ePAR_STATUS_ERROR_MASK))
     {
-        detect_status |= par_nvm_load_all(obj_nb);
+        detect_status |= par_nvm_load_all(head_obj.obj_nb);
     }
 
     /* Step 4: classify recovery action from detected issues */
@@ -851,8 +767,8 @@ par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)
 
                 par_get(par_num, (uint32_t *)&obj_data.data);
                 obj_data.id = par_cfg->id;
-                /* Current implementation stores fixed-size 8-byte objects. */
-                obj_data.size = 4U;
+                /* size is a descriptor/check field; current fixed-slot format always stores 4. */
+                obj_data.size = PAR_NVM_DATA_SLOT_SIZE;
                 obj_data.crc = par_nvm_calc_obj_crc(&obj_data);
                 par_addr = par_nvm_get_nvm_lut_addr(obj_data.id);
                 store_status = gp_store->write(par_addr,
@@ -912,7 +828,7 @@ par_status_t par_nvm_write_all(void)
     {
         /* Mark the header invalid before bulk rewrite and commit that state. */
         {
-            const par_status_t store_status = gp_store->erase(PAR_NVM_HEAD_SIGN_ADDR, (uint32_t)sizeof(uint32_t));
+            const par_status_t store_status = gp_store->erase(PAR_NVM_HEAD_SIGN_ADDR, PAR_NVM_HEAD_SIGN_SIZE);
             if (ePAR_OK != store_status)
             {
                 status |= ePAR_ERROR_NVM;

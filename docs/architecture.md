@@ -320,9 +320,11 @@ When `PAR_CFG_ENABLE_RESET_ALL_RAW = 1`, `par_set_all_to_default()` also uses th
 
 When `PAR_CFG_NVM_EN = 1`, the module can persist selected parameters to NVM.
 
-NVM persistence uses per-object CRC plus an optional startup table-ID check to detect incompatible or corrupted stored data.
+NVM persistence uses a fixed-size record format that is intentionally different from the live RAM layout. Live RAM storage is grouped by value width (`U8` / `U16` / `U32` / optional `F32`) for efficient access and raw reset, while the managed NVM area is a dense linear list of fixed 8-byte objects. Each persisted object stores: external parameter ID (2 bytes), payload-size descriptor (1 byte), per-record CRC-8 (1 byte), and one fixed 4-byte payload slot.
 
-When `PAR_CFG_TABLE_ID_CHECK_EN = 1`, the module uses a fixed 32-bit FNV-1a digest and stores 4 bytes in the NVM header. The digest covers only metadata that changes binary compatibility of persisted records: `PAR_CFG_TABLE_ID_SCHEMA_VER`, persistent-parameter count, persistent-parameter order, parameter type, and parameter ID. Default values, ranges, names, units, descriptions, and access flags are intentionally excluded because they do not change the serialized NVM object layout used by `par_nvm.c`.
+The external ID is the main self-description field of the persisted image. Loader and rewrite paths use it to match records to live parameters, so the persistence model is less dependent on one parameter meaning being bound forever to one absolute slot position. The `size` field is currently written as `4` for all persisted parameters. In other words, the current implementation does not save NVM space for `U8`/`U16`; `size` is kept mainly as a descriptor and integrity-assistance field for the fixed-slot format.
+
+The serialized NVM header is a fixed 12-byte storage image (`sign + obj_nb + table_id + crc16`) emitted explicitly instead of by writing raw struct memory. The header CRC covers the serialized native-order `obj_nb + table_id` bytes, so header corruption is detected separately from a valid header that simply belongs to another parameter-table schema. Each data object uses CRC-8 over its serialized native-order `id + size + data` bytes. This profile intentionally ties the persisted image to the current target architecture and does not normalize byte order for cross-platform migration. CRC calculation is routed through port hooks with bundled software defaults. The table-ID digest follows the same rule and hashes each scalar exactly as represented in native platform memory. The digest covers only metadata that changes binary compatibility of persisted records: `PAR_CFG_TABLE_ID_SCHEMA_VER`, persistent-parameter count, persistent-parameter order, parameter type, and parameter ID. Default values, ranges, names, units, descriptions, and access flags are intentionally excluded because they do not change the serialized NVM object layout used by `par_nvm.c`.
 
 If the stored table-ID mismatches the live table-ID, the module treats the persisted image as incompatible and rebuilds the managed NVM area from current default values and the current schema. This can happen after an intentional schema/version bump, after parameter persistence layout changes, or after stored-image corruption. The recovery action is centralized in `par_nvm_init()`: it accumulates status bits from header validation, table-ID validation, and payload loading, then decides whether to restore defaults only or restore defaults plus rewrite the managed NVM image.
 
@@ -351,7 +353,7 @@ Implemented under layered `src/` subdirectories:
 Implemented by the integrator as needed:
 
 - `par_cfg_port.h`
-- `par_if_port.c` (optional strong override for the weak defaults in `src/port/par_if.c`)
+- `par_if_port.c` (optional strong override for the weak defaults in `src/port/par_if.c`, including mutex and CRC helpers)
 - `par_atomic_port.h`
 
 This separation makes the core reusable while still allowing the target platform to provide mutexes, logging, assertions, and atomic primitives. Packaged storage backend adapters stay inside the `src/persist/backend/` subtree because they are reusable module integrations rather than board-specific port code.

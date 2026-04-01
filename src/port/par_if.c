@@ -78,6 +78,86 @@ PAR_PORT_WEAK void par_if_release_mutex(const par_num_t par_num)
 {
     (void)par_num;
 }
+/**
+ * @brief Accumulate CRC-16/CCITT-FALSE over serialized header bytes.
+ *
+ * @details Default weak implementation used when the integrator does not
+ * provide a platform-specific override.
+ *
+ * @param crc Current CRC-16 accumulator value.
+ * @param p_data Pointer to serialized bytes.
+ * @param size Number of bytes to process.
+ * @return Updated CRC-16 value.
+ */
+PAR_PORT_WEAK uint16_t par_if_crc16_accumulate(uint16_t crc, const uint8_t * const p_data, const uint32_t size)
+{
+    const uint16_t poly = 0x1021U;
+
+    if (0U == size)
+    {
+        return crc;
+    }
+
+    PAR_ASSERT(NULL != p_data);
+
+    for (uint32_t i = 0U; i < size; ++i)
+    {
+        crc ^= (uint16_t)((uint16_t)p_data[i] << 8U);
+        for (uint8_t bit = 0U; bit < 8U; ++bit)
+        {
+            if (0U != (crc & 0x8000U))
+            {
+                crc = (uint16_t)((crc << 1U) ^ poly);
+            }
+            else
+            {
+                crc = (uint16_t)(crc << 1U);
+            }
+        }
+    }
+
+    return crc;
+}
+/**
+ * @brief Accumulate CRC-8 over serialized record bytes.
+ *
+ * @details Default weak implementation used when the integrator does not
+ * provide a platform-specific override.
+ *
+ * @param crc Current CRC-8 accumulator value.
+ * @param p_data Pointer to serialized bytes.
+ * @param size Number of bytes to process.
+ * @return Updated CRC-8 value.
+ */
+PAR_PORT_WEAK uint8_t par_if_crc8_accumulate(uint8_t crc, const uint8_t * const p_data, const uint32_t size)
+{
+    const uint8_t poly = 0x07U;
+
+    if (0U == size)
+    {
+        return crc;
+    }
+
+    PAR_ASSERT(NULL != p_data);
+
+    for (uint32_t i = 0U; i < size; ++i)
+    {
+        crc ^= p_data[i];
+        for (uint8_t bit = 0U; bit < 8U; ++bit)
+        {
+            if (0U != (crc & 0x80U))
+            {
+                crc = (uint8_t)((crc << 1U) ^ poly);
+            }
+            else
+            {
+                crc = (uint8_t)(crc << 1U);
+            }
+        }
+    }
+
+    return crc;
+}
 
 #else
 
