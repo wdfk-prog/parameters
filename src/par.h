@@ -120,7 +120,7 @@ typedef struct
 
 /**
  * @brief Parameter data settings.
- * @note A single parameter object occupies 28 bytes with arm-gcc.
+ * @note The exact object size depends on enabled metadata fields and target ABI.
  */
 typedef struct par_cfg_s
 {
@@ -146,6 +146,7 @@ typedef struct par_cfg_s
 #endif
 #if (1 == PAR_CFG_ENABLE_PERSIST)
     bool persistent;       /**< Parameter persistence flag. */
+    uint16_t persist_idx;  /**< Persistent slot index or PAR_PERSIST_IDX_INVALID. */
 #endif
 } par_cfg_t;
 /**

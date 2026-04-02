@@ -1210,20 +1210,18 @@ par_status_t par_get_num_by_id(const uint16_t id, par_num_t * const p_par_num)
         return ePAR_ERROR_PARAM;
     }
 
+    const uint32_t bucket_idx = par_hash_id(id);
+    const par_id_map_entry_t * const bucket = &g_par_id_map_static[bucket_idx];
+
+    if ((0u != bucket->used) && (id == bucket->id))
     {
-        const uint32_t bucket_idx = par_hash_id(id);
-        const par_id_map_entry_t * const bucket = &g_par_id_map_static[bucket_idx];
-
-        if ((0u != bucket->used) && (id == bucket->id))
+        if (bucket->par_num >= ePAR_NUM_OF)
         {
-            if (bucket->par_num >= ePAR_NUM_OF)
-            {
-                return ePAR_ERROR_PAR_NUM;
-            }
-
-            *p_par_num = bucket->par_num;
-            return ePAR_OK;
+            return ePAR_ERROR_PAR_NUM;
         }
+
+        *p_par_num = bucket->par_num;
+        return ePAR_OK;
     }
 
     return ePAR_ERROR;
@@ -1247,14 +1245,12 @@ par_status_t par_get_id_by_num(const par_num_t par_num, uint16_t * const p_id)
         return ePAR_ERROR_PAR_NUM;
     }
 
-    {
-        const par_cfg_t * const par_cfg = par_get_config(par_num);
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
 
-        if (NULL != par_cfg)
-        {
-            *p_id = par_cfg->id;
-            return ePAR_OK;
-        }
+    if (NULL != par_cfg)
+    {
+        *p_id = par_cfg->id;
+        return ePAR_OK;
     }
 
     return ePAR_ERROR;

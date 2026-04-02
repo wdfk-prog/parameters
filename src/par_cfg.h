@@ -70,25 +70,22 @@
 #endif
 
 /**
- * @brief Enable/Disable parameter table unique ID checking.
+ * @brief Enable/Disable parameter-table compatibility checking.
  *
- * @note Base on hash unique ID is being calculated with purpose to detect.
- * device and stored parameter table difference.
+ * @note The stored NVM image header carries a table-ID digest that covers.
+ * PAR_CFG_TABLE_ID_SCHEMA_VER, persistent-parameter count, persistent order,
+ * parameter type, and parameter ID.
  *
- * Must be disabled once the device is released in order to prevent.
- * loss of calibrated data stored in NVM.
+ * When enabled, any persisted-layout incompatibility is treated as a managed.
+ * schema change: startup restores defaults and rebuilds the managed NVM image.
+ * This includes add/remove/reorder/type/ID changes of persistent parameters,
+ * and transitions between persistent and non-persistent state.
  *
- * @pre    "PAR_CFG_NVM_EN" must be enabled otherwise it does not make sense
- * to calculate ID at all.
+ * @pre "PAR_CFG_NVM_EN" must be enabled, otherwise table-ID checking does.
+ * not apply.
  */
 #ifndef PAR_CFG_TABLE_ID_CHECK_EN
 #define PAR_CFG_TABLE_ID_CHECK_EN (0)
-#if (1 == PAR_CFG_NVM_EN)
-#ifndef DEBUG
-#undef PAR_CFG_TABLE_ID_CHECK_EN
-#define PAR_CFG_TABLE_ID_CHECK_EN (0)
-#endif
-#endif
 #endif
 
 /**

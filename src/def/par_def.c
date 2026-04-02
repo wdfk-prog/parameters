@@ -251,9 +251,30 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
 #endif
 
 #if (1 == PAR_CFG_ENABLE_PERSIST)
-#define PAR_INIT_PERSIST(pers_) .persistent = (pers_),
+/**
+ * @brief Translate the X-Macro persistence column into a stored persist slot index.
+ *
+ * @details The pers_ argument in par_table.def is written as true/false. Because
+ * <stdbool.h> expands those tokens to 1/0, the two-step helper first lets pers_
+ * expand normally, then token-pastes the result into either:
+ * - PAR_PERSIST_IDX_VALUE_1(enum_) for persistent entries
+ * - PAR_PERSIST_IDX_VALUE_0(enum_) for non-persistent entries
+ *
+ * The _1 branch returns the dense compile-time slot constant
+ * PAR_PERSIST_IDX_<enum_>.
+ * The _0 branch returns PAR_PERSIST_IDX_INVALID, because non-persistent
+ * parameters do not own any slot in the managed NVM image.
+ *
+ * Two macro layers are required here because macro arguments are not expanded
+ * before token pasting with ##. GCC documents this prescan rule explicitly.
+ */
+#define PAR_PERSIST_IDX_VALUE(enum_, pers_)   PAR_PERSIST_IDX_VALUE_I(enum_, pers_)
+#define PAR_PERSIST_IDX_VALUE_I(enum_, pers_) PAR_PERSIST_IDX_VALUE_##pers_(enum_)
+#define PAR_PERSIST_IDX_VALUE_1(enum_)        PAR_PERSIST_IDX_##enum_
+#define PAR_PERSIST_IDX_VALUE_0(enum_)        PAR_PERSIST_IDX_INVALID
+#define PAR_INIT_PERSIST(enum_, pers_)        .persistent = (pers_), .persist_idx = PAR_PERSIST_IDX_VALUE(enum_, pers_),
 #else
-#define PAR_INIT_PERSIST(pers_)
+#define PAR_INIT_PERSIST(enum_, pers_)
 #endif
 
 #if (1 == PAR_CFG_ENABLE_DESC)
@@ -271,7 +292,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
         PAR_INIT_UNIT(unit_)                                                           \
             .type = ePAR_TYPE_U8,                                                      \
         PAR_INIT_ACCESS(access_)                                                       \
-            PAR_INIT_PERSIST(pers_)                                                    \
+            PAR_INIT_PERSIST(enum_, pers_)                                             \
                 PAR_INIT_DESC(desc_)                                                   \
     },
 
@@ -284,7 +305,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
         PAR_INIT_UNIT(unit_)                                                            \
             .type = ePAR_TYPE_U16,                                                      \
         PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(pers_)                                                     \
+            PAR_INIT_PERSIST(enum_, pers_)                                              \
                 PAR_INIT_DESC(desc_)                                                    \
     },
 
@@ -297,7 +318,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
         PAR_INIT_UNIT(unit_)                                                            \
             .type = ePAR_TYPE_U32,                                                      \
         PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(pers_)                                                     \
+            PAR_INIT_PERSIST(enum_, pers_)                                              \
                 PAR_INIT_DESC(desc_)                                                    \
     },
 
@@ -310,7 +331,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
         PAR_INIT_UNIT(unit_)                                                           \
             .type = ePAR_TYPE_I8,                                                      \
         PAR_INIT_ACCESS(access_)                                                       \
-            PAR_INIT_PERSIST(pers_)                                                    \
+            PAR_INIT_PERSIST(enum_, pers_)                                             \
                 PAR_INIT_DESC(desc_)                                                   \
     },
 
@@ -323,7 +344,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
         PAR_INIT_UNIT(unit_)                                                            \
             .type = ePAR_TYPE_I16,                                                      \
         PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(pers_)                                                     \
+            PAR_INIT_PERSIST(enum_, pers_)                                              \
                 PAR_INIT_DESC(desc_)                                                    \
     },
 
@@ -336,7 +357,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
         PAR_INIT_UNIT(unit_)                                                            \
             .type = ePAR_TYPE_I32,                                                      \
         PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(pers_)                                                     \
+            PAR_INIT_PERSIST(enum_, pers_)                                              \
                 PAR_INIT_DESC(desc_)                                                    \
     },
 
@@ -349,7 +370,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
         PAR_INIT_UNIT(unit_)                                                            \
             .type = ePAR_TYPE_F32,                                                      \
         PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(pers_)                                                     \
+            PAR_INIT_PERSIST(enum_, pers_)                                              \
                 PAR_INIT_DESC(desc_)                                                    \
     }, /**< Dispatch map for table initialization. */
 #define PAR_ITEM_U8  PAR_INIT_U8
@@ -392,6 +413,12 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] = {
 #undef PAR_INIT_ACCESS
 #undef PAR_INIT_PERSIST
 #undef PAR_INIT_DESC
+#if (1 == PAR_CFG_ENABLE_PERSIST)
+#undef PAR_PERSIST_IDX_VALUE
+#undef PAR_PERSIST_IDX_VALUE_I
+#undef PAR_PERSIST_IDX_VALUE_1
+#undef PAR_PERSIST_IDX_VALUE_0
+#endif
 
 /**
  * @brief Table size in bytes.

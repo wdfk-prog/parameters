@@ -140,16 +140,59 @@ typedef struct
 
 #define PAR_NVM_DATA_OBJ_STRIDE ((uint32_t)sizeof(par_nvm_data_obj_t))
 #define PAR_NVM_DATA_SLOT_SIZE  ((uint8_t)sizeof(((par_nvm_data_obj_t *)0)->data))
-
 /**
- * @brief Parameter NVM LUT talbe.
+ * @brief Runtime persistence-slot state.
  */
 typedef struct
 {
-    uint32_t addr;  /**< Start address of parameter. */
-    uint16_t id;    /**< ID of stored parameter. */
-    bool valid;     /**< Valid entry. */
-} par_nvm_lut_t;
+    bool loaded_slots[PAR_PERSIST_SLOT_MAP_CAPACITY]; /**< Runtime-loaded flag for each compiled persistent slot. */
+    uint16_t loaded_count;                            /**< Number of runtime-loaded persistent slots. */
+} par_nvm_slot_runtime_t;
+
+#if (1 == PAR_CFG_ENABLE_NAME)
+#define PAR_NVM_DBG_NAME_ARG(cfg_) (((const par_cfg_t *)(cfg_) != NULL) && (((const par_cfg_t *)(cfg_))->name != NULL) ? ((const par_cfg_t *)(cfg_))->name : "")
+#else
+#define PAR_NVM_DBG_NAME_ARG(cfg_) ""
+#endif
+
+#define PAR_PERSIST_SLOT_ENTRY_SELECT(enum_, pers_)   PAR_PERSIST_SLOT_ENTRY_SELECT_I(enum_, pers_)
+#define PAR_PERSIST_SLOT_ENTRY_SELECT_I(enum_, pers_) PAR_PERSIST_SLOT_ENTRY_SELECT_##pers_(enum_)
+#define PAR_PERSIST_SLOT_ENTRY_SELECT_true(enum_)     [PAR_PERSIST_IDX_##enum_] = enum_,
+#define PAR_PERSIST_SLOT_ENTRY_SELECT_false(enum_)
+#define PAR_PERSIST_SLOT_ENTRY_SELECT_1(enum_) [PAR_PERSIST_IDX_##enum_] = enum_,
+#define PAR_PERSIST_SLOT_ENTRY_SELECT_0(enum_)
+#define PAR_ITEM_PERSIST_SLOT(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_PERSIST_SLOT_ENTRY_SELECT(enum_, pers_)
+/**
+ * @brief Compile-time mapping from persistent slot to live parameter number.
+ *
+ * @details This table is derived directly from par_table.def. Slot order is the
+ * single source of truth for the managed NVM payload layout used by par_nvm.c.
+ */
+static const par_num_t g_par_persist_slot_to_par_num[PAR_PERSIST_SLOT_MAP_CAPACITY] = {
+#define PAR_ITEM_U8  PAR_ITEM_PERSIST_SLOT
+#define PAR_ITEM_U16 PAR_ITEM_PERSIST_SLOT
+#define PAR_ITEM_U32 PAR_ITEM_PERSIST_SLOT
+#define PAR_ITEM_I8  PAR_ITEM_PERSIST_SLOT
+#define PAR_ITEM_I16 PAR_ITEM_PERSIST_SLOT
+#define PAR_ITEM_I32 PAR_ITEM_PERSIST_SLOT
+#define PAR_ITEM_F32 PAR_ITEM_PERSIST_SLOT
+#include "../../par_table.def"
+#undef PAR_ITEM_U8
+#undef PAR_ITEM_U16
+#undef PAR_ITEM_U32
+#undef PAR_ITEM_I8
+#undef PAR_ITEM_I16
+#undef PAR_ITEM_I32
+#undef PAR_ITEM_F32
+};
+#undef PAR_ITEM_PERSIST_SLOT
+#undef PAR_PERSIST_SLOT_ENTRY_SELECT
+#undef PAR_PERSIST_SLOT_ENTRY_SELECT_I
+#undef PAR_PERSIST_SLOT_ENTRY_SELECT_true
+#undef PAR_PERSIST_SLOT_ENTRY_SELECT_false
+#undef PAR_PERSIST_SLOT_ENTRY_SELECT_1
+#undef PAR_PERSIST_SLOT_ENTRY_SELECT_0
+
 /**
  * @brief Module-scope variables.
  */
@@ -170,15 +213,58 @@ static bool gb_is_nvm_owner = false;
  */
 static const par_store_backend_api_t *gp_store = NULL;
 /**
- * @brief Parameter NVM lut.
+ * @brief Runtime state of compiled persistent slots.
  */
-static par_nvm_lut_t g_par_nvm_data_obj_addr[ePAR_NUM_OF] = { 0 };
+static par_nvm_slot_runtime_t g_par_nvm_slot_runtime = { 0 };
+
 /**
- * @brief Function declarations.
+ * @brief Calculate serialized-header CRC-16.
+ *
+ * @details The header CRC is accumulated field-by-field over the serialized
+ * native-order bytes of obj_nb and table_id. This avoids hashing compiler
+ * padding bytes inside par_nvm_head_obj_t while intentionally keeping the
+ * persisted format and table-ID comparison tied to the current target
+ * architecture.
+ *
+ * @param p_head_obj Pointer to header object.
+ * @return Calculated CRC-16 value.
  */
-static uint16_t par_nvm_calc_head_crc(const par_nvm_head_obj_t * const p_head_obj);
-static uint8_t par_nvm_calc_obj_crc(const par_nvm_data_obj_t * const p_obj);
-static bool par_nvm_is_in_nvm_lut(const uint16_t id);
+static uint16_t par_nvm_calc_head_crc(const par_nvm_head_obj_t * const p_head_obj)
+{
+    uint16_t crc = PAR_IF_CRC16_INIT;
+
+    PAR_ASSERT(NULL != p_head_obj);
+
+    crc = par_if_crc16_accumulate(crc, (const uint8_t * const)&p_head_obj->obj_nb, (uint32_t)sizeof(p_head_obj->obj_nb));
+    crc = par_if_crc16_accumulate(crc, (const uint8_t * const)&p_head_obj->table_id, (uint32_t)sizeof(p_head_obj->table_id));
+
+    return crc;
+}
+/**
+ * @brief Calculate per-record CRC-8 over serialized id/size/data bytes.
+ *
+ * @details The record CRC is accumulated field-by-field over the serialized
+ * native-order bytes of id, size, and the fixed 4-byte payload slot.
+ *
+ * @param p_obj Pointer to data object.
+ * @return Calculated CRC-8 value.
+ */
+static uint8_t par_nvm_calc_obj_crc(const par_nvm_data_obj_t * const p_obj)
+{
+    uint32_t data_raw = 0U;
+    uint8_t crc = PAR_IF_CRC8_INIT;
+
+    PAR_ASSERT(NULL != p_obj);
+
+    memcpy(&data_raw, &p_obj->data, sizeof(data_raw));
+
+    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&p_obj->id, (uint32_t)sizeof(p_obj->id));
+    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&p_obj->size, (uint32_t)sizeof(p_obj->size));
+    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&data_raw, (uint32_t)sizeof(data_raw));
+
+    return crc;
+}
+
 /**
  * @brief Read parameter NVM header.
  *
@@ -287,193 +373,96 @@ static par_status_t par_nvm_validate_header(par_nvm_head_obj_t * const p_head_ob
 
     return status;
 }
+
 /**
- * @brief Calculate serialized-header CRC-16.
+ * @brief Resolve a persistent slot index to a live parameter number.
  *
- * @details The header CRC is accumulated field-by-field over the serialized
- * native-order bytes of obj_nb and table_id. This avoids hashing compiler
- * padding bytes inside par_nvm_head_obj_t while intentionally keeping the
- * persisted format and table-ID comparison tied to the current target
- * architecture.
- *
- * @param p_head_obj Pointer to header object.
- * @return Calculated CRC-16 value.
+ * @param persist_idx Persistent slot index.
+ * @param p_par_num Output live parameter number.
+ * @return Operation status.
  */
-static uint16_t par_nvm_calc_head_crc(const par_nvm_head_obj_t * const p_head_obj)
+static par_status_t par_nvm_get_num_by_persist_idx(const uint16_t persist_idx, par_num_t * const p_par_num)
 {
-    uint16_t crc = PAR_IF_CRC16_INIT;
+    if ((persist_idx >= PAR_PERSISTENT_COMPILE_COUNT) || (NULL == p_par_num))
+    {
+        return ePAR_ERROR;
+    }
 
-    PAR_ASSERT(NULL != p_head_obj);
-
-    crc = par_if_crc16_accumulate(crc, (const uint8_t * const)&p_head_obj->obj_nb, (uint32_t)sizeof(p_head_obj->obj_nb));
-    crc = par_if_crc16_accumulate(crc, (const uint8_t * const)&p_head_obj->table_id, (uint32_t)sizeof(p_head_obj->table_id));
-
-    return crc;
+    *p_par_num = g_par_persist_slot_to_par_num[persist_idx];
+    return ePAR_OK;
 }
 /**
- * @brief Calculate per-record CRC-8 over serialized id/size/data bytes.
+ * @brief Convert a compile-time persistent slot index into the managed NVM object address.
  *
- * @details The record CRC is accumulated field-by-field over the serialized
- * native-order bytes of id, size, and the fixed 4-byte payload slot.
+ * @details The managed NVM payload area is a dense linear array of fixed-size
+ * par_nvm_data_obj_t records. Therefore the slot address is derived directly as:
+ * first-data-object-address + slot-index * object-stride.
  *
- * @param p_obj Pointer to data object.
- * @return Calculated CRC-8 value.
+ * @param persist_idx Persistent slot index.
+ * @return Start address of the slot inside the managed NVM payload area.
  */
-static uint8_t par_nvm_calc_obj_crc(const par_nvm_data_obj_t * const p_obj)
+static uint32_t par_nvm_addr_from_persist_idx(const uint16_t persist_idx)
 {
-    uint32_t data_raw = 0U;
-    uint8_t crc = PAR_IF_CRC8_INIT;
-
-    PAR_ASSERT(NULL != p_obj);
-
-    memcpy(&data_raw, &p_obj->data, sizeof(data_raw));
-
-    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&p_obj->id, (uint32_t)sizeof(p_obj->id));
-    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&p_obj->size, (uint32_t)sizeof(p_obj->size));
-    crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&data_raw, (uint32_t)sizeof(data_raw));
-
-    return crc;
+    return (PAR_NVM_FIRST_DATA_OBJ_ADDR + (PAR_NVM_DATA_OBJ_STRIDE * persist_idx));
 }
+
 /**
- * @brief Load all parameters value from NVM.
+ * @brief Print the compiled persistent-slot map and current runtime load state.
  *
- * @param num_of_par Number of stored parameters inside NVM.
- * @return Status of operation.
+ * This function is intended for debug use only. It prints, for each compiled
+ * persistent slot, the slot index, parameter ID, computed NVM address, runtime
+ * loaded flag, and parameter name when name support is enabled.
+ *
+ * The slot-to-parameter relationship is derived from the compile-time persistent
+ * mapping table, while the loaded flag reflects whether the slot was loaded
+ * successfully during the current NVM initialization/load flow.
+ *
+ * @return ePAR_OK    Debug information was printed.
+ * @return ePAR_ERROR Debug print is disabled at build time.
  */
-static par_status_t par_nvm_load_all(const uint16_t num_of_par)
+par_status_t par_nvm_print_nvm_lut(void)
 {
     par_status_t status = ePAR_OK;
-    par_num_t par_num = 0;
-    uint16_t i = 0;
-    uint32_t obj_addr = 0;
-    par_nvm_data_obj_t obj_data = { 0 };
-    par_status_t store_status = ePAR_OK;
-    uint8_t crc_calc = 0;
-    uint16_t per_par_nb = 0;
-    uint16_t new_par_cnt = 0;
-    for (i = 0; i < num_of_par; i++)
-    {
-        /* NVM persistence is a dense linear array of fixed 8-byte objects. */
-        obj_addr = ((PAR_NVM_DATA_OBJ_STRIDE * i) + PAR_NVM_FIRST_DATA_OBJ_ADDR);
-        store_status = gp_store->read(obj_addr, (uint32_t)sizeof(par_nvm_data_obj_t), (uint8_t *)&obj_data);
-        if (ePAR_OK == store_status)
-        {
-            crc_calc = par_nvm_calc_obj_crc(&obj_data);
-            if (crc_calc == obj_data.crc)
-            {
-                if (ePAR_OK == par_get_num_by_id(obj_data.id, &par_num))
-                {
-                    /* Restore only parameters that still exist and remain persistent. */
-                    if (true == par_get_config(par_num)->persistent)
-                    {
-                        if (false == par_nvm_is_in_nvm_lut(obj_data.id))
-                        {
-                            g_par_nvm_data_obj_addr[per_par_nb].id = obj_data.id;
-                            g_par_nvm_data_obj_addr[per_par_nb].addr = obj_addr;
-                            g_par_nvm_data_obj_addr[per_par_nb].valid = true;
-                            /* Restore through the internal fast path. */
-                            (void)par_set_fast(par_num, &obj_data.data);
-                            per_par_nb++;
-                        }
-                    }
-                }
-            }
 
-            else
-            {
-                status = ePAR_ERROR_CRC;
-                break;
-            }
-        }
-        else
-        {
-            status = ePAR_ERROR_NVM;
-            PAR_DBG_PRINT("PAR_NVM: object read failed, %u", (unsigned)store_status);
-            break;
-        }
+#if (1 == PAR_CFG_DEBUG_EN)
+    PAR_DBG_PRINT("PAR_NVM: Parameter NVM look-up table:");
+    PAR_DBG_PRINT(" #\tID\tAddr\tLoaded\tname");
+    PAR_DBG_PRINT("================================");
+
+    for (uint16_t persist_idx = 0U; persist_idx < PAR_PERSISTENT_COMPILE_COUNT; persist_idx++)
+    {
+        PAR_DBG_PRINT(
+            " %u\t%u\t0x%08lX\t%u\t%s",
+            (unsigned)persist_idx,
+            (unsigned)par_get_config(g_par_persist_slot_to_par_num[persist_idx])->id,
+            (unsigned long)par_nvm_addr_from_persist_idx(persist_idx),
+            (unsigned)g_par_nvm_slot_runtime.loaded_slots[persist_idx],
+            PAR_NVM_DBG_NAME_ARG(par_get_config(g_par_persist_slot_to_par_num[persist_idx])));
     }
-
-    PAR_DBG_PRINT("PAR_NVM: Loading all persistent parameters with status: %s", par_get_status_str(status));
-    PAR_DBG_PRINT("PAR_NVM: Nb. of stored pars in NVM: %d", num_of_par);
-    PAR_DBG_PRINT("PAR_NVM: Nb. of live persistent: \t%d", PAR_PERSISTENT_COMPILE_COUNT);
-    if (ePAR_OK == status)
-    {
-        for (i = 0; i < ePAR_NUM_OF; i++)
-        {
-            const par_cfg_t * const par_cfg = par_get_config(i);
-
-            if (true == par_cfg->persistent)
-            {
-                if (false == par_nvm_is_in_nvm_lut(par_cfg->id))
-                {
-                    /* Extend the LUT for newly added persistent parameters. */
-                    g_par_nvm_data_obj_addr[per_par_nb].id = par_cfg->id;
-                    g_par_nvm_data_obj_addr[per_par_nb].addr = obj_addr + (PAR_NVM_DATA_OBJ_STRIDE * (new_par_cnt + 1U));
-                    g_par_nvm_data_obj_addr[per_par_nb].valid = true;
-                    par_save(i);
-
-                    per_par_nb++;
-                    new_par_cnt++;
-                }
-            }
-        }
-
-        if (new_par_cnt > 0)
-        {
-            /* The object count only grows when new persistent parameters appear. */
-            status |= par_nvm_write_header(num_of_par + new_par_cnt);
-            if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
-            {
-                const par_status_t sync_status = gp_store->sync();
-                if (ePAR_OK != sync_status)
-                {
-                    status |= ePAR_ERROR_NVM;
-                    PAR_DBG_PRINT("PAR_NVM: sync failed, %u", (unsigned)sync_status);
-                }
-            }
-
-#if (PAR_CFG_DEBUG_EN)
-            PAR_DBG_PRINT("PAR_NVM: Added %d new parameters to NVM LUT table!", new_par_cnt);
+#else
+    status = ePAR_ERROR;
 #endif
-        }
-    }
 
     return status;
 }
 /**
- * @brief Build a fresh NVM lookup table from the live persistent set.
+ * @brief Clear the runtime-loaded persistent-slot view.
+ */
+static void par_nvm_clear_lut(void)
+{
+    (void)memset(&g_par_nvm_slot_runtime, 0, sizeof(g_par_nvm_slot_runtime));
+}
+/**
+ * @brief Mark every compiled persistent slot as available in the runtime view.
  *
- * @details The LUT maps external parameter IDs to their fixed-record address in
- * the linear persisted-object array. This keeps load/save paths anchored on ID
- * instead of assuming that a given parameter meaning is tied permanently to one
- * absolute slot position.
+ * @details This helper is used after a full rewrite path where the managed NVM
+ * image is regenerated for the current compile-time persistent schema.
  */
 static void par_nvm_build_new_nvm_lut(void)
 {
-    uint16_t per_par_nb = 0U;
-    for (par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++)
-    {
-        const par_cfg_t * const par_cfg = par_get_config(par_num);
-
-        if (true == par_cfg->persistent)
-        {
-            if (0 == per_par_nb)
-            {
-                g_par_nvm_data_obj_addr[per_par_nb].addr = PAR_NVM_FIRST_DATA_OBJ_ADDR;
-            }
-
-            /* NVM persistence uses a linear list of fixed-size 8-byte objects. */
-            else
-            {
-                g_par_nvm_data_obj_addr[per_par_nb].addr = (g_par_nvm_data_obj_addr[per_par_nb - 1].addr + PAR_NVM_DATA_OBJ_STRIDE);
-            }
-
-            g_par_nvm_data_obj_addr[per_par_nb].id = par_cfg->id;
-            g_par_nvm_data_obj_addr[per_par_nb].valid = true;
-            per_par_nb++;
-        }
-    }
-
+    par_nvm_clear_lut();
+    (void)memset(g_par_nvm_slot_runtime.loaded_slots, true, sizeof(g_par_nvm_slot_runtime.loaded_slots));
+    g_par_nvm_slot_runtime.loaded_count = PAR_PERSISTENT_COMPILE_COUNT;
     par_nvm_print_nvm_lut();
 }
 /**
@@ -487,33 +476,214 @@ static void par_nvm_build_new_nvm_lut(void)
  */
 static uint32_t par_nvm_get_nvm_lut_addr(const uint16_t id)
 {
-    for (par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++)
+    par_num_t par_num = 0U;
+    const par_cfg_t *par_cfg = NULL;
+
+    if (ePAR_OK != par_get_num_by_id(id, &par_num))
     {
-        if (id == g_par_nvm_data_obj_addr[par_num].id)
-        {
-            return g_par_nvm_data_obj_addr[par_num].addr;
-        }
+        return 0U;
     }
 
-    return 0;
+    par_cfg = par_get_config(par_num);
+    if ((NULL == par_cfg) || (false == par_cfg->persistent) || (par_cfg->persist_idx >= PAR_PERSISTENT_COMPILE_COUNT))
+    {
+        return 0U;
+    }
+
+    return par_nvm_addr_from_persist_idx(par_cfg->persist_idx);
 }
+
 /**
- * @brief Check if parameter is in NVM LUT.
+ * @brief Load all parameter values from NVM.
  *
- * @param id Parameter ID.
- * @return Flag that indicated if object is in NVM lut.
+ * @details Two stored-count asymmetries are handled explicitly:
+ * - If the stored header count is greater than the compile-time persistent
+ *   slot count, the image is treated as incompatible and the caller rebuilds
+ *   the managed NVM area from current defaults.
+ * - If the stored header count is smaller than the compile-time persistent
+ *   slot count, the stored prefix is restored first and the missing tail slots
+ *   are appended from live defaults before the header count is rewritten.
+ *
+ * @param num_of_par Number of stored parameters inside NVM.
+ * @return Status of operation.
  */
-static bool par_nvm_is_in_nvm_lut(const uint16_t id)
+static par_status_t par_nvm_load_all(const uint16_t num_of_par)
 {
-    for (par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++)
+    typedef struct
     {
-        if ((id == g_par_nvm_data_obj_addr[par_num].id) && (true == g_par_nvm_data_obj_addr[par_num].valid))
-        {
-            return true;
-        }
+        const char *reason;
+        uint16_t stored_id;
+    } par_nvm_load_error_ctx_t;
+
+    par_status_t status = ePAR_OK;
+    par_status_t op_status = ePAR_OK;
+    par_num_t par_num = 0U;
+    uint16_t i = 0U;
+    par_nvm_data_obj_t obj_data = { 0 };
+    uint8_t crc_calc = 0U;
+    uint16_t new_par_cnt = 0U;
+    par_nvm_load_error_ctx_t err = { 0 };
+
+    par_nvm_clear_lut();
+
+    /* TODO: Revisit deployed-schema migration for persistent-slot shrink/reorder.
+     * Consider introducing tombstone/delete-marker handling so removed slots can be represented
+     * without forcing a destructive rebuild when relaxed compatibility rules are desired.
+     */
+    if (num_of_par > PAR_PERSISTENT_COMPILE_COUNT)
+    {
+        status = ePAR_ERROR;
+        i = PAR_PERSISTENT_COMPILE_COUNT;
+        err.reason = "stored-count-overflow";
+        op_status = status;
+        goto out;
     }
 
-    return false;
+    /* Restore the stored prefix that still exists in the current compile-time schema. */
+    for (i = 0U; i < num_of_par; i++)
+    {
+        const par_cfg_t *par_cfg = NULL;
+        const uint32_t obj_addr = par_nvm_addr_from_persist_idx(i);
+
+        op_status = gp_store->read(obj_addr, (uint32_t)sizeof(par_nvm_data_obj_t), (uint8_t *)&obj_data);
+        if (ePAR_OK != op_status)
+        {
+            status = ePAR_ERROR_NVM;
+            err.reason = "read-failed";
+            goto out;
+        }
+
+        crc_calc = par_nvm_calc_obj_crc(&obj_data);
+        if (crc_calc != obj_data.crc)
+        {
+            status = ePAR_ERROR_CRC;
+            err.reason = "crc-mismatch";
+            err.stored_id = obj_data.id;
+            op_status = status;
+            goto out;
+        }
+
+        op_status = par_nvm_get_num_by_persist_idx(i, &par_num);
+        if (ePAR_OK != op_status)
+        {
+            status = ePAR_ERROR;
+            err.reason = "persist-slot-invalid";
+            err.stored_id = obj_data.id;
+            goto out;
+        }
+
+        par_cfg = par_get_config(par_num);
+        if ((NULL == par_cfg) || (false == par_cfg->persistent) || (par_cfg->persist_idx != i))
+        {
+            status = ePAR_ERROR;
+            err.reason = "persist-map-invalid";
+            err.stored_id = obj_data.id;
+            op_status = status;
+            goto out;
+        }
+
+        if (obj_data.id != par_cfg->id)
+        {
+            status = ePAR_ERROR;
+            err.reason = "id-mismatch";
+            err.stored_id = obj_data.id;
+            op_status = status;
+            goto out;
+        }
+
+        op_status = par_set_fast(par_num, &obj_data.data);
+        if (ePAR_OK != op_status)
+        {
+            status |= op_status;
+            err.reason = "restore-failed";
+            err.stored_id = obj_data.id;
+            goto out;
+        }
+
+        g_par_nvm_slot_runtime.loaded_slots[i] = true;
+    }
+
+    /* Append any newly introduced persistent slots after restoring the stored prefix. */
+    for (i = num_of_par; i < PAR_PERSISTENT_COMPILE_COUNT; i++)
+    {
+        const par_cfg_t *par_cfg = NULL;
+
+        op_status = par_nvm_get_num_by_persist_idx(i, &par_num);
+        if (ePAR_OK != op_status)
+        {
+            status = ePAR_ERROR;
+            err.reason = "persist-slot-invalid";
+            goto out;
+        }
+
+        par_cfg = par_get_config(par_num);
+        if ((NULL == par_cfg) || (false == par_cfg->persistent) || (par_cfg->persist_idx != i))
+        {
+            status = ePAR_ERROR;
+            err.reason = "persist-map-invalid";
+            op_status = status;
+            goto out;
+        }
+
+        status |= par_save(par_num);
+        if (ePAR_OK != (status & ePAR_STATUS_ERROR_MASK))
+        {
+            err.reason = "append-save-failed";
+            err.stored_id = par_cfg->id;
+            op_status = status;
+            goto out;
+        }
+
+        g_par_nvm_slot_runtime.loaded_slots[i] = true;
+        new_par_cnt++;
+    }
+    g_par_nvm_slot_runtime.loaded_count = i;
+
+    if (new_par_cnt > 0U)
+    {
+        /* Missing stored slots were appended from live defaults; commit the new count. */
+        status |= par_nvm_write_header(PAR_PERSISTENT_COMPILE_COUNT);
+        if (ePAR_OK != (status & ePAR_STATUS_ERROR_MASK))
+        {
+            err.reason = "rewrite-header-failed";
+            op_status = status;
+            goto out;
+        }
+
+        op_status = gp_store->sync();
+        if (ePAR_OK != op_status)
+        {
+            status |= ePAR_ERROR_NVM;
+            err.reason = "sync-failed";
+            goto out;
+        }
+        PAR_DBG_PRINT("PAR_NVM: appended %u new persistent slots and rewrote header count to %u",
+                      (unsigned)new_par_cnt,
+                      (unsigned)PAR_PERSISTENT_COMPILE_COUNT);
+    }
+
+out:
+#if (1 == PAR_CFG_DEBUG_EN)
+    PAR_DBG_PRINT("PAR_NVM: Loading all persistent parameters with status: %s", par_get_status_str(status));
+    PAR_DBG_PRINT("PAR_NVM: Nb. of stored pars in NVM: %u", (unsigned)num_of_par);
+    PAR_DBG_PRINT("PAR_NVM: Nb. of live persistent: %u", (unsigned)PAR_PERSISTENT_COMPILE_COUNT);
+
+    if (NULL != err.reason)
+    {
+        PAR_DBG_PRINT(
+            "PAR_NVM: load error slot=%u, addr=0x%08lX, stored_id=%u, par_num=%u, expected_id=%u, name=%s, reason=%s, op_status=%s, final_status=%s",
+            (unsigned)i,
+            (unsigned long)par_nvm_addr_from_persist_idx(i),
+            (unsigned)err.stored_id,
+            (unsigned)((i < PAR_PERSIST_SLOT_MAP_CAPACITY) ? g_par_persist_slot_to_par_num[i] : 0U),
+            (unsigned)((i < PAR_PERSIST_SLOT_MAP_CAPACITY) ? par_get_config(g_par_persist_slot_to_par_num[i])->id : 0U),
+            PAR_NVM_DBG_NAME_ARG((i < PAR_PERSIST_SLOT_MAP_CAPACITY) ? par_get_config(g_par_persist_slot_to_par_num[i]) : NULL),
+            err.reason,
+            par_get_status_str(op_status),
+            par_get_status_str(status));
+    }
+#endif
+    return status;
 }
 /**
  * @brief Resolve, validate, and initialize the mounted storage backend.
@@ -862,6 +1032,15 @@ par_status_t par_nvm_write_all(void)
             status |= par_nvm_write_header(PAR_PERSISTENT_COMPILE_COUNT);
         }
 
+        if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
+        {
+            par_nvm_build_new_nvm_lut();
+        }
+        else
+        {
+            par_nvm_clear_lut();
+        }
+
         PAR_DBG_PRINT("PAR_NVM: Storing all to NVM status: %s", par_get_status_str(status));
     }
     else
@@ -885,38 +1064,12 @@ par_status_t par_nvm_reset_all(void)
 
     if (true == gb_is_init)
     {
-        par_nvm_build_new_nvm_lut();
         status |= par_nvm_write_all();
     }
     else
     {
         status = ePAR_ERROR_INIT;
     }
-
-    return status;
-}
-/**
- * @brief Print parameter NVM table.
- *
- * @note Only for debugging purposes.
- */
-par_status_t par_nvm_print_nvm_lut(void)
-{
-    par_status_t status = ePAR_OK;
-
-#if (PAR_CFG_DEBUG_EN)
-    PAR_DBG_PRINT("PAR_NVM: Parameter NVM look-up table:");
-    PAR_DBG_PRINT(" %s\t%s\t%s\t\t%s", "#", "ID", "Addr", "Valid");
-    PAR_DBG_PRINT("===============================");
-
-    for (par_num_t par_num = 0; par_num < ePAR_NUM_OF; par_num++)
-    {
-        PAR_DBG_PRINT(" %d\t%d\t0x%04X\t%d", par_num, g_par_nvm_data_obj_addr[par_num].id,
-                      g_par_nvm_data_obj_addr[par_num].addr,
-                      g_par_nvm_data_obj_addr[par_num].valid);
-        PAR_DBG_PRINT("-----------------------------");
-    }
-#endif
 
     return status;
 }
