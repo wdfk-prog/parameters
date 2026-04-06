@@ -70,7 +70,7 @@ uint32_t par_nvm_table_id_calc(void)
         const par_cfg_t * const p_cfg = par_get_config(par_num);
         const uint8_t type = (uint8_t)p_cfg->type;
 
-#if (1 == PAR_CFG_ENABLE_PERSIST)
+#if (1 == PAR_CFG_NVM_EN)
         if (false == p_cfg->persistent)
         {
             continue;

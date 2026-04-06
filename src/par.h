@@ -144,7 +144,7 @@ typedef struct par_cfg_s
 #if (1 == PAR_CFG_ENABLE_ACCESS)
     par_access_t access;   /**< Parameter access from external device point-of-view. */
 #endif
-#if (1 == PAR_CFG_ENABLE_PERSIST)
+#if (1 == PAR_CFG_NVM_EN)
     bool persistent;       /**< Parameter persistence flag. */
     uint16_t persist_idx;  /**< Persistent slot index or PAR_PERSIST_IDX_INVALID. */
 #endif
@@ -585,7 +585,7 @@ par_type_list_t par_get_type(const par_num_t par_num);
  */
 par_access_t par_get_access(const par_num_t par_num);
 #endif
-#if (1 == PAR_CFG_ENABLE_PERSIST)
+#if (1 == PAR_CFG_NVM_EN)
 /**
  * @brief Report whether one parameter is marked persistent.
  * @param par_num Parameter number.

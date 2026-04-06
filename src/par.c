@@ -303,10 +303,17 @@ static void par_patch_f32_defaults_from_table(void)
  */
 static void par_bind_storage_layout(void)
 {
+    const par_layout_count_t layout_count = par_layout_get_count();
+
     par_layout_init();
-    PAR_DBG_PRINT("Total RAM consumption for parameters value: %u bytes", (unsigned)(((uint32_t)par_layout_get_count().count32 * 4u) +
-                                                                                     ((uint32_t)par_layout_get_count().count16 * 2u) +
-                                                                                     ((uint32_t)par_layout_get_count().count8)));
+    PAR_DBG_PRINT("PAR: layout bound, count8=%u count16=%u count32=%u",
+                  (unsigned)layout_count.count8,
+                  (unsigned)layout_count.count16,
+                  (unsigned)layout_count.count32);
+    PAR_DBG_PRINT("PAR: total RAM consumption for parameter values: %u bytes",
+                  (unsigned)(((uint32_t)layout_count.count32 * 4u) +
+                             ((uint32_t)layout_count.count16 * 2u) +
+                             ((uint32_t)layout_count.count8)));
 }
 /**
  * @brief Hash parameter ID to bucket index.
@@ -353,7 +360,7 @@ static par_status_t par_runtime_validate_id_table(const par_cfg_t * const p_par_
 #if (1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK)
         if (bucket->id == id)
         {
-            PAR_DBG_PRINT("ERR, Duplicate parameter ID %u!", (unsigned)id);
+            PAR_ERR_PRINT("PAR: duplicate parameter ID %u detected during runtime diagnostic scan", (unsigned)id);
             PAR_ASSERT(0);
             return ePAR_ERROR_INIT;
         }
@@ -362,8 +369,10 @@ static par_status_t par_runtime_validate_id_table(const par_cfg_t * const p_par_
 #if (1 == PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK)
         if (bucket->id != id)
         {
-            PAR_DBG_PRINT("ERR, Hash collision: ID %u conflicts with ID %u at bucket %u!",
-                          (unsigned)id, (unsigned)bucket->id, (unsigned)bucket_idx);
+            PAR_ERR_PRINT("PAR: hash collision detected during runtime diagnostic scan, id=%u conflicts_with=%u bucket=%u",
+                          (unsigned)id,
+                          (unsigned)bucket->id,
+                          (unsigned)bucket_idx);
             PAR_ASSERT(0);
             return ePAR_ERROR_INIT;
         }
@@ -410,7 +419,7 @@ static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
         if (NULL == p_par_cfg[i].name)
         {
             status = ePAR_ERROR_INIT;
-            PAR_DBG_PRINT("ERR, Parameter %d name missing!", i);
+            PAR_ERR_PRINT("PAR: parameter %u name missing", (unsigned)i);
             PAR_ASSERT(0);
             break;
         }
@@ -420,7 +429,7 @@ static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
         if (NULL == p_par_cfg[i].desc)
         {
             status = ePAR_ERROR_INIT;
-            PAR_DBG_PRINT("ERR, Parameter %d description missing!", i);
+            PAR_ERR_PRINT("PAR: parameter %u description missing", (unsigned)i);
             PAR_ASSERT(0);
             break;
         }
@@ -430,7 +439,7 @@ static par_status_t par_check_table_validity(const par_cfg_t * const p_par_cfg)
         if (false == par_port_is_desc_valid(p_par_cfg[i].desc))
         {
             status = ePAR_ERROR_INIT;
-            PAR_DBG_PRINT("ERR, Parameter %d description is invalid!", i);
+            PAR_ERR_PRINT("PAR: parameter %u description invalid", (unsigned)i);
             PAR_ASSERT(0);
             break;
         }
@@ -466,6 +475,8 @@ par_status_t par_init(void)
     PAR_ASSERT(false == par_is_init());
     if (false != par_is_init())
         return ePAR_ERROR_INIT;
+
+    PAR_DBG_PRINT("PAR: initialization started");
     status |= par_check_table_validity(par_cfg_get_table());
     par_bind_storage_layout();
     status |= par_if_init();
@@ -476,20 +487,23 @@ par_status_t par_init(void)
         /* Patch F32 defaults after layout offsets become available. */
 #if (1 == PAR_CFG_ENABLE_TYPE_F32)
         par_patch_f32_defaults_from_table();
+        PAR_DBG_PRINT("PAR: F32 defaults patched into 32-bit storage group");
 #endif
 
 #if (1 == PAR_CFG_ENABLE_RESET_ALL_RAW)
         /* Snapshot defaults before optional NVM restore. */
         memcpy(&gs_par_default_mirror, &gs_par_storage, sizeof(gs_par_storage));
+        PAR_DBG_PRINT("PAR: default mirror snapshot captured for raw reset path");
 #endif
 
 #if (1 == PAR_CFG_NVM_EN)
         /* Restore persisted values after default initialization. */
+        PAR_DBG_PRINT("PAR: restoring persistent values from NVM");
         status |= par_nvm_init();
 #endif
     }
 
-    PAR_DBG_PRINT("PAR: Parameters initialized with status: %s", par_get_status_str(status));
+    PAR_INFO_PRINT("PAR: initialization finished with status=%s", par_get_status_str(status));
 
     return status;
 }
@@ -507,6 +521,7 @@ par_status_t par_deinit(void)
     if (true != par_is_init())
         return ePAR_ERROR_INIT;
 
+    PAR_DBG_PRINT("PAR: deinitialization started");
 #if (1 == PAR_CFG_NVM_EN)
     deinit_status = par_nvm_deinit();
     status |= deinit_status;
@@ -515,6 +530,7 @@ par_status_t par_deinit(void)
     deinit_status = par_if_deinit();
     status |= deinit_status;
     gb_is_init = false;
+    PAR_INFO_PRINT("PAR: deinitialization finished with status=%s", par_get_status_str(status));
 
     return status;
 }
@@ -732,6 +748,16 @@ par_status_t par_set_to_default(const par_num_t par_num)
     }
 
     par_release_mutex(par_num);
+
+    if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
+    {
+        PAR_DBG_PRINT("PAR: restored default value, par_num=%u", (unsigned)par_num);
+    }
+    else
+    {
+        PAR_ERR_PRINT("PAR: failed to restore default value, par_num=%u status=%s", (unsigned)par_num, par_get_status_str(status));
+    }
+
     return status;
 }
 
@@ -769,7 +795,7 @@ par_status_t par_reset_all_to_default_raw(void)
 
     par_release_mutex((par_num_t)0);
 
-    PAR_DBG_PRINT("PAR: Raw reset all parameters to default");
+    PAR_DBG_PRINT("PAR: raw reset all parameters to defaults");
     return ePAR_OK;
 }
 #endif
@@ -801,7 +827,7 @@ par_status_t par_set_all_to_default(void)
         status |= par_set_to_default(par_num);
     }
 
-    PAR_DBG_PRINT("PAR: Setting all parameters to default");
+    PAR_DBG_PRINT("PAR: setting all parameters to defaults");
     return status;
 #endif
 }
@@ -1178,7 +1204,7 @@ par_access_t par_get_access(const par_num_t par_num)
  * @param par_num Parameter number (enumeration).
  * @return True if parameter is persistent.
  */
-#if (1 == PAR_CFG_ENABLE_PERSIST)
+#if (1 == PAR_CFG_NVM_EN)
 bool par_is_persistent(const par_num_t par_num)
 {
     const par_cfg_t *par_cfg = NULL;
@@ -1387,7 +1413,7 @@ par_status_t par_set_n_save(const par_num_t par_num, const void *p_val)
 
     if (ePAR_OK != status)
     {
-        PAR_DBG_PRINT("PAR: failed to read current value before set_n_save for par_num=%u with status=%s", (unsigned)par_num, par_get_status_str(status));
+        PAR_ERR_PRINT("PAR: failed to read current value before set_n_save, par_num=%u status=%s", (unsigned)par_num, par_get_status_str(status));
         PAR_ASSERT(0);
         return status;
     }
@@ -1396,7 +1422,12 @@ par_status_t par_set_n_save(const par_num_t par_num, const void *p_val)
     /* Persist only when the value actually changed. */
     if ((ePAR_OK == status) && value_change)
     {
+        PAR_DBG_PRINT("PAR: set_n_save detected value change, par_num=%u", (unsigned)par_num);
         status |= par_save(par_num);
+    }
+    else if (ePAR_OK == status)
+    {
+        PAR_DBG_PRINT("PAR: set_n_save skipped NVM write because value is unchanged, par_num=%u", (unsigned)par_num);
     }
 
     return status;
@@ -1415,6 +1446,7 @@ par_status_t par_save_all(void)
     if (true != par_is_init())
         return ePAR_ERROR_INIT;
 
+    PAR_DBG_PRINT("PAR: persisting all configured parameters to NVM");
     return par_nvm_write_all();
 }
 /**
@@ -1432,6 +1464,7 @@ par_status_t par_save(const par_num_t par_num)
     if (true != par_is_init())
         return ePAR_ERROR_INIT;
 
+    PAR_DBG_PRINT("PAR: persisting par_num=%u to NVM", (unsigned)par_num);
     return par_nvm_write(par_num, true);
 }
 /**
@@ -1468,6 +1501,7 @@ par_status_t par_save_by_id(const uint16_t par_id)
         return par_save(par_num);
     }
 
+    PAR_WARN_PRINT("PAR: persist-by-id could not resolve parameter id=%u", (unsigned)par_id);
     return ePAR_ERROR;
 }
 #endif

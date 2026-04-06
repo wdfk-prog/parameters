@@ -89,7 +89,7 @@ void par_layout_init(void)
 
         case ePAR_TYPE_NUM_OF:
         default:
-            PAR_DBG_PRINT("ERR, PAR layout unsupported type at par_num=%u", (unsigned)par_it);
+            PAR_ERR_PRINT("PAR: layout encountered unsupported type at par_num=%u", (unsigned)par_it);
             PAR_ASSERT(0);
             return;
         }
@@ -97,7 +97,7 @@ void par_layout_init(void)
 
     if ((scan_count.count8 != gs_layout_count.count8) || (scan_count.count16 != gs_layout_count.count16) || (scan_count.count32 != gs_layout_count.count32))
     {
-        PAR_DBG_PRINT("ERR, PAR layout count mismatch: scan=(%u,%u,%u), cfg=(%u,%u,%u)",
+        PAR_ERR_PRINT("PAR: layout count mismatch, scan=(%u,%u,%u) cfg=(%u,%u,%u)",
                       (unsigned)scan_count.count8,
                       (unsigned)scan_count.count16,
                       (unsigned)scan_count.count32,
@@ -110,6 +110,7 @@ void par_layout_init(void)
 #else
     /* Script layout mode: consume provided static layout directly with no runtime validation. */
     gsp_active_offset = PAR_LAYOUT_STATIC_OFFSET_TABLE;
+    PAR_DBG_PRINT("PAR: layout initialized from generated static table");
     return;
 #endif
 }

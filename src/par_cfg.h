@@ -54,6 +54,10 @@
  */
 /**
  * @brief Enable/Disable storing persistent parameters to NVM.
+ *
+ * @note This switch is also the single compile-time gate for persistence
+ * metadata in the parameter table. There is no separate PAR_CFG_ENABLE_PERSIST
+ * override anymore.
  */
 #ifndef PAR_CFG_NVM_EN
 #define PAR_CFG_NVM_EN (1)
@@ -132,11 +136,31 @@
     } while (0)
 #endif
 
-#ifndef PAR_PORT_LOG
-#define PAR_PORT_LOG(tag, ...) \
+#ifndef PAR_PORT_LOG_INFO
+#define PAR_PORT_LOG_INFO(...) \
     do                         \
     {                          \
-        (void)(tag);           \
+    } while (0)
+#endif
+
+#ifndef PAR_PORT_LOG_DEBUG
+#define PAR_PORT_LOG_DEBUG(...) \
+    do                          \
+    {                           \
+    } while (0)
+#endif
+
+#ifndef PAR_PORT_LOG_WARN
+#define PAR_PORT_LOG_WARN(...) \
+    do                         \
+    {                          \
+    } while (0)
+#endif
+
+#ifndef PAR_PORT_LOG_ERROR
+#define PAR_PORT_LOG_ERROR(...) \
+    do                          \
+    {                           \
     } while (0)
 #endif
 
@@ -193,18 +217,60 @@
 #ifndef PAR_CFG_DIRECT_LOG
 #define PAR_CFG_DIRECT_LOG(...) (cli_printf((char *)__VA_ARGS__))
 #endif
-#define PAR_DBG_PRINT(...) PAR_CFG_DIRECT_LOG(__VA_ARGS__)
+#ifndef PAR_CFG_DIRECT_INFO_LOG
+#define PAR_CFG_DIRECT_INFO_LOG(...) PAR_CFG_DIRECT_LOG(__VA_ARGS__)
+#endif
+#ifndef PAR_CFG_DIRECT_DEBUG_LOG
+#define PAR_CFG_DIRECT_DEBUG_LOG(...) PAR_CFG_DIRECT_LOG(__VA_ARGS__)
+#endif
+#ifndef PAR_CFG_DIRECT_WARN_LOG
+#define PAR_CFG_DIRECT_WARN_LOG(...) PAR_CFG_DIRECT_LOG(__VA_ARGS__)
+#endif
+#ifndef PAR_CFG_DIRECT_ERROR_LOG
+#define PAR_CFG_DIRECT_ERROR_LOG(...) PAR_CFG_DIRECT_LOG(__VA_ARGS__)
+#endif
+#define PAR_INFO_PRINT(...) PAR_CFG_DIRECT_INFO_LOG(__VA_ARGS__)
+#define PAR_DBG_PRINT(...)  PAR_CFG_DIRECT_DEBUG_LOG(__VA_ARGS__)
+#define PAR_WARN_PRINT(...) PAR_CFG_DIRECT_WARN_LOG(__VA_ARGS__)
+#define PAR_ERR_PRINT(...)  PAR_CFG_DIRECT_ERROR_LOG(__VA_ARGS__)
 #else
+#define PAR_INFO_PRINT(...) \
+    {                       \
+        ;                   \
+    }
 #define PAR_DBG_PRINT(...) \
+    {                      \
+        ;                  \
+    }
+#define PAR_WARN_PRINT(...) \
+    {                       \
+        ;                   \
+    }
+#define PAR_ERR_PRINT(...) \
     {                      \
         ;                  \
     }
 #endif
 #else
 #if (1 == PAR_CFG_DEBUG_EN)
-#define PAR_DBG_PRINT(...) PAR_PORT_LOG(__VA_ARGS__)
+#define PAR_INFO_PRINT(...) PAR_PORT_LOG_INFO(__VA_ARGS__)
+#define PAR_DBG_PRINT(...)  PAR_PORT_LOG_DEBUG(__VA_ARGS__)
+#define PAR_WARN_PRINT(...) PAR_PORT_LOG_WARN(__VA_ARGS__)
+#define PAR_ERR_PRINT(...)  PAR_PORT_LOG_ERROR(__VA_ARGS__)
 #else
+#define PAR_INFO_PRINT(...) \
+    {                       \
+        ;                   \
+    }
 #define PAR_DBG_PRINT(...) \
+    {                      \
+        ;                  \
+    }
+#define PAR_WARN_PRINT(...) \
+    {                       \
+        ;                   \
+    }
+#define PAR_ERR_PRINT(...) \
     {                      \
         ;                  \
     }
@@ -465,13 +531,6 @@ PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HA
 #endif
 
 /**
- * @brief Enable/Disable parameter persistence metadata.
- */
-#ifndef PAR_CFG_ENABLE_PERSIST
-#define PAR_CFG_ENABLE_PERSIST (1)
-#endif
-
-/**
  * @brief Enable/Disable description check.
  *
  * @note Default follows PAR_CFG_ENABLE_DESC.
@@ -485,10 +544,6 @@ PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HA
  */
 #if (1 == PAR_CFG_NVM_EN) && (0 == PAR_CFG_ENABLE_ID)
 #error "Parameter settings invalid: NVM requires PAR_CFG_ENABLE_ID = 1!"
-#endif
-
-#if (1 == PAR_CFG_NVM_EN) && (0 == PAR_CFG_ENABLE_PERSIST)
-#error "Parameter settings invalid: NVM requires PAR_CFG_ENABLE_PERSIST = 1!"
 #endif
 
 #if (0 == PAR_CFG_ENABLE_ID) && (1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK)

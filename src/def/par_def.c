@@ -250,7 +250,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
 #define PAR_INIT_ACCESS(access_)
 #endif
 
-#if (1 == PAR_CFG_ENABLE_PERSIST)
+#if (1 == PAR_CFG_NVM_EN)
 /**
  * @brief Translate the X-Macro persistence column into a stored persist slot index.
  *
@@ -413,7 +413,7 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] = {
 #undef PAR_INIT_ACCESS
 #undef PAR_INIT_PERSIST
 #undef PAR_INIT_DESC
-#if (1 == PAR_CFG_ENABLE_PERSIST)
+#if (1 == PAR_CFG_NVM_EN)
 #undef PAR_PERSIST_IDX_VALUE
 #undef PAR_PERSIST_IDX_VALUE_I
 #undef PAR_PERSIST_IDX_VALUE_1

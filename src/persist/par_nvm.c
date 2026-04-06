@@ -282,7 +282,7 @@ static par_status_t par_nvm_read_header(par_nvm_head_obj_t * const p_head_obj)
     if (ePAR_OK != store_status)
     {
         status = ePAR_ERROR_NVM;
-        PAR_DBG_PRINT("PAR_NVM: header read failed, %u", (unsigned)store_status);
+        PAR_ERR_PRINT("PAR_NVM: header read failed, err=%u", (unsigned)store_status);
     }
     else
     {
@@ -325,11 +325,11 @@ static par_status_t par_nvm_write_header(const uint16_t num_of_par)
     if (ePAR_OK != store_status)
     {
         status = ePAR_ERROR_NVM;
-        PAR_DBG_PRINT("PAR_NVM: header write failed, %u", (unsigned)store_status);
+        PAR_ERR_PRINT("PAR_NVM: header write failed, err=%u", (unsigned)store_status);
         return status;
     }
 
-    PAR_DBG_PRINT("PAR_NVM: Write NVM header with %d nb. of object", num_of_par);
+    PAR_DBG_PRINT("PAR_NVM: writing header with obj_count=%d", num_of_par);
 
     return status;
 }
@@ -356,18 +356,18 @@ static par_status_t par_nvm_validate_header(par_nvm_head_obj_t * const p_head_ob
             crc_calc = par_nvm_calc_head_crc(p_head_obj);
             if (crc_calc == p_head_obj->crc)
             {
-                PAR_DBG_PRINT("PAR_NVM: NVM header OK! Nb. of stored obj: %d", p_head_obj->obj_nb);
+                PAR_DBG_PRINT("PAR_NVM: header validated, stored_obj_count=%d", p_head_obj->obj_nb);
             }
             else
             {
                 status = ePAR_ERROR_CRC;
-                PAR_DBG_PRINT("PAR_NVM: Header CRC corrupted!");
+                PAR_WARN_PRINT("PAR_NVM: header CRC corrupted");
             }
         }
         else
         {
             status = ePAR_ERROR;
-            PAR_DBG_PRINT("PAR_NVM: Signature corrupted!");
+            PAR_WARN_PRINT("PAR_NVM: header signature corrupted");
         }
     }
 
@@ -657,16 +657,16 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
             err.reason = "sync-failed";
             goto out;
         }
-        PAR_DBG_PRINT("PAR_NVM: appended %u new persistent slots and rewrote header count to %u",
-                      (unsigned)new_par_cnt,
-                      (unsigned)PAR_PERSISTENT_COMPILE_COUNT);
+        PAR_INFO_PRINT("PAR_NVM: appended %u new persistent slots and rewrote header count to %u",
+                       (unsigned)new_par_cnt,
+                       (unsigned)PAR_PERSISTENT_COMPILE_COUNT);
     }
 
 out:
 #if (1 == PAR_CFG_DEBUG_EN)
-    PAR_DBG_PRINT("PAR_NVM: Loading all persistent parameters with status: %s", par_get_status_str(status));
-    PAR_DBG_PRINT("PAR_NVM: Nb. of stored pars in NVM: %u", (unsigned)num_of_par);
-    PAR_DBG_PRINT("PAR_NVM: Nb. of live persistent: %u", (unsigned)PAR_PERSISTENT_COMPILE_COUNT);
+    PAR_INFO_PRINT("PAR_NVM: load-all finished with status=%s", par_get_status_str(status));
+    PAR_INFO_PRINT("PAR_NVM: stored parameter count in NVM=%u", (unsigned)num_of_par);
+    PAR_INFO_PRINT("PAR_NVM: live persistent parameter count=%u", (unsigned)PAR_PERSISTENT_COMPILE_COUNT);
 
     if (NULL != err.reason)
     {
@@ -695,6 +695,7 @@ static par_status_t par_nvm_init_nvm(void)
     par_status_t status = ePAR_OK;
     bool is_nvm_init = false;
 
+    PAR_DBG_PRINT("PAR_NVM: resolving storage backend");
     gp_store = par_store_backend_get_api();
     gb_is_nvm_owner = false;
 
@@ -703,7 +704,7 @@ static par_status_t par_nvm_init_nvm(void)
         (NULL == gp_store->is_init) || (NULL == gp_store->read) || (NULL == gp_store->write) ||
         (NULL == gp_store->erase) || (NULL == gp_store->sync))
     {
-        PAR_DBG_PRINT("PAR_NVM: No valid parameter storage backend is wired!");
+        PAR_ERR_PRINT("PAR_NVM: no valid parameter storage backend is wired");
         status = ePAR_ERROR_INIT;
     }
 
@@ -718,12 +719,17 @@ static par_status_t par_nvm_init_nvm(void)
         if (ePAR_OK != store_status)
         {
             status = ePAR_ERROR_INIT;
-            PAR_DBG_PRINT("PAR_NVM: backend init failed, %u", (unsigned)store_status);
+            PAR_ERR_PRINT("PAR_NVM: backend init failed, err=%u", (unsigned)store_status);
         }
         else
         {
             gb_is_nvm_owner = true;
+            PAR_DBG_PRINT("PAR_NVM: backend initialized by parameter module");
         }
+    }
+    else if (ePAR_OK == status)
+    {
+        PAR_DBG_PRINT("PAR_NVM: reusing already-initialized storage backend");
     }
 
     return status;
@@ -768,6 +774,7 @@ par_status_t par_nvm_init(void)
     bool need_set_default = false;
     bool need_rewrite_nvm = false;
 
+    PAR_DBG_PRINT("PAR_NVM: initialization started");
     status = par_nvm_init_nvm();
     if (ePAR_OK != status)
     {
@@ -779,6 +786,7 @@ par_status_t par_nvm_init(void)
 
     if (per_par_nb == 0U)
     {
+        PAR_INFO_PRINT("PAR_NVM: no persistent parameters configured");
         return (par_status_t)(status | ePAR_WAR_NO_PERSISTENT);
     }
 
@@ -806,14 +814,14 @@ par_status_t par_nvm_init(void)
     /* Step 4: classify recovery action from detected issues */
     if (0U != (detect_status & ePAR_ERROR_TABLE_ID))
     {
-        PAR_DBG_PRINT("PAR_NVM: Table-ID mismatch detected; restoring defaults and rebuilding managed NVM image.");
+        PAR_WARN_PRINT("PAR_NVM: table-ID mismatch detected, restoring defaults and rebuilding managed NVM image");
         need_set_default = true;
         need_rewrite_nvm = true;
     }
 
     if (0U != (detect_status & ePAR_ERROR_CRC))
     {
-        PAR_DBG_PRINT("PAR_NVM: CRC corruption detected; rebuilding NVM from defaults.");
+        PAR_WARN_PRINT("PAR_NVM: CRC corruption detected, rebuilding NVM from defaults");
         need_set_default = true;
         need_rewrite_nvm = true;
     }
@@ -824,7 +832,7 @@ par_status_t par_nvm_init(void)
      */
     if (0U != (detect_status & ePAR_ERROR))
     {
-        PAR_DBG_PRINT("PAR_NVM: Header/signature mismatch detected; rebuilding NVM from defaults.");
+        PAR_WARN_PRINT("PAR_NVM: header/signature mismatch detected, rebuilding NVM from defaults");
         need_set_default = true;
         need_rewrite_nvm = true;
     }
@@ -835,7 +843,7 @@ par_status_t par_nvm_init(void)
      */
     if (0U != (detect_status & ePAR_ERROR_NVM))
     {
-        PAR_DBG_PRINT("PAR_NVM: NVM access error detected; restoring live values to defaults without forced rewrite.");
+        PAR_WARN_PRINT("PAR_NVM: NVM access error detected, restoring live values to defaults without forced rewrite");
         need_set_default = true;
     }
 
@@ -866,6 +874,7 @@ par_status_t par_nvm_init(void)
         status |= ePAR_ERROR_NVM;
     }
 
+    PAR_INFO_PRINT("PAR_NVM: initialization finished with status=%s", par_get_status_str(status));
     return status;
 }
 /**
@@ -877,6 +886,7 @@ par_status_t par_nvm_deinit(void)
 {
     par_status_t status = ePAR_OK;
 
+    PAR_DBG_PRINT("PAR_NVM: deinitialization started");
     if (true == gb_is_init)
     {
         if (true == gb_is_nvm_owner)
@@ -885,7 +895,7 @@ par_status_t par_nvm_deinit(void)
             if (ePAR_OK != store_status)
             {
                 status = ePAR_ERROR;
-                PAR_DBG_PRINT("PAR_NVM: backend deinit failed, %u", (unsigned)store_status);
+                PAR_ERR_PRINT("PAR_NVM: backend deinit failed, err=%u", (unsigned)store_status);
             }
         }
 
@@ -901,6 +911,7 @@ par_status_t par_nvm_deinit(void)
         status = ePAR_ERROR;
     }
 
+    PAR_INFO_PRINT("PAR_NVM: deinitialization finished with status=%s", par_get_status_str(status));
     return status;
 }
 /**
@@ -919,66 +930,56 @@ par_status_t par_nvm_deinit(void)
  */
 par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)
 {
+    if (true != gb_is_init)
+    {
+        return ePAR_ERROR_INIT;
+    }
+
+    if (par_num >= ePAR_NUM_OF)
+    {
+        return ePAR_ERROR;
+    }
+
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
+    if (true != par_cfg->persistent)
+    {
+        PAR_DBG_PRINT("PAR_NVM: skip write for non-persistent parameter, par_num=%u", (unsigned)par_num);
+        return ePAR_ERROR;
+    }
+
     par_status_t status = ePAR_OK;
     par_nvm_data_obj_t obj_data = { 0 };
     uint32_t par_addr = 0UL;
+    par_status_t store_status = ePAR_OK;
 
-    PAR_ASSERT(true == gb_is_init);
-    PAR_ASSERT(par_num < ePAR_NUM_OF);
-
-    if (true == gb_is_init)
+    PAR_DBG_PRINT("PAR_NVM: writing persistent parameter, par_num=%u id=%u", (unsigned)par_num, (unsigned)par_cfg->id);
+    par_get(par_num, (uint32_t *)&obj_data.data);
+    obj_data.id = par_cfg->id;
+    /* size is a descriptor/check field; current fixed-slot format always stores 4. */
+    obj_data.size = PAR_NVM_DATA_SLOT_SIZE;
+    obj_data.crc = par_nvm_calc_obj_crc(&obj_data);
+    par_addr = par_nvm_get_nvm_lut_addr(obj_data.id);
+    store_status = gp_store->write(par_addr, (uint32_t)sizeof(par_nvm_data_obj_t), (const uint8_t *)&obj_data);
+    if (ePAR_OK != store_status)
     {
-        if (par_num < ePAR_NUM_OF)
-        {
-            const par_cfg_t * const par_cfg = par_get_config(par_num);
-            if (true == par_cfg->persistent)
-            {
-                par_status_t store_status = ePAR_OK;
-
-                par_get(par_num, (uint32_t *)&obj_data.data);
-                obj_data.id = par_cfg->id;
-                /* size is a descriptor/check field; current fixed-slot format always stores 4. */
-                obj_data.size = PAR_NVM_DATA_SLOT_SIZE;
-                obj_data.crc = par_nvm_calc_obj_crc(&obj_data);
-                par_addr = par_nvm_get_nvm_lut_addr(obj_data.id);
-                store_status = gp_store->write(par_addr,
-                                               (uint32_t)sizeof(par_nvm_data_obj_t),
-                                               (const uint8_t *)&obj_data);
-                if (ePAR_OK != store_status)
-                {
-                    status |= ePAR_ERROR_NVM;
-                    PAR_DBG_PRINT("PAR_NVM: parameter write failed, par_num=%u id=%u addr=0x%08lX err=%u",
-                                  (unsigned)par_num,
-                                  (unsigned)obj_data.id,
-                                  (unsigned long)par_addr,
-                                  (unsigned)store_status);
-                }
-
-                if ((true == nvm_sync) && (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK)))
-                {
-                    const par_status_t sync_status = gp_store->sync();
-                    if (ePAR_OK != sync_status)
-                    {
-                        status |= ePAR_ERROR_NVM;
-                        PAR_DBG_PRINT("PAR_NVM: sync failed after parameter write, par_num=%u err=%u",
-                                      (unsigned)par_num,
-                                      (unsigned)sync_status);
-                    }
-                }
-            }
-            else
-            {
-                status = ePAR_ERROR;
-            }
-        }
-        else
-        {
-            status = ePAR_ERROR;
-        }
+        status |= ePAR_ERROR_NVM;
+        PAR_ERR_PRINT("PAR_NVM: parameter write failed, par_num=%u id=%u addr=0x%08lX err=%u",
+                      (unsigned)par_num,
+                      (unsigned)obj_data.id,
+                      (unsigned long)par_addr,
+                      (unsigned)store_status);
     }
-    else
+
+    if ((true == nvm_sync) && (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK)))
     {
-        status = ePAR_ERROR_INIT;
+        const par_status_t sync_status = gp_store->sync();
+        if (ePAR_OK != sync_status)
+        {
+            status |= ePAR_ERROR_NVM;
+            PAR_ERR_PRINT("PAR_NVM: sync failed after parameter write, par_num=%u err=%u",
+                          (unsigned)par_num,
+                          (unsigned)sync_status);
+        }
     }
 
     return status;
@@ -990,63 +991,58 @@ par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)
  */
 par_status_t par_nvm_write_all(void)
 {
-    par_status_t status = ePAR_OK;
-
-    PAR_ASSERT(true == gb_is_init);
-
-    if (true == gb_is_init)
+    if (true != gb_is_init)
     {
-        /* Mark the header invalid before bulk rewrite and commit that state. */
-        {
-            const par_status_t store_status = gp_store->erase(PAR_NVM_HEAD_SIGN_ADDR, PAR_NVM_HEAD_SIGN_SIZE);
-            if (ePAR_OK != store_status)
-            {
-                status |= ePAR_ERROR_NVM;
-                PAR_DBG_PRINT("PAR_NVM: signature erase failed, %u", (unsigned)store_status);
-            }
-        }
+        return ePAR_ERROR_INIT;
+    }
 
-        if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
+    par_status_t status = ePAR_OK;
+    PAR_DBG_PRINT("PAR_NVM: storing all persistent parameters to NVM");
+
+    /* Mark the header invalid before bulk rewrite and commit that state. */
+    const par_status_t store_status = gp_store->erase(PAR_NVM_HEAD_SIGN_ADDR, PAR_NVM_HEAD_SIGN_SIZE);
+    if (ePAR_OK != store_status)
+    {
+        status |= ePAR_ERROR_NVM;
+        PAR_ERR_PRINT("PAR_NVM: signature erase failed, err=%u", (unsigned)store_status);
+    }
+
+    if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
+    {
+        for (par_num_t par_num = 0U; par_num < ePAR_NUM_OF; par_num++)
         {
-            for (par_num_t par_num = 0U; par_num < ePAR_NUM_OF; par_num++)
+            if (true == par_is_persistent(par_num))
             {
-                if (true == par_is_persistent(par_num))
+                status |= par_nvm_write(par_num, false);
+                if (ePAR_OK != (status & ePAR_STATUS_ERROR_MASK))
                 {
-                    status |= par_nvm_write(par_num, false);
-                    if (ePAR_OK != (status & ePAR_STATUS_ERROR_MASK))
-                    {
-                        PAR_DBG_PRINT("PAR_NVM: bulk write aborted, par_num=%u id=%u addr=0x%08lX err=%u",
-                                      (unsigned)par_num,
-                                      (unsigned)par_get_config(par_num)->id,
-                                      (unsigned long)par_nvm_get_nvm_lut_addr(par_get_config(par_num)->id),
-                                      (unsigned)status);
-                        break;
-                    }
+                    PAR_ERR_PRINT("PAR_NVM: bulk write aborted, par_num=%u id=%u addr=0x%08lX err=%u",
+                                  (unsigned)par_num,
+                                  (unsigned)par_get_config(par_num)->id,
+                                  (unsigned long)par_nvm_get_nvm_lut_addr(par_get_config(par_num)->id),
+                                  (unsigned)status);
+                    break;
                 }
             }
         }
+    }
 
-        /* Restore a valid header only after the full rewrite completes successfully. */
-        if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
-        {
-            status |= par_nvm_write_header(PAR_PERSISTENT_COMPILE_COUNT);
-        }
+    /* Restore a valid header only after the full rewrite completes successfully. */
+    if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
+    {
+        status |= par_nvm_write_header(PAR_PERSISTENT_COMPILE_COUNT);
+    }
 
-        if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
-        {
-            par_nvm_build_new_nvm_lut();
-        }
-        else
-        {
-            par_nvm_clear_lut();
-        }
-
-        PAR_DBG_PRINT("PAR_NVM: Storing all to NVM status: %s", par_get_status_str(status));
+    if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
+    {
+        par_nvm_build_new_nvm_lut();
     }
     else
     {
-        status = ePAR_ERROR_INIT;
+        par_nvm_clear_lut();
     }
+
+    PAR_INFO_PRINT("PAR_NVM: store-all finished with status=%s", par_get_status_str(status));
 
     return status;
 }
@@ -1061,14 +1057,21 @@ par_status_t par_nvm_reset_all(void)
     par_status_t status = ePAR_OK;
 
     PAR_ASSERT(true == gb_is_init);
+    PAR_DBG_PRINT("PAR_NVM: rebuild-all requested");
 
-    if (true == gb_is_init)
+    if (true != gb_is_init)
     {
-        status |= par_nvm_write_all();
+        return ePAR_ERROR_INIT;
+    }
+
+    status |= par_nvm_write_all();
+    if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
+    {
+        PAR_DBG_PRINT("PAR_NVM: rebuild-all finished successfully");
     }
     else
     {
-        status = ePAR_ERROR_INIT;
+        PAR_ERR_PRINT("PAR_NVM: rebuild-all failed, status=%s", par_get_status_str(status));
     }
 
     return status;

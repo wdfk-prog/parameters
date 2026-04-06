@@ -136,7 +136,8 @@ Relevant options in `par_cfg.h`:
 - `PAR_CFG_NVM_EN`
 - `PAR_CFG_NVM_REGION`
 - `PAR_CFG_ENABLE_ID`
-- `PAR_CFG_ENABLE_PERSIST`
+
+When `PAR_CFG_NVM_EN = 1`, persistence metadata in the parameter table is compiled in automatically. There is no separate `PAR_CFG_ENABLE_PERSIST` switch anymore.
 
 ID-based lookup is generated statically when `PAR_CFG_ENABLE_ID = 1`. Optional startup diagnostics can be enabled with:
 
@@ -153,6 +154,10 @@ Backend choices:
 - provide exactly one application-owned `par_store_backend_get_api()` implementation
 
 If `PAR_CFG_NVM_EN = 1` and no backend implementation is linked, the build fails at link time by design.
+
+### Logging
+
+Use `AUTOGEN_PM_USING_DEBUG` in the RT-Thread package Kconfig to enable package logs. The port layer now exposes leveled logging hooks (`INFO`, `DEBUG`, `WARN`, `ERROR`) and routes them through RT-Thread `rtdbg`/ULOG when enabled.
 
 ### Layout source
 

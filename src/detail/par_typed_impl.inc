@@ -43,25 +43,29 @@
     PAR_TYPED_ROWS_F32(X)
 
 #if (1 == PAR_CFG_ENABLE_RANGE)
-#define PAR_TYPED_FAST_SET_BODY(PRIV, FIELD, par_num, val)     \
-    do                                                         \
-    {                                                          \
-        const par_range_t range = par_get_range(par_num);      \
-        if ((val) > range.max.FIELD)                           \
-        {                                                      \
-            PAR_SET_##PRIV##_PRIV((par_num), range.max.FIELD); \
-            return ePAR_WAR_LIMITED;                           \
-        }                                                      \
-        else if ((val) < range.min.FIELD)                      \
-        {                                                      \
-            PAR_SET_##PRIV##_PRIV((par_num), range.min.FIELD); \
-            return ePAR_WAR_LIMITED;                           \
-        }                                                      \
-        else                                                   \
-        {                                                      \
-            PAR_SET_##PRIV##_PRIV((par_num), (val));           \
-            return ePAR_OK;                                    \
-        }                                                      \
+#define PAR_TYPED_FAST_SET_BODY(PRIV, FIELD, par_num, val)                         \
+    do                                                                             \
+    {                                                                              \
+        const par_range_t range = par_get_range(par_num);                          \
+        if ((val) > range.max.FIELD)                                               \
+        {                                                                          \
+            PAR_SET_##PRIV##_PRIV((par_num), range.max.FIELD);                     \
+            PAR_WARN_PRINT("PAR: value limited to configured maximum, par_num=%u", \
+                           (unsigned)(par_num));                                   \
+            return ePAR_WAR_LIMITED;                                               \
+        }                                                                          \
+        else if ((val) < range.min.FIELD)                                          \
+        {                                                                          \
+            PAR_SET_##PRIV##_PRIV((par_num), range.min.FIELD);                     \
+            PAR_WARN_PRINT("PAR: value limited to configured minimum, par_num=%u", \
+                           (unsigned)(par_num));                                   \
+            return ePAR_WAR_LIMITED;                                               \
+        }                                                                          \
+        else                                                                       \
+        {                                                                          \
+            PAR_SET_##PRIV##_PRIV((par_num), (val));                               \
+            return ePAR_OK;                                                        \
+        }                                                                          \
     } while (0)
 #else
 #define PAR_TYPED_FAST_SET_BODY(PRIV, FIELD, par_num, val) \
@@ -193,6 +197,9 @@ static par_status_t par_validate_expected_type(const par_cfg_t * const p_cfg,
     PAR_ASSERT(expected_type == p_cfg->type);
     if (expected_type != p_cfg->type)
     {
+        PAR_ERR_PRINT("PAR: type mismatch, expected=%u actual=%u",
+                      (unsigned)expected_type,
+                      (unsigned)p_cfg->type);
         return ePAR_ERROR_TYPE;
     }
 
@@ -241,7 +248,7 @@ static par_status_t par_set_checked_core(const par_num_t par_num, const par_type
 #if (1 == PAR_CFG_ENABLE_ACCESS)
     if (ePAR_ACCESS_RW != par_cfg->access)
     {
-        PAR_DBG_PRINT("PAR: write denied for par_num=%u", (unsigned)par_num);
+        PAR_INFO_PRINT("PAR: write denied by access policy, par_num=%u", (unsigned)par_num);
         return ePAR_ERROR_ACCESS;
     }
 #endif

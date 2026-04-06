@@ -12,6 +12,7 @@ This document groups the public API from `src/par.h` by responsibility.
 - `F32` typed APIs depend on `PAR_CFG_ENABLE_TYPE_F32 = 1`.
 - Validation registration APIs depend on `PAR_CFG_ENABLE_RUNTIME_VALIDATION = 1`.
 - On-change registration APIs depend on `PAR_CFG_ENABLE_CHANGE_CALLBACK = 1`.
+- Logging output depends on `PAR_CFG_DEBUG_EN = 1`. When the RT-Thread package port is used, log output is split into `INFO` / `DEBUG` / `WARN` / `ERROR` levels.
 
 ## Compile-time availability notes
 
