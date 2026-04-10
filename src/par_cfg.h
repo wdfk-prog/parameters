@@ -76,9 +76,9 @@
 /**
  * @brief Enable/Disable parameter-table compatibility checking.
  *
- * @note The stored NVM image header carries a table-ID digest that covers.
- * PAR_CFG_TABLE_ID_SCHEMA_VER, persistent-parameter count, persistent order,
- * parameter type, and parameter ID.
+ * @note The stored NVM image header carries a table-ID digest that covers
+ * PAR_CFG_TABLE_ID_SCHEMA_VER, selected record layout, persistent-parameter
+ * count, persistent order, parameter type, and parameter ID.
  *
  * When enabled, any persisted-layout incompatibility is treated as a managed.
  * schema change: startup restores defaults and rebuilds the managed NVM image.
@@ -101,6 +101,24 @@
  */
 #ifndef PAR_CFG_TABLE_ID_SCHEMA_VER
 #define PAR_CFG_TABLE_ID_SCHEMA_VER (1U)
+#endif
+
+#ifndef PAR_CFG_NVM_BACKEND_FLASH_EN
+#define PAR_CFG_NVM_BACKEND_FLASH_EN (0)
+#endif
+
+/**
+ * @brief Select persisted record layout.
+ *
+ * @note The chosen layout is also included in the table-ID digest so layout
+ * changes are treated as managed compatibility changes.
+ */
+#define PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE (0U)
+#define PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE   (1U)
+#define PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD      (2U)
+
+#ifndef PAR_CFG_NVM_RECORD_LAYOUT
+#define PAR_CFG_NVM_RECORD_LAYOUT (PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE)
 #endif
 
 /**

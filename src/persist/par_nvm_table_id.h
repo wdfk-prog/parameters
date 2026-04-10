@@ -22,6 +22,7 @@
  * @details The digest covers only metadata that changes the binary
  * compatibility of the persisted NVM image:
  * - PAR_CFG_TABLE_ID_SCHEMA_VER
+ * - selected persisted record layout
  * - persistent-parameter count
  * - persistent-parameter order
  * - parameter type
