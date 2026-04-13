@@ -2,7 +2,7 @@
  * @file par_nvm_layout_compact_payload.c
  * @brief Implement the compact persisted-record layout with id, size, crc, and payload bytes.
  * @author wdfk-prog ()
- * @version 1.1
+ * @version 1.2
  * @date 2026-04-13
  *
  * @copyright Copyright (c) 2026 Ziga Miklosic. Distributed under the MIT license.
@@ -12,11 +12,13 @@
  * Date       Version Author      Description
  * 2026-04-06 1.0     wdfk-prog   first version
  * 2026-04-13 1.1     wdfk-prog   add layout-ops adapter
+ * 2026-04-13 1.2     wdfk-prog   auto-generate compile-time compact-payload address LUT
  */
 #include "persist/par_nvm_layout.h"
 
 #if (1 == PAR_CFG_NVM_EN) && (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD)
 
+#include <stddef.h>
 #include <string.h>
 
 #include "persist/par_nvm_table_id.h"
@@ -50,6 +52,79 @@ static uint32_t par_nvm_layout_compact_payload_record_size_from_par_num(const pa
 }
 
 /**
+ * @brief Compile-time packed offset map for the compact-payload layout.
+ *
+ * @details The generated struct keeps one byte of anchor storage first so the
+ * type remains valid even when no parameters are persistent. Every persistent
+ * record then contributes one tightly packed `uint8_t[]` member whose size is
+ * derived from `par_table.def`. `offsetof()` on these members therefore yields
+ * the exact prefix-sum byte offset without any handwritten constants.
+ */
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_OFFSET_MAP_BASE_SIZE                  1U
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_RECORD_SIZE_BYTES(payload_size_)      (PAR_NVM_LAYOUT_RECORD_OVERHEAD + (uint32_t)(payload_size_))
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT(enum_, pers_, emit_)   PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT_I(enum_, pers_, emit_)
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT_I(enum_, pers_, emit_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT_##pers_(enum_, emit_)
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT_1(enum_, emit_)        emit_(enum_)
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT_0(enum_, emit_)
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_1(enum_) uint8_t slot_##enum_[PAR_NVM_LAYOUT_COMPACT_PAYLOAD_RECORD_SIZE_BYTES(1U)];
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_2(enum_) uint8_t slot_##enum_[PAR_NVM_LAYOUT_COMPACT_PAYLOAD_RECORD_SIZE_BYTES(2U)];
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_4(enum_) uint8_t slot_##enum_[PAR_NVM_LAYOUT_COMPACT_PAYLOAD_RECORD_SIZE_BYTES(4U)];
+typedef struct
+{
+    uint8_t base__[PAR_NVM_LAYOUT_COMPACT_PAYLOAD_OFFSET_MAP_BASE_SIZE];
+#define PAR_ITEM_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_1)
+#define PAR_ITEM_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_2)
+#define PAR_ITEM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_4)
+#define PAR_ITEM_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_1)
+#define PAR_ITEM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_2)
+#define PAR_ITEM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_4)
+#define PAR_ITEM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_4)
+#include "../../par_table.def"
+#undef PAR_ITEM_U8
+#undef PAR_ITEM_U16
+#undef PAR_ITEM_U32
+#undef PAR_ITEM_I8
+#undef PAR_ITEM_I16
+#undef PAR_ITEM_I32
+#undef PAR_ITEM_F32
+} par_nvm_layout_compact_payload_offset_map_t;
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_OFFSET_OF(enum_)                  ((uint32_t)offsetof(par_nvm_layout_compact_payload_offset_map_t, slot_##enum_) - PAR_NVM_LAYOUT_COMPACT_PAYLOAD_OFFSET_MAP_BASE_SIZE)
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT(enum_, pers_)   PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT_I(enum_, pers_)
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT_I(enum_, pers_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT_##pers_(enum_)
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT_1(enum_)        [PAR_PERSIST_IDX_##enum_] = PAR_NVM_LAYOUT_COMPACT_PAYLOAD_OFFSET_OF(enum_),
+#define PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT_0(enum_)
+static const uint32_t g_par_nvm_layout_compact_payload_addr_lut[PAR_PERSIST_SLOT_MAP_CAPACITY] = {
+#define PAR_ITEM_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT(enum_, pers_)
+#define PAR_ITEM_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT(enum_, pers_)
+#define PAR_ITEM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT(enum_, pers_)
+#define PAR_ITEM_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT(enum_, pers_)
+#define PAR_ITEM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT(enum_, pers_)
+#define PAR_ITEM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT(enum_, pers_)
+#define PAR_ITEM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT(enum_, pers_)
+#include "../../par_table.def"
+#undef PAR_ITEM_U8
+#undef PAR_ITEM_U16
+#undef PAR_ITEM_U32
+#undef PAR_ITEM_I8
+#undef PAR_ITEM_I16
+#undef PAR_ITEM_I32
+#undef PAR_ITEM_F32
+};
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT_I
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT_1
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_ADDR_ENTRY_SELECT_0
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_OFFSET_OF
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_1
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_2
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_MEMBER_4
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT_I
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT_1
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_PERSIST_SELECT_0
+#undef PAR_NVM_LAYOUT_COMPACT_PAYLOAD_RECORD_SIZE_BYTES
+
+/**
  * @brief Translate one persistent slot index into its serialized record address.
  *
  * @param first_data_obj_addr Absolute address of the first persisted record.
@@ -61,16 +136,11 @@ static uint32_t par_nvm_layout_compact_payload_addr_from_persist_idx(const uint3
                                                                      const uint16_t persist_idx,
                                                                      const par_num_t * const p_persist_slot_to_par_num)
 {
-    uint32_t addr = first_data_obj_addr;
-
     PAR_ASSERT(NULL != p_persist_slot_to_par_num);
+    PAR_ASSERT(persist_idx < PAR_PERSISTENT_COMPILE_COUNT);
+    (void)p_persist_slot_to_par_num;
 
-    for (uint16_t it = 0U; it < persist_idx; it++)
-    {
-        addr += par_nvm_layout_compact_payload_record_size_from_par_num(p_persist_slot_to_par_num[it]);
-    }
-
-    return addr;
+    return (first_data_obj_addr + g_par_nvm_layout_compact_payload_addr_lut[persist_idx]);
 }
 
 /**
@@ -220,7 +290,7 @@ static par_status_t par_nvm_layout_compact_payload_validate_loaded_obj(const par
  * @return Stored ID or a layout-defined fallback value.
  */
 static uint16_t par_nvm_layout_compact_payload_get_error_stored_id(const par_num_t par_num,
-                                                                    const par_nvm_data_obj_t * const p_obj)
+                                                                   const par_nvm_data_obj_t * const p_obj)
 {
     (void)par_num;
     return (NULL != p_obj) ? p_obj->id : 0U;
@@ -246,9 +316,7 @@ static par_nvm_compat_result_t par_nvm_layout_compact_payload_check_compat(const
         return ePAR_NVM_COMPAT_REBUILD;
     }
 
-    return (p_head_obj->obj_nb == (uint16_t)PAR_PERSISTENT_COMPILE_COUNT) ?
-               ePAR_NVM_COMPAT_EXACT_MATCH :
-               ePAR_NVM_COMPAT_PREFIX_APPEND;
+    return (p_head_obj->obj_nb == (uint16_t)PAR_PERSISTENT_COMPILE_COUNT) ? ePAR_NVM_COMPAT_EXACT_MATCH : ePAR_NVM_COMPAT_PREFIX_APPEND;
 }
 
 #if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)
