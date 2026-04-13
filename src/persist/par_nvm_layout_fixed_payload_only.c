@@ -1,34 +1,40 @@
 /**
- * @file par_nvm_layout_compact_payload.c
- * @brief Implement the compact persisted-record layout with id, size, crc, and payload bytes.
+ * @file par_nvm_layout_fixed_payload_only.c
+ * @brief Implement the fixed persistent-order payload-only NVM layout.
  * @author wdfk-prog ()
  * @version 1.0
- * @date 2026-04-06
+ * @date 2026-04-11
  *
  * @copyright Copyright (c) 2026 Ziga Miklosic. Distributed under the MIT license.
  *
  * @note :
  * @par Change Log:
  * Date       Version Author      Description
- * 2026-04-06 1.0     wdfk-prog   first version
+ * 2026-04-10 1.0     wdfk-prog   first version
+ * 2026-04-11 1.1     wdfk-prog   restore layout comments and split layout structs
  */
 #include "persist/par_nvm_layout.h"
 
-#if (1 == PAR_CFG_NVM_EN) && (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD)
+#if (1 == PAR_CFG_NVM_EN) && (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY)
 
 #include <string.h>
 
+#if (1 == PAR_CFG_NVM_BACKEND_FLASH_EN)
+#error "Payload-only NVM layouts are not supported with the flash backend because records are variable width and not guaranteed to stay 8-byte aligned."
+#endif
+
 /**
- * @brief Serialized overhead of one compact-payload record.
+ * @brief Serialized overhead of one payload-only record.
  */
-#define PAR_NVM_LAYOUT_RECORD_OVERHEAD (PAR_NVM_RECORD_ID_SIZE + PAR_NVM_RECORD_SIZE_FIELD_SIZE + PAR_NVM_RECORD_CRC_SIZE)
+#define PAR_NVM_LAYOUT_RECORD_OVERHEAD ((uint32_t)PAR_NVM_RECORD_CRC_SIZE)
+
 /**
- * @brief Maximum serialized size of one compact-payload record.
+ * @brief Maximum serialized size of one payload-only record.
  */
 #define PAR_NVM_LAYOUT_RECORD_MAX_SIZE (PAR_NVM_LAYOUT_RECORD_OVERHEAD + PAR_NVM_RECORD_DATA_SLOT_SIZE)
 
-PAR_STATIC_ASSERT(par_nvm_layout_compact_payload_record_payload_slot_is_4_bytes,
-                  (sizeof(((par_nvm_layout_compact_payload_record_t *)0)->payload) == 4u));
+PAR_STATIC_ASSERT(par_nvm_layout_fixed_payload_only_record_payload_slot_is_4_bytes,
+                  (sizeof(((par_nvm_layout_fixed_payload_only_record_t *)0)->payload) == 4u));
 
 /**
  * @brief Resolve serialized record size from the active payload width.
@@ -53,7 +59,11 @@ uint32_t par_nvm_layout_record_size_from_par_num(const par_num_t par_num)
 }
 
 /**
- * @brief Resolve record address for the compact-payload layout.
+ * @brief Resolve record address for the fixed persistent-order payload-only layout.
+ *
+ * @details This layout does not store a size field in NVM. Address resolution
+ * therefore walks the compile-time persistent-order table and accumulates the
+ * natural serialized width of each preceding slot.
  *
  * @param first_data_obj_addr Start address of the first persisted object.
  * @param persist_idx Compile-time persistent slot index.
@@ -77,7 +87,7 @@ uint32_t par_nvm_layout_addr_from_persist_idx(const uint32_t first_data_obj_addr
 }
 
 /**
- * @brief Read one compact-payload record from NVM.
+ * @brief Read one payload-only record from NVM.
  *
  * @param p_store Storage backend API.
  * @param addr Record start address.
@@ -92,10 +102,9 @@ par_status_t par_nvm_layout_read(const par_store_backend_api_t * const p_store,
 {
     uint8_t record_buf[PAR_NVM_LAYOUT_RECORD_MAX_SIZE] = { 0U };
     const par_cfg_t * const p_cfg = par_get_config(par_num);
-    const uint8_t expected_payload_size = par_nvm_layout_payload_size_from_par_num(par_num);
-    const uint32_t record_size = par_nvm_layout_record_size_from_payload_size(expected_payload_size);
-    uint8_t size_desc = 0;
-    const uint8_t * const p_payload = &record_buf[PAR_NVM_RECORD_ID_SIZE + PAR_NVM_RECORD_SIZE_FIELD_SIZE + PAR_NVM_RECORD_CRC_SIZE];
+    const uint8_t payload_size = par_nvm_layout_payload_size_from_par_num(par_num);
+    const uint32_t record_size = par_nvm_layout_record_size_from_payload_size(payload_size);
+    const uint8_t * const p_payload = &record_buf[PAR_NVM_RECORD_CRC_SIZE];
     uint8_t crc_calc = 0U;
 
     PAR_ASSERT((NULL != p_store) && (NULL != p_obj));
@@ -107,26 +116,18 @@ par_status_t par_nvm_layout_read(const par_store_backend_api_t * const p_store,
         return ePAR_ERROR_NVM;
     }
 
-    memcpy(&p_obj->id, &record_buf[0], sizeof(p_obj->id));
-    size_desc = record_buf[PAR_NVM_RECORD_ID_SIZE];
-    if (size_desc != expected_payload_size)
-    {
-        return ePAR_ERROR;
-    }
-
-    crc_calc = par_nvm_layout_calc_crc_with_id(p_obj->id, size_desc, p_payload, size_desc, true);
-    if (crc_calc != record_buf[PAR_NVM_RECORD_ID_SIZE + PAR_NVM_RECORD_SIZE_FIELD_SIZE])
+    crc_calc = par_nvm_layout_calc_crc(0U, p_payload, payload_size, false);
+    if (crc_calc != record_buf[0])
     {
         return ePAR_ERROR_CRC;
     }
 
-    p_obj->size = size_desc;
     par_nvm_layout_unpack_payload_bytes(p_cfg->type, p_payload, &p_obj->data);
     return ePAR_OK;
 }
 
 /**
- * @brief Write one compact-payload record to NVM.
+ * @brief Write one payload-only record to NVM.
  *
  * @param p_store Storage backend API.
  * @param addr Record start address.
@@ -143,20 +144,15 @@ par_status_t par_nvm_layout_write(const par_store_backend_api_t * const p_store,
     const par_cfg_t * const p_cfg = par_get_config(par_num);
     const uint8_t payload_size = par_nvm_layout_payload_size_from_par_num(par_num);
     const uint32_t record_size = par_nvm_layout_record_size_from_payload_size(payload_size);
-    uint8_t * const p_payload = &record_buf[PAR_NVM_RECORD_ID_SIZE + PAR_NVM_RECORD_SIZE_FIELD_SIZE + PAR_NVM_RECORD_CRC_SIZE];
-    uint8_t crc = 0U;
+    uint8_t * const p_payload = &record_buf[PAR_NVM_RECORD_CRC_SIZE];
 
     PAR_ASSERT((NULL != p_store) && (NULL != p_obj));
     PAR_ASSERT(NULL != p_cfg);
 
     par_nvm_layout_pack_payload_bytes(p_cfg->type, &p_obj->data, p_payload);
-    crc = par_nvm_layout_calc_crc_with_id(p_obj->id, payload_size, p_payload, payload_size, true);
-
-    memcpy(&record_buf[0], &p_obj->id, sizeof(p_obj->id));
-    record_buf[PAR_NVM_RECORD_ID_SIZE] = payload_size;
-    record_buf[PAR_NVM_RECORD_ID_SIZE + PAR_NVM_RECORD_SIZE_FIELD_SIZE] = crc;
+    record_buf[0] = par_nvm_layout_calc_crc(0U, p_payload, payload_size, false);
 
     return (ePAR_OK == p_store->write(addr, record_size, record_buf)) ? ePAR_OK : ePAR_ERROR_NVM;
 }
 
-#endif /* compact-payload */
+#endif /* fixed-payload-only */

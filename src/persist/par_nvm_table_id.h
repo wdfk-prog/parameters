@@ -17,23 +17,17 @@
 
 #include <stdint.h>
 /**
- * @brief Calculate the live parameter-table ID.
+ * @brief Calculate the live compatibility digest for one stored persistent prefix.
  *
- * @details The digest covers only metadata that changes the binary
- * compatibility of the persisted NVM image:
- * - PAR_CFG_TABLE_ID_SCHEMA_VER
- * - selected persisted record layout
- * - persistent-parameter count
- * - persistent-parameter order
- * - parameter type
- * - parameter ID
+ * @details The caller provides the number of stored persistent slots that are
+ * part of the managed NVM image. The digest always covers that stored prefix.
+ * Layouts with stored IDs additionally hash external parameter IDs, while
+ * payload-only layouts intentionally exclude external parameter IDs and track
+ * only byte-layout compatibility for that prefix.
  *
- * Default values, ranges, names, units, descriptions, and access flags are
- * intentionally excluded because they do not change the serialized NVM object
- * layout used by par_nvm.c.
- *
+ * @param persistent_count Number of persistent slots covered by the digest.
  * @return Platform-native 32-bit FNV-1a digest.
  */
-uint32_t par_nvm_table_id_calc(void);
+uint32_t par_nvm_table_id_calc_for_count(uint16_t persistent_count);
 
 #endif /* _PAR_NVM_TABLE_ID_H_ */

@@ -19,30 +19,18 @@
 #include <string.h>
 
 /**
- * @brief Serialized fixed-slot record with explicit size descriptor.
- *
- * @details This is a private on-storage record view used only by the
- * fixed-slot-with-size backend. It is kept separate from
- * `par_nvm_data_obj_t` because the serialized record also contains the CRC
- * byte between the size field and the data payload.
+ * @brief Serialized size of one fixed-slot record with an explicit size field.
  */
-typedef struct
-{
-    uint16_t id;   /**< Parameter ID. */
-    uint8_t size;  /**< Serialized payload-size descriptor. */
-    uint8_t crc;   /**< CRC-8 over id, size, and payload bytes. */
-    par_type_t data; /**< Fixed 4-byte payload slot. */
-} par_nvm_layout_record_t;
+#define PAR_NVM_LAYOUT_RECORD_SIZE ((uint32_t)sizeof(par_nvm_layout_fixed_slot_with_size_record_t))
 
-#define PAR_NVM_LAYOUT_RECORD_SIZE ((uint32_t)sizeof(par_nvm_layout_record_t))
-
-PAR_STATIC_ASSERT(par_nvm_layout_fixed_with_size_record_is_8_bytes, (sizeof(par_nvm_layout_record_t) == 8u));
+PAR_STATIC_ASSERT(par_nvm_layout_fixed_with_size_record_is_8_bytes,
+                  (sizeof(par_nvm_layout_fixed_slot_with_size_record_t) == 8u));
 
 /**
- * @brief Get serialized record size for one live parameter.
+ * @brief Get serialized record size for one persistent parameter.
  *
  * @param par_num Live parameter number.
- * @return Fixed serialized record size in bytes.
+ * @return Serialized record size in bytes.
  */
 uint32_t par_nvm_layout_record_size_from_par_num(const par_num_t par_num)
 {
@@ -51,12 +39,12 @@ uint32_t par_nvm_layout_record_size_from_par_num(const par_num_t par_num)
 }
 
 /**
- * @brief Resolve record address from persistent slot index.
+ * @brief Resolve record address for the fixed-slot-with-size layout.
  *
- * @param first_data_obj_addr Start address of the first data record.
- * @param persist_idx Persistent slot index.
- * @param p_persist_slot_to_par_num Unused compile-time slot map.
- * @return Start address of the serialized record.
+ * @param first_data_obj_addr Start address of the first persisted object.
+ * @param persist_idx Compile-time persistent slot index.
+ * @param p_persist_slot_to_par_num Persistent-slot to live-parameter mapping.
+ * @return Absolute NVM address of the selected record.
  */
 uint32_t par_nvm_layout_addr_from_persist_idx(const uint32_t first_data_obj_addr,
                                               const uint16_t persist_idx,
@@ -67,12 +55,12 @@ uint32_t par_nvm_layout_addr_from_persist_idx(const uint32_t first_data_obj_addr
 }
 
 /**
- * @brief Read one fixed-slot-with-size record.
+ * @brief Read one fixed-slot-with-size record from NVM.
  *
- * @param p_store Mounted storage backend.
- * @param addr Serialized record address.
- * @param par_num Unused live parameter number.
- * @param p_obj Output canonical payload view.
+ * @param p_store Storage backend API.
+ * @param addr Record start address.
+ * @param par_num Live parameter number.
+ * @param p_obj Output canonical object.
  * @return Operation status.
  */
 par_status_t par_nvm_layout_read(const par_store_backend_api_t * const p_store,
@@ -80,7 +68,7 @@ par_status_t par_nvm_layout_read(const par_store_backend_api_t * const p_store,
                                  const par_num_t par_num,
                                  par_nvm_data_obj_t * const p_obj)
 {
-    par_nvm_layout_record_t record = { 0U };
+    par_nvm_layout_fixed_slot_with_size_record_t record = { 0U };
     uint8_t crc_calc = 0U;
 
     (void)par_num;
@@ -97,25 +85,29 @@ par_status_t par_nvm_layout_read(const par_store_backend_api_t * const p_store,
         return ePAR_ERROR;
     }
 
-    crc_calc = par_nvm_layout_calc_crc(record.id, record.size, (const uint8_t * const)&record.data, PAR_NVM_RECORD_DATA_SLOT_SIZE, true);
+    crc_calc = par_nvm_layout_calc_crc_with_id(record.id,
+                                               record.size,
+                                               (const uint8_t * const)&record.data,
+                                               PAR_NVM_RECORD_DATA_SLOT_SIZE,
+                                               true);
     if (crc_calc != record.crc)
     {
         return ePAR_ERROR_CRC;
     }
 
     p_obj->id = record.id;
-    p_obj->size = PAR_NVM_RECORD_DATA_SLOT_SIZE;
+    p_obj->size = record.size;
     p_obj->data = record.data;
     return ePAR_OK;
 }
 
 /**
- * @brief Write one fixed-slot-with-size record.
+ * @brief Write one fixed-slot-with-size record to NVM.
  *
- * @param p_store Mounted storage backend.
- * @param addr Serialized record address.
- * @param par_num Unused live parameter number.
- * @param p_obj Input canonical payload view.
+ * @param p_store Storage backend API.
+ * @param addr Record start address.
+ * @param par_num Live parameter number.
+ * @param p_obj Canonical object to serialize.
  * @return Operation status.
  */
 par_status_t par_nvm_layout_write(const par_store_backend_api_t * const p_store,
@@ -123,7 +115,7 @@ par_status_t par_nvm_layout_write(const par_store_backend_api_t * const p_store,
                                   const par_num_t par_num,
                                   const par_nvm_data_obj_t * const p_obj)
 {
-    par_nvm_layout_record_t record = { 0U };
+    par_nvm_layout_fixed_slot_with_size_record_t record = { 0U };
 
     (void)par_num;
     PAR_ASSERT((NULL != p_store) && (NULL != p_obj));
@@ -131,7 +123,11 @@ par_status_t par_nvm_layout_write(const par_store_backend_api_t * const p_store,
     record.id = p_obj->id;
     record.size = PAR_NVM_RECORD_DATA_SLOT_SIZE;
     record.data = p_obj->data;
-    record.crc = par_nvm_layout_calc_crc(record.id, record.size, (const uint8_t * const)&record.data, PAR_NVM_RECORD_DATA_SLOT_SIZE, true);
+    record.crc = par_nvm_layout_calc_crc_with_id(record.id,
+                                                 record.size,
+                                                 (const uint8_t * const)&record.data,
+                                                 PAR_NVM_RECORD_DATA_SLOT_SIZE,
+                                                 true);
 
     return (ePAR_OK == p_store->write(addr, PAR_NVM_LAYOUT_RECORD_SIZE, (const uint8_t *)&record)) ? ePAR_OK : ePAR_ERROR_NVM;
 }

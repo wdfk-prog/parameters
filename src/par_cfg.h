@@ -77,13 +77,20 @@
  * @brief Enable/Disable parameter-table compatibility checking.
  *
  * @note The stored NVM image header carries a table-ID digest that covers
- * PAR_CFG_TABLE_ID_SCHEMA_VER, selected record layout, persistent-parameter
- * count, persistent order, parameter type, and parameter ID.
+ * PAR_CFG_TABLE_ID_SCHEMA_VER, selected record layout, and the stored
+ * persistent prefix. Self-describing layouts include parameter IDs in that
+ * digest. Payload-only layouts intentionally exclude external parameter IDs
+ * and hash only prefix count, persistent order, and parameter type so stored
+ * prefixes with identical byte layout remain compatible.
  *
- * When enabled, any persisted-layout incompatibility is treated as a managed.
+ * When enabled, any persisted-layout incompatibility is treated as a managed
  * schema change: startup restores defaults and rebuilds the managed NVM image.
- * This includes add/remove/reorder/type/ID changes of persistent parameters,
- * and transitions between persistent and non-persistent state.
+ * Layouts with stable prefix addresses allow compatible tail-slot growth when
+ * the stored prefix still matches the live prefix. The grouped payload-only
+ * layout is excluded from that repair path and rebuilds on any stored/live
+ * count mismatch. Payload-only layouts therefore still require the integrator
+ * to bump PAR_CFG_TABLE_ID_SCHEMA_VER whenever a prefix parameter is
+ * semantically remapped without changing its serialized byte layout.
  *
  * @pre "PAR_CFG_NVM_EN" must be enabled, otherwise table-ID checking does.
  * not apply.
@@ -116,9 +123,32 @@
 #define PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE (0U)
 #define PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE   (1U)
 #define PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD      (2U)
+#define PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY   (3U)
+#define PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY (4U)
 
 #ifndef PAR_CFG_NVM_RECORD_LAYOUT
 #define PAR_CFG_NVM_RECORD_LAYOUT (PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE)
+#endif
+
+/**
+ * @brief Derived layout capability: serialized records store a parameter ID.
+ */
+#if (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE) || \
+    (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE) || \
+    (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD)
+#define PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID (1)
+#else
+#define PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID (0)
+#endif
+
+/**
+ * @brief Derived layout capability: serialized records store a size descriptor.
+ */
+#if (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE) || \
+    (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD)
+#define PAR_CFG_NVM_RECORD_LAYOUT_HAS_SIZE_DESC (1)
+#else
+#define PAR_CFG_NVM_RECORD_LAYOUT_HAS_SIZE_DESC (0)
 #endif
 
 /**
@@ -560,8 +590,28 @@ PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HA
 /**
  * @brief Configuration dependency checks for optional fields/features.
  */
-#if (1 == PAR_CFG_NVM_EN) && (0 == PAR_CFG_ENABLE_ID)
-#error "Parameter settings invalid: NVM requires PAR_CFG_ENABLE_ID = 1!"
+#if (1 == PAR_CFG_NVM_EN) && (0 == PAR_CFG_ENABLE_ID) && \
+    (PAR_CFG_NVM_RECORD_LAYOUT != PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY) && \
+    (PAR_CFG_NVM_RECORD_LAYOUT != PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY)
+#error "Parameter settings invalid: selected NVM layout requires PAR_CFG_ENABLE_ID = 1!"
+#endif
+
+#if (1 == PAR_CFG_NVM_BACKEND_FLASH_EN) && (0 == PAR_CFG_ENABLE_ID)
+#error "Parameter settings invalid: flash backend requires PAR_CFG_ENABLE_ID = 1!"
+#endif
+
+#if (1 == PAR_CFG_NVM_EN) && \
+    ((PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY) || \
+     (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY)) && \
+    (0 == PAR_CFG_TABLE_ID_CHECK_EN)
+#error "Parameter settings invalid: payload-only NVM layouts require PAR_CFG_TABLE_ID_CHECK_EN = 1!"
+#endif
+
+#if (1 == PAR_CFG_NVM_BACKEND_FLASH_EN) && \
+    ((PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE) || \
+     (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY) || \
+     (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY))
+#error "Parameter settings invalid: selected NVM layout is not supported by the flash backend!"
 #endif
 
 #if (0 == PAR_CFG_ENABLE_ID) && (1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK)

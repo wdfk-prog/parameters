@@ -187,6 +187,17 @@ enum
 const par_cfg_t *par_cfg_get_table(void);
 const par_cfg_t *par_cfg_get(const par_num_t par_num);
 /**
+ * @brief Return the compile-time parameter ID for one entry.
+ *
+ * @details This accessor is configuration-independent and remains available
+ * even when PAR_CFG_ENABLE_ID disables the runtime metadata field inside
+ * par_cfg_t.
+ *
+ * @param par_num Parameter number.
+ * @return Parameter ID from par_table.def.
+ */
+uint16_t par_cfg_get_param_id_const(const par_num_t par_num);
+/**
  * @brief Return the number of configuration entries.
  * @return Configuration table size.
  */

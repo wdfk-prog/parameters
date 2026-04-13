@@ -421,6 +421,29 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] = {
 #endif
 
 /**
+ * @brief Configuration-independent compile-time parameter-ID table.
+ */
+#define PAR_ITEM_ID_VALUE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) [enum_] = (uint16_t)(id_),
+static const uint16_t g_par_id_table[ePAR_NUM_OF] = {
+#define PAR_ITEM_U8  PAR_ITEM_ID_VALUE
+#define PAR_ITEM_U16 PAR_ITEM_ID_VALUE
+#define PAR_ITEM_U32 PAR_ITEM_ID_VALUE
+#define PAR_ITEM_I8  PAR_ITEM_ID_VALUE
+#define PAR_ITEM_I16 PAR_ITEM_ID_VALUE
+#define PAR_ITEM_I32 PAR_ITEM_ID_VALUE
+#define PAR_ITEM_F32 PAR_ITEM_ID_VALUE
+#include "../../par_table.def"
+#undef PAR_ITEM_U8
+#undef PAR_ITEM_U16
+#undef PAR_ITEM_U32
+#undef PAR_ITEM_I8
+#undef PAR_ITEM_I16
+#undef PAR_ITEM_I32
+#undef PAR_ITEM_F32
+};
+#undef PAR_ITEM_ID_VALUE
+
+/**
  * @brief Table size in bytes.
  */
 static const uint32_t gu32_par_table_size = sizeof(g_par_table);
@@ -449,6 +472,18 @@ const par_cfg_t *par_cfg_get_table(void)
 const par_cfg_t *par_cfg_get(const par_num_t par_num)
 {
     return &g_par_table[par_num];
+}
+
+/**
+ * @brief Return the compile-time parameter ID for one entry.
+ *
+ * @param par_num Parameter number.
+ * @return Parameter ID from the generated parameter table.
+ */
+uint16_t par_cfg_get_param_id_const(const par_num_t par_num)
+{
+    PAR_ASSERT(par_num < ePAR_NUM_OF);
+    return g_par_id_table[par_num];
 }
 /**
  * @brief Get configuration table size in bytes.

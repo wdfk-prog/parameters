@@ -23,20 +23,21 @@
 #endif
 
 /**
- * @brief Serialized record size in bytes.
+ * @brief Serialized size of one fixed-slot record without a size field.
  *
- * @details This backend stores `id(2) + crc(1) + data(4)` as a 7-byte record.
- * A raw C struct is intentionally not used for on-storage I/O here because the
- * 7-byte wire format does not naturally match the default alignment rules of
- * ordinary structs on common targets.
+ * @note The persisted image is always 7 bytes. The macro intentionally avoids
+ * sizeof(record-type) so trailing padding cannot change the serialized format.
  */
-#define PAR_NVM_LAYOUT_RECORD_SIZE (PAR_NVM_RECORD_ID_SIZE + PAR_NVM_RECORD_CRC_SIZE + PAR_NVM_RECORD_DATA_SLOT_SIZE)
+#define PAR_NVM_LAYOUT_RECORD_SIZE (PAR_NVM_RECORD_ID_SIZE + PAR_NVM_RECORD_CRC_SIZE + (uint32_t)PAR_NVM_RECORD_DATA_SLOT_SIZE)
+
+PAR_STATIC_ASSERT(par_nvm_layout_fixed_no_size_payload_slot_is_4_bytes,
+                  (sizeof(((par_nvm_layout_fixed_slot_no_size_record_t *)0)->payload) == 4u));
 
 /**
- * @brief Get serialized record size for one live parameter.
+ * @brief Get serialized record size for one persistent parameter.
  *
  * @param par_num Live parameter number.
- * @return Fixed serialized record size in bytes.
+ * @return Serialized record size in bytes.
  */
 uint32_t par_nvm_layout_record_size_from_par_num(const par_num_t par_num)
 {
@@ -45,12 +46,12 @@ uint32_t par_nvm_layout_record_size_from_par_num(const par_num_t par_num)
 }
 
 /**
- * @brief Resolve record address from persistent slot index.
+ * @brief Resolve record address for the fixed-slot-no-size layout.
  *
- * @param first_data_obj_addr Start address of the first data record.
- * @param persist_idx Persistent slot index.
- * @param p_persist_slot_to_par_num Unused compile-time slot map.
- * @return Start address of the serialized record.
+ * @param first_data_obj_addr Start address of the first persisted object.
+ * @param persist_idx Compile-time persistent slot index.
+ * @param p_persist_slot_to_par_num Persistent-slot to live-parameter mapping.
+ * @return Absolute NVM address of the selected record.
  */
 uint32_t par_nvm_layout_addr_from_persist_idx(const uint32_t first_data_obj_addr,
                                               const uint16_t persist_idx,
@@ -61,16 +62,12 @@ uint32_t par_nvm_layout_addr_from_persist_idx(const uint32_t first_data_obj_addr
 }
 
 /**
- * @brief Read one fixed-slot-without-size record.
+ * @brief Read one fixed-slot-no-size record from NVM.
  *
- * @details Byte-buffer deserialization is used on purpose instead of direct
- * struct I/O so the 7-byte on-storage format stays independent of compiler
- * padding, packing pragmas, and unaligned member-access code generation.
- *
- * @param p_store Mounted storage backend.
- * @param addr Serialized record address.
- * @param par_num Unused live parameter number.
- * @param p_obj Output canonical payload view.
+ * @param p_store Storage backend API.
+ * @param addr Record start address.
+ * @param par_num Live parameter number.
+ * @param p_obj Output canonical object.
  * @return Operation status.
  */
 par_status_t par_nvm_layout_read(const par_store_backend_api_t * const p_store,
@@ -79,8 +76,7 @@ par_status_t par_nvm_layout_read(const par_store_backend_api_t * const p_store,
                                  par_nvm_data_obj_t * const p_obj)
 {
     uint8_t record_buf[PAR_NVM_LAYOUT_RECORD_SIZE] = { 0U };
-    uint32_t payload_raw = 0U;
-    uint8_t crc_stored = 0U;
+    par_type_t payload_raw = { 0U };
     uint8_t crc_calc = 0U;
 
     (void)par_num;
@@ -93,30 +89,29 @@ par_status_t par_nvm_layout_read(const par_store_backend_api_t * const p_store,
     }
 
     memcpy(&p_obj->id, &record_buf[0], sizeof(p_obj->id));
-    crc_stored = record_buf[PAR_NVM_RECORD_ID_SIZE];
     memcpy(&payload_raw, &record_buf[PAR_NVM_RECORD_ID_SIZE + PAR_NVM_RECORD_CRC_SIZE], sizeof(payload_raw));
 
-    crc_calc = par_nvm_layout_calc_crc(p_obj->id, 0U, (const uint8_t * const)&payload_raw, PAR_NVM_RECORD_DATA_SLOT_SIZE, false);
-    if (crc_calc != crc_stored)
+    crc_calc = par_nvm_layout_calc_crc_with_id(p_obj->id,
+                                               0U,
+                                               (const uint8_t * const)&payload_raw,
+                                               PAR_NVM_RECORD_DATA_SLOT_SIZE,
+                                               false);
+    if (crc_calc != record_buf[PAR_NVM_RECORD_ID_SIZE])
     {
         return ePAR_ERROR_CRC;
     }
 
-    memcpy(&p_obj->data, &payload_raw, sizeof(payload_raw));
+    p_obj->data = payload_raw;
     return ePAR_OK;
 }
 
 /**
- * @brief Write one fixed-slot-without-size record.
+ * @brief Write one fixed-slot-no-size record to NVM.
  *
- * @details Byte-buffer serialization is used on purpose instead of direct
- * struct I/O so the 7-byte on-storage format stays stable across compiler
- * padding and alignment choices.
- *
- * @param p_store Mounted storage backend.
- * @param addr Serialized record address.
- * @param par_num Unused live parameter number.
- * @param p_obj Input canonical payload view.
+ * @param p_store Storage backend API.
+ * @param addr Record start address.
+ * @param par_num Live parameter number.
+ * @param p_obj Canonical object to serialize.
  * @return Operation status.
  */
 par_status_t par_nvm_layout_write(const par_store_backend_api_t * const p_store,
@@ -125,13 +120,17 @@ par_status_t par_nvm_layout_write(const par_store_backend_api_t * const p_store,
                                   const par_nvm_data_obj_t * const p_obj)
 {
     uint8_t record_buf[PAR_NVM_LAYOUT_RECORD_SIZE] = { 0U };
-    uint32_t payload_raw = 0U;
+    par_type_t payload_raw = p_obj->data;
     uint8_t crc = 0U;
 
     (void)par_num;
     PAR_ASSERT((NULL != p_store) && (NULL != p_obj));
-    memcpy(&payload_raw, &p_obj->data, sizeof(payload_raw));
-    crc = par_nvm_layout_calc_crc(p_obj->id, 0U, (const uint8_t * const)&payload_raw, PAR_NVM_RECORD_DATA_SLOT_SIZE, false);
+
+    crc = par_nvm_layout_calc_crc_with_id(p_obj->id,
+                                          0U,
+                                          (const uint8_t * const)&payload_raw,
+                                          PAR_NVM_RECORD_DATA_SLOT_SIZE,
+                                          false);
 
     memcpy(&record_buf[0], &p_obj->id, sizeof(p_obj->id));
     record_buf[PAR_NVM_RECORD_ID_SIZE] = crc;

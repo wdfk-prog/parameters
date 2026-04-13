@@ -47,8 +47,12 @@
  * the stored digest when table-ID checking is enabled.
  *
  * A mismatch means the managed NVM image is no longer compatible with the live
- * firmware image. Typical causes are an intentional schema-version bump, a
- * change in persisted-parameter order/type/ID, or stored-image corruption.
+ * firmware image. Typical causes are an intentional schema-version bump,
+ * stored-prefix layout drift, or stored-image corruption. Self-describing
+ * layouts treat persisted-parameter ID changes as incompatible. The fixed
+ * payload-only layout intentionally allows pure external-ID renumbering and
+ * compatible tail growth, while the grouped payload-only layout rebuilds on
+ * any stored/live count mismatch.
  * The recovery path is centralized in par_nvm_init(): restore defaults first,
  * then rebuild the managed NVM image only for errors that require a rewrite.
  */
@@ -125,10 +129,26 @@ typedef struct
     uint16_t loaded_count;                            /**< Number of runtime-loaded persistent slots. */
 } par_nvm_slot_runtime_t;
 
+/**
+ * @brief Result of comparing the stored NVM image against the live schema.
+ */
+typedef enum
+{
+    ePAR_NVM_COMPAT_REBUILD = 0, /**< Stored image is incompatible and must be rebuilt. */
+    ePAR_NVM_COMPAT_EXACT_MATCH, /**< Stored image matches the live schema exactly. */
+    ePAR_NVM_COMPAT_PREFIX_APPEND /**< Stored prefix is compatible and new tail slots may be appended. */
+} par_nvm_compat_result_t;
+
 #if (1 == PAR_CFG_ENABLE_NAME)
 #define PAR_NVM_DBG_NAME_ARG(cfg_) (((const par_cfg_t *)(cfg_) != NULL) && (((const par_cfg_t *)(cfg_))->name != NULL) ? ((const par_cfg_t *)(cfg_))->name : "")
 #else
 #define PAR_NVM_DBG_NAME_ARG(cfg_) ""
+#endif
+
+#if (1 == PAR_CFG_ENABLE_ID)
+#define PAR_NVM_CFG_ID_VALUE(cfg_) (((const par_cfg_t *)(cfg_)) != NULL ? ((const par_cfg_t *)(cfg_))->id : 0U)
+#else
+#define PAR_NVM_CFG_ID_VALUE(cfg_) (0U)
 #endif
 
 #define PAR_PERSIST_SLOT_ENTRY_SELECT(enum_, pers_)   PAR_PERSIST_SLOT_ENTRY_SELECT_I(enum_, pers_)
@@ -194,7 +214,233 @@ static const par_store_backend_api_t *gp_store = NULL;
 static par_nvm_slot_runtime_t g_par_nvm_slot_runtime = { 0 };
 
 /**
- * @brief Calculate per-record CRC-8 over serialized record bytes.
+ * @brief Resolve natural payload size from parameter type.
+ *
+ * @param type Parameter type.
+ * @return Natural payload width in bytes.
+ */
+uint8_t par_nvm_layout_payload_size_from_type(const par_type_list_t type)
+{
+    switch (type)
+    {
+    case ePAR_TYPE_U8:
+    case ePAR_TYPE_I8:
+        return 1U;
+
+    case ePAR_TYPE_U16:
+    case ePAR_TYPE_I16:
+        return 2U;
+
+    case ePAR_TYPE_U32:
+    case ePAR_TYPE_I32:
+#if (1 == PAR_CFG_ENABLE_TYPE_F32)
+    case ePAR_TYPE_F32:
+#endif
+        return 4U;
+
+    case ePAR_TYPE_NUM_OF:
+    default:
+        PAR_ASSERT(0);
+        return PAR_NVM_RECORD_DATA_SLOT_SIZE;
+    }
+}
+
+/**
+ * @brief Resolve one persistent slot payload width.
+ *
+ * @param par_num Live parameter number.
+ * @return Natural payload width in bytes.
+ */
+uint8_t par_nvm_layout_payload_size_from_par_num(const par_num_t par_num)
+{
+    const par_cfg_t * const p_cfg = par_get_config(par_num);
+
+    PAR_ASSERT(NULL != p_cfg);
+    return par_nvm_layout_payload_size_from_type(p_cfg->type);
+}
+
+/**
+ * @brief Serialize one parameter value to native-endian payload bytes.
+ *
+ * @param type Parameter type.
+ * @param p_data Canonical parameter value.
+ * @param p_payload Output payload buffer.
+ */
+void par_nvm_layout_pack_payload_bytes(const par_type_list_t type,
+                                       const par_type_t * const p_data,
+                                       uint8_t * const p_payload)
+{
+    PAR_ASSERT((NULL != p_data) && (NULL != p_payload));
+
+    switch (type)
+    {
+    case ePAR_TYPE_U8:
+    {
+        const uint8_t value = p_data->u8;
+        memcpy(p_payload, &value, sizeof(value));
+        break;
+    }
+
+    case ePAR_TYPE_I8:
+    {
+        const int8_t value = p_data->i8;
+        memcpy(p_payload, &value, sizeof(value));
+        break;
+    }
+
+    case ePAR_TYPE_U16:
+    {
+        const uint16_t value = p_data->u16;
+        memcpy(p_payload, &value, sizeof(value));
+        break;
+    }
+
+    case ePAR_TYPE_I16:
+    {
+        const int16_t value = p_data->i16;
+        memcpy(p_payload, &value, sizeof(value));
+        break;
+    }
+
+    case ePAR_TYPE_U32:
+    {
+        const uint32_t value = p_data->u32;
+        memcpy(p_payload, &value, sizeof(value));
+        break;
+    }
+
+    case ePAR_TYPE_I32:
+    {
+        const int32_t value = p_data->i32;
+        memcpy(p_payload, &value, sizeof(value));
+        break;
+    }
+
+#if (1 == PAR_CFG_ENABLE_TYPE_F32)
+    case ePAR_TYPE_F32:
+    {
+        const float32_t value = p_data->f32;
+        memcpy(p_payload, &value, sizeof(value));
+        break;
+    }
+#endif
+
+    case ePAR_TYPE_NUM_OF:
+    default:
+        PAR_ASSERT(0);
+        break;
+    }
+}
+
+/**
+ * @brief Deserialize native-endian payload bytes into the canonical value carrier.
+ *
+ * @param type Parameter type.
+ * @param p_payload Input payload buffer.
+ * @param p_data Output canonical parameter value.
+ */
+void par_nvm_layout_unpack_payload_bytes(const par_type_list_t type,
+                                         const uint8_t * const p_payload,
+                                         par_type_t * const p_data)
+{
+    PAR_ASSERT((NULL != p_payload) && (NULL != p_data));
+
+    switch (type)
+    {
+    case ePAR_TYPE_U8:
+    {
+        uint8_t value = 0U;
+        memcpy(&value, p_payload, sizeof(value));
+        p_data->u8 = value;
+        break;
+    }
+
+    case ePAR_TYPE_I8:
+    {
+        int8_t value = 0;
+        memcpy(&value, p_payload, sizeof(value));
+        p_data->i8 = value;
+        break;
+    }
+
+    case ePAR_TYPE_U16:
+    {
+        uint16_t value = 0U;
+        memcpy(&value, p_payload, sizeof(value));
+        p_data->u16 = value;
+        break;
+    }
+
+    case ePAR_TYPE_I16:
+    {
+        int16_t value = 0;
+        memcpy(&value, p_payload, sizeof(value));
+        p_data->i16 = value;
+        break;
+    }
+
+    case ePAR_TYPE_U32:
+    {
+        uint32_t value = 0U;
+        memcpy(&value, p_payload, sizeof(value));
+        p_data->u32 = value;
+        break;
+    }
+
+    case ePAR_TYPE_I32:
+    {
+        int32_t value = 0;
+        memcpy(&value, p_payload, sizeof(value));
+        p_data->i32 = value;
+        break;
+    }
+
+#if (1 == PAR_CFG_ENABLE_TYPE_F32)
+    case ePAR_TYPE_F32:
+    {
+        float32_t value = 0.0f;
+        memcpy(&value, p_payload, sizeof(value));
+        p_data->f32 = value;
+        break;
+    }
+#endif
+
+    case ePAR_TYPE_NUM_OF:
+    default:
+        PAR_ASSERT(0);
+        break;
+    }
+}
+
+/**
+ * @brief Calculate per-record CRC-8 over serialized record bytes without an ID field.
+ *
+ * @param size_desc Serialized size descriptor.
+ * @param p_payload Pointer to payload bytes.
+ * @param payload_size Number of payload bytes.
+ * @param include_size_desc True when the layout includes a size field.
+ * @return Calculated CRC-8 value.
+ */
+uint8_t par_nvm_layout_calc_crc(const uint8_t size_desc,
+                                const uint8_t * const p_payload,
+                                const uint8_t payload_size,
+                                const bool include_size_desc)
+{
+    uint8_t crc = PAR_IF_CRC8_INIT;
+
+    PAR_ASSERT(NULL != p_payload);
+
+    if (include_size_desc)
+    {
+        crc = par_if_crc8_accumulate(crc, (const uint8_t * const)&size_desc, (uint32_t)sizeof(size_desc));
+    }
+    crc = par_if_crc8_accumulate(crc, p_payload, (uint32_t)payload_size);
+
+    return crc;
+}
+
+/**
+ * @brief Calculate per-record CRC-8 over serialized record bytes with an ID field.
  *
  * @param id Parameter ID.
  * @param size_desc Serialized size descriptor.
@@ -203,11 +449,11 @@ static par_nvm_slot_runtime_t g_par_nvm_slot_runtime = { 0 };
  * @param include_size_desc True when the layout includes a size field.
  * @return Calculated CRC-8 value.
  */
-uint8_t par_nvm_layout_calc_crc(const uint16_t id,
-                                const uint8_t size_desc,
-                                const uint8_t * const p_payload,
-                                const uint8_t payload_size,
-                                const bool include_size_desc)
+uint8_t par_nvm_layout_calc_crc_with_id(const uint16_t id,
+                                        const uint8_t size_desc,
+                                        const uint8_t * const p_payload,
+                                        const uint8_t payload_size,
+                                        const bool include_size_desc)
 {
     uint8_t crc = PAR_IF_CRC8_INIT;
 
@@ -293,7 +539,7 @@ static par_status_t par_nvm_write_header(const uint16_t num_of_par)
     uint8_t head_buf[PAR_NVM_HEAD_SIZE] = { 0U };
 
     head_obj.obj_nb = num_of_par;
-    head_obj.table_id = par_nvm_table_id_calc();
+    head_obj.table_id = par_nvm_table_id_calc_for_count(num_of_par);
     head_obj.crc = par_nvm_calc_head_crc(&head_obj);
     head_obj.sign = PAR_NVM_SIGN;
 
@@ -416,7 +662,7 @@ par_status_t par_nvm_print_nvm_lut(void)
         PAR_DBG_PRINT(
             " %u	%u	0x%08lX	%lu	%u	%s",
             (unsigned)persist_idx,
-            (unsigned)par_get_config(par_num)->id,
+            (unsigned)PAR_NVM_CFG_ID_VALUE(par_get_config(par_num)),
             (unsigned long)par_nvm_addr_from_persist_idx(persist_idx),
             (unsigned long)par_nvm_layout_record_size_from_par_num(par_num),
             (unsigned)g_par_nvm_slot_runtime.loaded_slots[persist_idx],
@@ -450,31 +696,66 @@ static void par_nvm_build_new_nvm_lut(void)
     par_nvm_print_nvm_lut();
 }
 /**
- * @brief Get parameter NVM object start address based on its ID.
+ * @brief Get parameter NVM object start address from the compile-time persistent slot.
  *
- * @note In case ID is not found there is a problem with building the.
- * NVM lut!!!
- *
- * @param id Parameter ID.
- * @return NVM address of object with ID.
+ * @param par_num Live parameter number.
+ * @return NVM address of the persistent slot, or 0 when mapping is invalid.
  */
-static uint32_t par_nvm_get_nvm_lut_addr(const uint16_t id)
+static uint32_t par_nvm_get_nvm_lut_addr(const par_num_t par_num)
 {
-    par_num_t par_num = 0U;
-    const par_cfg_t *par_cfg = NULL;
+    const par_cfg_t * const par_cfg = par_get_config(par_num);
 
-    if (ePAR_OK != par_get_num_by_id(id, &par_num))
-    {
-        return 0U;
-    }
-
-    par_cfg = par_get_config(par_num);
     if ((NULL == par_cfg) || (false == par_cfg->persistent) || (par_cfg->persist_idx >= PAR_PERSISTENT_COMPILE_COUNT))
     {
         return 0U;
     }
 
     return par_nvm_addr_from_persist_idx(par_cfg->persist_idx);
+}
+
+/**
+ * @brief Check compatibility between the stored image and the live schema.
+ *
+ * @details Compatibility is evaluated against the stored persistent prefix
+ * size from the validated NVM header. Every layout requires that the live
+ * firmware still exposes at least that many persistent slots and that the
+ * stored digest matches the live digest for exactly that prefix length.
+ * Layouts with stored IDs include the external parameter ID in the digest,
+ * so prefix ID renumbering still rebuilds the image there. The fixed
+ * payload-only layout excludes external parameter IDs and validates only
+ * stored-prefix byte-layout compatibility, so pure external-ID renumbering
+ * stays compatible there. The grouped payload-only layout is stricter:
+ * because regrouping depends on the full live persistent set, any stored/live
+ * count mismatch rebuilds instead of attempting tail append. Semantic-only
+ * prefix remaps that keep the same byte layout still require an explicit
+ * PAR_CFG_TABLE_ID_SCHEMA_VER bump.
+ *
+ * @param p_head_obj Validated stored NVM header.
+ * @return Compatibility result.
+ */
+static par_nvm_compat_result_t par_nvm_check_compat(const par_nvm_head_obj_t * const p_head_obj)
+{
+    PAR_ASSERT(NULL != p_head_obj);
+
+    if (p_head_obj->obj_nb > (uint16_t)PAR_PERSISTENT_COMPILE_COUNT)
+    {
+        return ePAR_NVM_COMPAT_REBUILD;
+    }
+
+    if (p_head_obj->table_id != par_nvm_table_id_calc_for_count(p_head_obj->obj_nb))
+    {
+        return ePAR_NVM_COMPAT_REBUILD;
+    }
+
+#if (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY)
+    return (p_head_obj->obj_nb == (uint16_t)PAR_PERSISTENT_COMPILE_COUNT) ?
+               ePAR_NVM_COMPAT_EXACT_MATCH :
+               ePAR_NVM_COMPAT_REBUILD;
+#else
+    return (p_head_obj->obj_nb == (uint16_t)PAR_PERSISTENT_COMPILE_COUNT) ?
+               ePAR_NVM_COMPAT_EXACT_MATCH :
+               ePAR_NVM_COMPAT_PREFIX_APPEND;
+#endif
 }
 
 /**
@@ -485,8 +766,10 @@ static uint32_t par_nvm_get_nvm_lut_addr(const uint16_t id)
  *   slot count, the image is treated as incompatible and the caller rebuilds
  *   the managed NVM area from current defaults.
  * - If the stored header count is smaller than the compile-time persistent
- *   slot count, the stored prefix is restored first and the missing tail slots
- *   are appended from live defaults before the header count is rewritten.
+ *   slot count, compatible layouts restore the stored prefix first and append
+ *   the missing tail slots from live defaults before rewriting the header
+ *   count. The grouped payload-only layout is excluded from that repair path
+ *   and rebuilds on any stored/live count mismatch.
  *
  * @param num_of_par Number of stored parameters inside NVM.
  * @return Status of operation.
@@ -550,25 +833,39 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
         {
             status = op_status;
             err.reason = (ePAR_ERROR_CRC == op_status) ? "crc-mismatch" : "read-failed";
+#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
             err.stored_id = obj_data.id;
+#else
+            err.stored_id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
+#endif
             goto out;
         }
 
-        if (obj_data.id != par_cfg->id)
+#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
+        if (obj_data.id != PAR_NVM_CFG_ID_VALUE(par_cfg))
         {
             status = ePAR_ERROR;
             err.reason = "id-mismatch";
+#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
             err.stored_id = obj_data.id;
+#else
+            err.stored_id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
+#endif
             op_status = status;
             goto out;
         }
+#endif
 
         op_status = par_set_fast(par_num, &obj_data.data);
         if (ePAR_OK != op_status)
         {
             status |= op_status;
             err.reason = "restore-failed";
+#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
             err.stored_id = obj_data.id;
+#else
+            err.stored_id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
+#endif
             goto out;
         }
 
@@ -601,7 +898,7 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
         if (ePAR_OK != (status & ePAR_STATUS_ERROR_MASK))
         {
             err.reason = "append-save-failed";
-            err.stored_id = par_cfg->id;
+            err.stored_id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
             op_status = status;
             goto out;
         }
@@ -648,7 +945,7 @@ out:
             (unsigned long)par_nvm_addr_from_persist_idx(i),
             (unsigned)err.stored_id,
             (unsigned)((i < PAR_PERSIST_SLOT_MAP_CAPACITY) ? g_par_persist_slot_to_par_num[i] : 0U),
-            (unsigned)((i < PAR_PERSIST_SLOT_MAP_CAPACITY) ? par_get_config(g_par_persist_slot_to_par_num[i])->id : 0U),
+            (unsigned)((i < PAR_PERSIST_SLOT_MAP_CAPACITY) ? PAR_NVM_CFG_ID_VALUE(par_get_config(g_par_persist_slot_to_par_num[i])) : 0U),
             PAR_NVM_DBG_NAME_ARG((i < PAR_PERSIST_SLOT_MAP_CAPACITY) ? par_get_config(g_par_persist_slot_to_par_num[i]) : NULL),
             err.reason,
             par_get_status_str(op_status),
@@ -766,22 +1063,34 @@ par_status_t par_nvm_init(void)
     detect_status = par_nvm_validate_header(&head_obj);
 
 #if (1 == PAR_CFG_TABLE_ID_CHECK_EN)
-    /* Step 2: validate table-ID only when header is valid */
+    /* Step 2: validate table compatibility only when header is valid */
     if (ePAR_OK == (detect_status & ePAR_STATUS_ERROR_MASK))
     {
-        const uint32_t live_table_id = par_nvm_table_id_calc();
-        if (head_obj.table_id != live_table_id)
+        const par_nvm_compat_result_t compat = par_nvm_check_compat(&head_obj);
+
+        if (ePAR_NVM_COMPAT_REBUILD == compat)
         {
             detect_status |= ePAR_ERROR_TABLE_ID;
         }
-    }
-#endif
+        else
+        {
+            if (ePAR_NVM_COMPAT_PREFIX_APPEND == compat)
+            {
+                PAR_INFO_PRINT("PAR_NVM: stored persistent prefix is compatible, restore=%u append=%u",
+                               (unsigned)head_obj.obj_nb,
+                               (unsigned)((uint16_t)PAR_PERSISTENT_COMPILE_COUNT - head_obj.obj_nb));
+            }
 
-    /* Step 3: load payload only when previous checks are valid */
+            detect_status |= par_nvm_load_all(head_obj.obj_nb);
+        }
+    }
+#else
+    /* Step 2: load payload only when header is valid */
     if (ePAR_OK == (detect_status & ePAR_STATUS_ERROR_MASK))
     {
         detect_status |= par_nvm_load_all(head_obj.obj_nb);
     }
+#endif
 
     /* Step 4: classify recovery action from detected issues */
     if (0U != (detect_status & ePAR_ERROR_TABLE_ID))
@@ -924,17 +1233,19 @@ par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)
     uint32_t par_addr = 0UL;
     par_status_t store_status = ePAR_OK;
 
-    PAR_DBG_PRINT("PAR_NVM: writing persistent parameter, par_num=%u id=%u", (unsigned)par_num, (unsigned)par_cfg->id);
+    PAR_DBG_PRINT("PAR_NVM: writing persistent parameter, par_num=%u id=%u", (unsigned)par_num, (unsigned)PAR_NVM_CFG_ID_VALUE(par_cfg));
     (void)par_get(par_num, &obj_data.data);
-    obj_data.id = par_cfg->id;
-    par_addr = par_nvm_get_nvm_lut_addr(obj_data.id);
+#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
+    obj_data.id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
+#endif
+    par_addr = par_nvm_get_nvm_lut_addr(par_num);
     store_status = par_nvm_layout_write(gp_store, par_addr, par_num, &obj_data);
     if (ePAR_OK != store_status)
     {
         status |= ePAR_ERROR_NVM;
         PAR_ERR_PRINT("PAR_NVM: parameter write failed, par_num=%u id=%u addr=0x%08lX err=%u",
                       (unsigned)par_num,
-                      (unsigned)obj_data.id,
+                      (unsigned)PAR_NVM_CFG_ID_VALUE(par_cfg),
                       (unsigned long)par_addr,
                       (unsigned)store_status);
     }
@@ -987,8 +1298,8 @@ par_status_t par_nvm_write_all(void)
                 {
                     PAR_ERR_PRINT("PAR_NVM: bulk write aborted, par_num=%u id=%u addr=0x%08lX err=%u",
                                   (unsigned)par_num,
-                                  (unsigned)par_get_config(par_num)->id,
-                                  (unsigned long)par_nvm_get_nvm_lut_addr(par_get_config(par_num)->id),
+                                  (unsigned)PAR_NVM_CFG_ID_VALUE(par_get_config(par_num)),
+                                  (unsigned long)par_nvm_get_nvm_lut_addr(par_num),
                                   (unsigned)status);
                     break;
                 }
