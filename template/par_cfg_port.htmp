@@ -3,6 +3,7 @@
 /* Optional platform overrides */
 /* #define PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK            ( 0 ) */
 /* #define PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK ( 0 ) */
+/* #define PAR_CFG_NVM_WRITE_VERIFY_EN                   ( 0 ) */
 /* #define PAR_CFG_NVM_RECORD_LAYOUT                  ( PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE ) */
 /*    or PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE */
 /*    or PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD */

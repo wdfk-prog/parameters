@@ -29,24 +29,91 @@
  * @details All offsets are relative to the storage region reserved for the
  * parameter image. The backend owns any region, partition, or device-specific
  * context needed to execute the operation.
+ *
+ * If the selected storage medium provides ECC or other read-health reporting,
+ * policy handling is intentionally left above this abstraction. The backend
+ * may log or expose such information through its own implementation-specific
+ * means, but the parameter core does not mandate whether the application must
+ * rebuild, reset, continue running, or only report the event. That recovery
+ * decision belongs to the business layer because acceptable behavior is
+ * product-specific.
  */
 typedef struct
 {
-    /** @brief Initialize the storage backend. */
+    /**
+     * @brief Initialize the storage backend.
+     *
+     * @details Prepare the reserved storage region for later byte-addressable
+     * access. This may mount a partition, initialize a driver, or verify the
+     * backend context required by the concrete implementation.
+     *
+     * @return ePAR_OK on success, otherwise an implementation-defined error.
+     */
     par_status_t (*init)(void);
-    /** @brief Deinitialize the storage backend. */
+    /**
+     * @brief Deinitialize the storage backend.
+     *
+     * @details Release resources acquired by @ref init when the parameter
+     * module owns backend initialization.
+     *
+     * @return ePAR_OK on success, otherwise an implementation-defined error.
+     */
     par_status_t (*deinit)(void);
-    /** @brief Query whether the storage backend is initialized. */
+    /**
+     * @brief Query whether the storage backend is initialized.
+     *
+     * @param[out] p_is_init Receives the backend initialization state.
+     * Must not be NULL.
+     *
+     * @return ePAR_OK when the state was reported successfully, otherwise an
+     * implementation-defined error.
+     */
     par_status_t (*is_init)(bool * const p_is_init);
-    /** @brief Read raw bytes from the storage backend. */
+    /**
+     * @brief Read raw bytes from the storage backend.
+     *
+     * @param[in] addr Byte offset inside the reserved parameter-storage region.
+     * @param[in] size Number of bytes to read.
+     * @param[out] p_buf Destination buffer that receives @p size bytes.
+     * Must not be NULL.
+     *
+     * @return ePAR_OK on success, otherwise an implementation-defined error.
+     */
     par_status_t (*read)(const uint32_t addr, const uint32_t size, uint8_t * const p_buf);
-    /** @brief Write raw bytes to the storage backend. */
+    /**
+     * @brief Write raw bytes to the storage backend.
+     *
+     * @param[in] addr Byte offset inside the reserved parameter-storage region.
+     * @param[in] size Number of bytes to write.
+     * @param[in] p_buf Source buffer that provides @p size bytes.
+     * Must not be NULL.
+     *
+     * @return ePAR_OK on success, otherwise an implementation-defined error.
+     */
     par_status_t (*write)(const uint32_t addr, const uint32_t size, const uint8_t * const p_buf);
-    /** @brief Erase raw bytes in the storage backend. */
+    /**
+     * @brief Erase raw bytes in the storage backend.
+     *
+     * @param[in] addr Byte offset inside the reserved parameter-storage region.
+     * @param[in] size Number of bytes to erase.
+     *
+     * @return ePAR_OK on success, otherwise an implementation-defined error.
+     */
     par_status_t (*erase)(const uint32_t addr, const uint32_t size);
-    /** @brief Flush pending backend data to the final storage medium. */
+    /**
+     * @brief Flush pending backend data to the final storage medium.
+     *
+     * @details Call this after writes or erases when the backend may stage data
+     * in RAM, caches, controller FIFOs, or deferred commit queues.
+     *
+     * @return ePAR_OK on success, otherwise an implementation-defined error.
+     */
     par_status_t (*sync)(void);
-    /** @brief Optional backend name for diagnostics. */
+    /**
+     * @brief Optional backend name for diagnostics.
+     *
+     * @details Set to NULL when no human-readable backend name is available.
+     */
     const char *name;
 } par_store_backend_api_t;
 

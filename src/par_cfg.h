@@ -115,6 +115,17 @@
 #endif
 
 /**
+ * @brief Enable/Disable write-path readback verification for persisted data.
+ *
+ * @details When enabled, each persisted-record write and each header write are
+ * followed by a backend sync and a readback verification step. This improves
+ * reliability at the cost of additional latency and backend traffic.
+ */
+#ifndef PAR_CFG_NVM_WRITE_VERIFY_EN
+#define PAR_CFG_NVM_WRITE_VERIFY_EN (0)
+#endif
+
+/**
  * @brief Select persisted record layout.
  *
  * @note The chosen layout is also included in the table-ID digest so layout
@@ -134,7 +145,7 @@
  * @brief Derived layout capability: serialized records store a parameter ID.
  */
 #if (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE) || \
-    (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE) || \
+    (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE) ||   \
     (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD)
 #define PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID (1)
 #else
@@ -590,7 +601,7 @@ PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HA
 /**
  * @brief Configuration dependency checks for optional fields/features.
  */
-#if (1 == PAR_CFG_NVM_EN) && (0 == PAR_CFG_ENABLE_ID) && \
+#if (1 == PAR_CFG_NVM_EN) && (0 == PAR_CFG_ENABLE_ID) &&                           \
     (PAR_CFG_NVM_RECORD_LAYOUT != PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY) && \
     (PAR_CFG_NVM_RECORD_LAYOUT != PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY)
 #error "Parameter settings invalid: selected NVM layout requires PAR_CFG_ENABLE_ID = 1!"
@@ -600,14 +611,14 @@ PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HA
 #error "Parameter settings invalid: flash backend requires PAR_CFG_ENABLE_ID = 1!"
 #endif
 
-#if (1 == PAR_CFG_NVM_EN) && \
-    ((PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY) || \
+#if (1 == PAR_CFG_NVM_EN) &&                                                           \
+    ((PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY) ||    \
      (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY)) && \
     (0 == PAR_CFG_TABLE_ID_CHECK_EN)
 #error "Parameter settings invalid: payload-only NVM layouts require PAR_CFG_TABLE_ID_CHECK_EN = 1!"
 #endif
 
-#if (1 == PAR_CFG_NVM_BACKEND_FLASH_EN) && \
+#if (1 == PAR_CFG_NVM_BACKEND_FLASH_EN) &&                                          \
     ((PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE) || \
      (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY) || \
      (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY))

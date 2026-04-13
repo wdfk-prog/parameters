@@ -73,16 +73,6 @@
 #include "persist/par_nvm_layout.h"
 #include "persist/par_nvm_table_id.h"
 /**
- * @brief Parameter NVM header object.
- */
-typedef struct
-{
-    uint32_t sign;      /**< Signature in host order. */
-    uint16_t obj_nb;    /**< Stored data object number in host order. */
-    uint32_t table_id;  /**< Stored parameter-table ID in platform-native order. */
-    uint16_t crc;       /**< Header CRC-16 over serialized obj_nb and table_id. */
-} par_nvm_head_obj_t;
-/**
  * @brief Compile-time definitions.
  */
 /**
@@ -128,16 +118,6 @@ typedef struct
     bool loaded_slots[PAR_PERSIST_SLOT_MAP_CAPACITY]; /**< Runtime-loaded flag for each compiled persistent slot. */
     uint16_t loaded_count;                            /**< Number of runtime-loaded persistent slots. */
 } par_nvm_slot_runtime_t;
-
-/**
- * @brief Result of comparing the stored NVM image against the live schema.
- */
-typedef enum
-{
-    ePAR_NVM_COMPAT_REBUILD = 0, /**< Stored image is incompatible and must be rebuilt. */
-    ePAR_NVM_COMPAT_EXACT_MATCH, /**< Stored image matches the live schema exactly. */
-    ePAR_NVM_COMPAT_PREFIX_APPEND /**< Stored prefix is compatible and new tail slots may be appended. */
-} par_nvm_compat_result_t;
 
 #if (1 == PAR_CFG_ENABLE_NAME)
 #define PAR_NVM_DBG_NAME_ARG(cfg_) (((const par_cfg_t *)(cfg_) != NULL) && (((const par_cfg_t *)(cfg_))->name != NULL) ? ((const par_cfg_t *)(cfg_))->name : "")
@@ -208,6 +188,10 @@ static bool gb_is_nvm_owner = false;
  * specific repository layout.
  */
 static const par_store_backend_api_t *gp_store = NULL;
+/**
+ * @brief Selected persisted-record layout adapter.
+ */
+static const par_nvm_layout_api_t *gp_layout = NULL;
 /**
  * @brief Runtime state of compiled persistent slots.
  */
@@ -521,6 +505,113 @@ static par_status_t par_nvm_read_header(par_nvm_head_obj_t * const p_head_obj)
 
     return status;
 }
+
+/**
+ * @brief Flush pending backend data and normalize sync failures.
+ *
+ * @param p_context Short log context for diagnostics.
+ * @return Operation status.
+ */
+static par_status_t par_nvm_sync_backend(const char * const p_context)
+{
+    const par_status_t sync_status = gp_store->sync();
+
+    if (ePAR_OK != sync_status)
+    {
+        PAR_ERR_PRINT("PAR_NVM: sync failed%s%s err=%u",
+                      (NULL != p_context) ? " " : "",
+                      (NULL != p_context) ? p_context : "",
+                      (unsigned)sync_status);
+        return ePAR_ERROR_NVM;
+    }
+
+    return ePAR_OK;
+}
+
+#if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)
+/**
+ * @brief Verify a freshly written header by reading it back.
+ *
+ * @param p_expected Expected serialized header fields.
+ * @return Operation status.
+ */
+static par_status_t par_nvm_verify_header_readback(const par_nvm_head_obj_t * const p_expected)
+{
+    par_nvm_head_obj_t readback = { 0 };
+    par_status_t status = ePAR_OK;
+
+    PAR_ASSERT(NULL != p_expected);
+
+    status = par_nvm_read_header(&readback);
+    if (ePAR_OK != status)
+    {
+        return status;
+    }
+
+    if ((readback.sign != p_expected->sign) ||
+        (readback.obj_nb != p_expected->obj_nb) ||
+        (readback.table_id != p_expected->table_id) ||
+        (readback.crc != p_expected->crc))
+    {
+        PAR_ERR_PRINT("PAR_NVM: header readback mismatch exp(sign=0x%08lX,obj=%u,table=0x%08lX,crc=0x%04X) got(sign=0x%08lX,obj=%u,table=0x%08lX,crc=0x%04X)",
+                      (unsigned long)p_expected->sign,
+                      (unsigned)p_expected->obj_nb,
+                      (unsigned long)p_expected->table_id,
+                      (unsigned)p_expected->crc,
+                      (unsigned long)readback.sign,
+                      (unsigned)readback.obj_nb,
+                      (unsigned long)readback.table_id,
+                      (unsigned)readback.crc);
+        return ePAR_ERROR_NVM;
+    }
+
+    if (par_nvm_calc_head_crc(&readback) != readback.crc)
+    {
+        PAR_ERR_PRINT("PAR_NVM: header readback CRC validation failed");
+        return (par_status_t)(ePAR_ERROR_NVM | ePAR_ERROR_CRC);
+    }
+
+    return ePAR_OK;
+}
+
+/**
+ * @brief Verify one freshly written persisted record by reading it back.
+ *
+ * @param addr Record start address.
+ * @param par_num Live parameter number.
+ * @param p_expected Expected canonical object.
+ * @return Operation status.
+ */
+static par_status_t par_nvm_verify_record_readback(const uint32_t addr,
+                                                   const par_num_t par_num,
+                                                   const par_nvm_data_obj_t * const p_expected)
+{
+    par_nvm_data_obj_t readback = { 0 };
+    par_status_t status = ePAR_OK;
+
+    PAR_ASSERT(NULL != p_expected);
+
+    status = gp_layout->read(gp_store, addr, par_num, &readback);
+    if (ePAR_OK != status)
+    {
+        PAR_ERR_PRINT("PAR_NVM: record readback failed, par_num=%u addr=0x%08lX err=%u",
+                      (unsigned)par_num,
+                      (unsigned long)addr,
+                      (unsigned)status);
+        return (par_status_t)(ePAR_ERROR_NVM | (status & ePAR_ERROR_CRC));
+    }
+
+    if (false == gp_layout->data_obj_matches(par_num, p_expected, &readback))
+    {
+        PAR_ERR_PRINT("PAR_NVM: record readback mismatch, par_num=%u addr=0x%08lX",
+                      (unsigned)par_num,
+                      (unsigned long)addr);
+        return ePAR_ERROR_NVM;
+    }
+
+    return ePAR_OK;
+}
+#endif /* 1 == PAR_CFG_NVM_WRITE_VERIFY_EN */
 /**
  * @brief Write parameter NVM header.
  *
@@ -555,6 +646,21 @@ static par_status_t par_nvm_write_header(const uint16_t num_of_par)
         PAR_ERR_PRINT("PAR_NVM: header write failed, err=%u", (unsigned)store_status);
         return status;
     }
+
+    status = par_nvm_sync_backend("after header write");
+    if (ePAR_OK != status)
+    {
+        return status;
+    }
+
+#if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)
+    status = par_nvm_verify_header_readback(&head_obj);
+    if (ePAR_OK != status)
+    {
+        PAR_ERR_PRINT("PAR_NVM: header readback verification failed, err=%u", (unsigned)status);
+        return status;
+    }
+#endif
 
     PAR_DBG_PRINT("PAR_NVM: writing header with obj_count=%d", num_of_par);
 
@@ -629,7 +735,7 @@ static par_status_t par_nvm_get_num_by_persist_idx(const uint16_t persist_idx, p
  */
 static uint32_t par_nvm_addr_from_persist_idx(const uint16_t persist_idx)
 {
-    return par_nvm_layout_addr_from_persist_idx(PAR_NVM_FIRST_DATA_OBJ_ADDR, persist_idx, g_par_persist_slot_to_par_num);
+    return gp_layout->addr_from_persist_idx(PAR_NVM_FIRST_DATA_OBJ_ADDR, persist_idx, g_par_persist_slot_to_par_num);
 }
 
 /**
@@ -664,7 +770,7 @@ par_status_t par_nvm_print_nvm_lut(void)
             (unsigned)persist_idx,
             (unsigned)PAR_NVM_CFG_ID_VALUE(par_get_config(par_num)),
             (unsigned long)par_nvm_addr_from_persist_idx(persist_idx),
-            (unsigned long)par_nvm_layout_record_size_from_par_num(par_num),
+            (unsigned long)gp_layout->record_size_from_par_num(par_num),
             (unsigned)g_par_nvm_slot_runtime.loaded_slots[persist_idx],
             PAR_NVM_DBG_NAME_ARG(par_get_config(par_num)));
     }
@@ -711,51 +817,6 @@ static uint32_t par_nvm_get_nvm_lut_addr(const par_num_t par_num)
     }
 
     return par_nvm_addr_from_persist_idx(par_cfg->persist_idx);
-}
-
-/**
- * @brief Check compatibility between the stored image and the live schema.
- *
- * @details Compatibility is evaluated against the stored persistent prefix
- * size from the validated NVM header. Every layout requires that the live
- * firmware still exposes at least that many persistent slots and that the
- * stored digest matches the live digest for exactly that prefix length.
- * Layouts with stored IDs include the external parameter ID in the digest,
- * so prefix ID renumbering still rebuilds the image there. The fixed
- * payload-only layout excludes external parameter IDs and validates only
- * stored-prefix byte-layout compatibility, so pure external-ID renumbering
- * stays compatible there. The grouped payload-only layout is stricter:
- * because regrouping depends on the full live persistent set, any stored/live
- * count mismatch rebuilds instead of attempting tail append. Semantic-only
- * prefix remaps that keep the same byte layout still require an explicit
- * PAR_CFG_TABLE_ID_SCHEMA_VER bump.
- *
- * @param p_head_obj Validated stored NVM header.
- * @return Compatibility result.
- */
-static par_nvm_compat_result_t par_nvm_check_compat(const par_nvm_head_obj_t * const p_head_obj)
-{
-    PAR_ASSERT(NULL != p_head_obj);
-
-    if (p_head_obj->obj_nb > (uint16_t)PAR_PERSISTENT_COMPILE_COUNT)
-    {
-        return ePAR_NVM_COMPAT_REBUILD;
-    }
-
-    if (p_head_obj->table_id != par_nvm_table_id_calc_for_count(p_head_obj->obj_nb))
-    {
-        return ePAR_NVM_COMPAT_REBUILD;
-    }
-
-#if (PAR_CFG_NVM_RECORD_LAYOUT == PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY)
-    return (p_head_obj->obj_nb == (uint16_t)PAR_PERSISTENT_COMPILE_COUNT) ?
-               ePAR_NVM_COMPAT_EXACT_MATCH :
-               ePAR_NVM_COMPAT_REBUILD;
-#else
-    return (p_head_obj->obj_nb == (uint16_t)PAR_PERSISTENT_COMPILE_COUNT) ?
-               ePAR_NVM_COMPAT_EXACT_MATCH :
-               ePAR_NVM_COMPAT_PREFIX_APPEND;
-#endif
 }
 
 /**
@@ -828,44 +889,32 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
             goto out;
         }
 
-        op_status = par_nvm_layout_read(gp_store, obj_addr, par_num, &obj_data);
+        op_status = gp_layout->read(gp_store, obj_addr, par_num, &obj_data);
         if (ePAR_OK != op_status)
         {
             status = op_status;
             err.reason = (ePAR_ERROR_CRC == op_status) ? "crc-mismatch" : "read-failed";
-#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
-            err.stored_id = obj_data.id;
-#else
-            err.stored_id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
-#endif
+            err.stored_id = gp_layout->get_error_stored_id(par_num, &obj_data);
             goto out;
         }
 
-#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
-        if (obj_data.id != PAR_NVM_CFG_ID_VALUE(par_cfg))
+        op_status = gp_layout->validate_loaded_obj(par_num, &obj_data, &err.reason, &err.stored_id);
+        if (ePAR_OK != op_status)
         {
             status = ePAR_ERROR;
-            err.reason = "id-mismatch";
-#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
-            err.stored_id = obj_data.id;
-#else
-            err.stored_id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
-#endif
-            op_status = status;
+            if (NULL == err.reason)
+            {
+                err.reason = "layout-validate-failed";
+            }
             goto out;
         }
-#endif
 
         op_status = par_set_fast(par_num, &obj_data.data);
         if (ePAR_OK != op_status)
         {
             status |= op_status;
             err.reason = "restore-failed";
-#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
-            err.stored_id = obj_data.id;
-#else
-            err.stored_id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
-#endif
+            err.stored_id = gp_layout->get_error_stored_id(par_num, &obj_data);
             goto out;
         }
 
@@ -919,13 +968,6 @@ static par_status_t par_nvm_load_all(const uint16_t num_of_par)
             goto out;
         }
 
-        op_status = gp_store->sync();
-        if (ePAR_OK != op_status)
-        {
-            status |= ePAR_ERROR_NVM;
-            err.reason = "sync-failed";
-            goto out;
-        }
         PAR_INFO_PRINT("PAR_NVM: appended %u new persistent slots and rewrote header count to %u",
                        (unsigned)new_par_cnt,
                        (unsigned)PAR_PERSISTENT_COMPILE_COUNT);
@@ -966,12 +1008,28 @@ static par_status_t par_nvm_init_nvm(void)
 
     PAR_DBG_PRINT("PAR_NVM: resolving storage backend");
     gp_store = par_store_backend_get_api();
+    gp_layout = par_nvm_layout_init();
     gb_is_nvm_owner = false;
 
+    if ((NULL == gp_layout) || (NULL == gp_layout->record_size_from_par_num) ||
+        (NULL == gp_layout->addr_from_persist_idx) || (NULL == gp_layout->populate_data_obj) ||
+        (NULL == gp_layout->read) || (NULL == gp_layout->write) ||
+        (NULL == gp_layout->validate_loaded_obj) || (NULL == gp_layout->get_error_stored_id) ||
+        (NULL == gp_layout->check_compat)
+#if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)
+        || (NULL == gp_layout->data_obj_matches)
+#endif
+    )
+    {
+        PAR_ERR_PRINT("PAR_NVM: no valid persisted-record layout adapter is wired");
+        status = ePAR_ERROR_INIT;
+    }
+
     /* Validate the mounted backend once before any operation callback is used. */
-    if ((NULL == gp_store) || (NULL == gp_store->init) || (NULL == gp_store->deinit) ||
-        (NULL == gp_store->is_init) || (NULL == gp_store->read) || (NULL == gp_store->write) ||
-        (NULL == gp_store->erase) || (NULL == gp_store->sync))
+    if ((ePAR_OK == status) &&
+        ((NULL == gp_store) || (NULL == gp_store->init) || (NULL == gp_store->deinit) ||
+         (NULL == gp_store->is_init) || (NULL == gp_store->read) || (NULL == gp_store->write) ||
+         (NULL == gp_store->erase) || (NULL == gp_store->sync)))
     {
         PAR_ERR_PRINT("PAR_NVM: no valid parameter storage backend is wired");
         status = ePAR_ERROR_INIT;
@@ -1066,7 +1124,7 @@ par_status_t par_nvm_init(void)
     /* Step 2: validate table compatibility only when header is valid */
     if (ePAR_OK == (detect_status & ePAR_STATUS_ERROR_MASK))
     {
-        const par_nvm_compat_result_t compat = par_nvm_check_compat(&head_obj);
+        const par_nvm_compat_result_t compat = gp_layout->check_compat(&head_obj);
 
         if (ePAR_NVM_COMPAT_REBUILD == compat)
         {
@@ -1185,6 +1243,7 @@ par_status_t par_nvm_deinit(void)
             gb_is_init = false;
             gb_is_nvm_owner = false;
             gp_store = NULL;
+            gp_layout = NULL;
         }
     }
     else
@@ -1206,7 +1265,10 @@ par_status_t par_nvm_deinit(void)
  * is copied to FLASH.
  *
  * @param par_num Parameter enumeration number.
- * @param nvm_sync Perform NVM sync after parameter write.
+ * @param nvm_sync Perform NVM sync after parameter write. When
+ *        PAR_CFG_NVM_WRITE_VERIFY_EN is enabled, write verification also
+ *        forces a backend sync before the readback step even if this flag is
+ *        false.
  * @return Status of operation.
  */
 par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)
@@ -1230,16 +1292,15 @@ par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)
 
     par_status_t status = ePAR_OK;
     par_nvm_data_obj_t obj_data = { 0 };
+    par_type_t live_data = { 0 };
     uint32_t par_addr = 0UL;
     par_status_t store_status = ePAR_OK;
 
     PAR_DBG_PRINT("PAR_NVM: writing persistent parameter, par_num=%u id=%u", (unsigned)par_num, (unsigned)PAR_NVM_CFG_ID_VALUE(par_cfg));
-    (void)par_get(par_num, &obj_data.data);
-#if (1 == PAR_CFG_NVM_RECORD_LAYOUT_HAS_STORED_ID)
-    obj_data.id = (uint16_t)PAR_NVM_CFG_ID_VALUE(par_cfg);
-#endif
+    (void)par_get(par_num, &live_data);
+    gp_layout->populate_data_obj(par_num, &live_data, &obj_data);
     par_addr = par_nvm_get_nvm_lut_addr(par_num);
-    store_status = par_nvm_layout_write(gp_store, par_addr, par_num, &obj_data);
+    store_status = gp_layout->write(gp_store, par_addr, par_num, &obj_data);
     if (ePAR_OK != store_status)
     {
         status |= ePAR_ERROR_NVM;
@@ -1250,16 +1311,29 @@ par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)
                       (unsigned)store_status);
     }
 
-    if ((true == nvm_sync) && (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK)))
+    if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
     {
-        const par_status_t sync_status = gp_store->sync();
-        if (ePAR_OK != sync_status)
+#if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)
+        (void)nvm_sync;
+        status |= par_nvm_sync_backend("before parameter readback verify");
+        if (ePAR_OK == (status & ePAR_STATUS_ERROR_MASK))
         {
-            status |= ePAR_ERROR_NVM;
-            PAR_ERR_PRINT("PAR_NVM: sync failed after parameter write, par_num=%u err=%u",
-                          (unsigned)par_num,
-                          (unsigned)sync_status);
+            status |= par_nvm_verify_record_readback(par_addr, par_num, &obj_data);
+            if (ePAR_OK != (status & ePAR_STATUS_ERROR_MASK))
+            {
+                PAR_ERR_PRINT("PAR_NVM: parameter readback verification failed, par_num=%u id=%u addr=0x%08lX err=%u",
+                              (unsigned)par_num,
+                              (unsigned)PAR_NVM_CFG_ID_VALUE(par_cfg),
+                              (unsigned long)par_addr,
+                              (unsigned)status);
+            }
         }
+#else
+        if (true == nvm_sync)
+        {
+            status |= par_nvm_sync_backend("after parameter write");
+        }
+#endif
     }
 
     return status;
