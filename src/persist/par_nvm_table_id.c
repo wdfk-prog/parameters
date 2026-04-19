@@ -1,7 +1,7 @@
 /**
  * @file par_nvm_table_id.c
  * @brief Implement the parameter-table ID hash adapter.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.1
  * @date 2026-04-11
  *
@@ -9,11 +9,10 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-03-30 1.0     wdfk-prog   first version
- * 2026-04-11 1.1     wdfk-prog   add stored-prefix table-ID calculation
+ * Date       Version Author        Description
+ * 2026-03-30 1.0     wdfk-prog     first version
+ * 2026-04-11 1.1     wdfk-prog     add stored-prefix table-ID calculation
  */
-
 #include "par.h"
 #include "persist/fnv.h"
 #include "persist/par_nvm_table_id.h"

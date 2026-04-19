@@ -360,4 +360,9 @@ Implemented by the integrator as needed:
 - `par_if_port.c` (optional strong override for the weak defaults in `src/port/par_if.c`, including mutex and CRC helpers)
 - `par_atomic_port.h`
 
-This separation makes the core reusable while still allowing the target platform to provide mutexes, logging, assertions, and atomic primitives. Packaged storage backend adapters stay inside the `src/persist/backend/` subtree because they are reusable module integrations rather than board-specific port code.
+This separation makes the core reusable while still allowing the target platform to provide mutexes, logging, assertions, and atomic primitives. Packaged storage backend adapters stay inside the `src/persist/backend/` subtree because they are reusable module integrations rather than board-specific port code, while repository-root files under `backend/` bind those portable backends to one concrete platform environment such as RT-Thread FAL or a product-specific native flash port.
+
+
+## Flash-emulated EEPROM backend
+
+See `./flash-ee-backend-design.md` for the portable core and adapter design.

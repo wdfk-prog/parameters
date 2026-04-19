@@ -1,18 +1,19 @@
 /**
  * @file par_store_backend.h
  * @brief Declare the abstract parameter-storage backend interface.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.0
  * @date 2026-03-29
- * 
- * @copyright Copyright (c) 2026  
+ *
+ * @copyright Copyright (c) 2026 Ziga Miklosic. Distributed under the MIT license.
  * 
  * @details par_nvm.c uses this interface instead of depending directly on a
  * concrete NVM repository layout. Integrators may provide any storage backend
  * that supports the required byte-addressable operations.
+ * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-03-29 1.0     wdfk-prog   first version
+ * Date       Version Author        Description
+ * 2026-03-29 1.0     wdfk-prog     first version
  */
 #ifndef _PAR_STORE_BACKEND_H_
 #define _PAR_STORE_BACKEND_H_
@@ -118,11 +119,25 @@ typedef struct
 } par_store_backend_api_t;
 
 /**
+ * @brief Bind or prepare the active parameter-storage backend.
+ *
+ * @details Call this before @ref par_store_backend_get_api when the selected
+ * backend needs to attach one concrete storage port, partition, or device
+ * context. Pure backends that do not need a pre-bind step should return
+ * @ref ePAR_OK without side effects.
+ *
+ * @return ePAR_OK on success, otherwise an implementation-defined error.
+ */
+par_status_t par_store_backend_bind(void);
+
+/**
  * @brief Resolve the active parameter-storage backend API.
  *
  * @details Link exactly one concrete implementation when `PAR_CFG_NVM_EN = 1`.
  * The package can provide the GeneralEmbeddedCLibraries/nvm adapter, or the
- * application can provide its own implementation.
+ * application can provide its own implementation. This accessor must be side
+ * effect free; any backend-specific binding work belongs in
+ * @ref par_store_backend_bind.
  *
  * @return Pointer to backend API, or NULL if no backend is available.
  */

@@ -1,7 +1,7 @@
 /**
  * @file par_def.h
  * @brief Declare parameter-definition types and compile-time enumerations.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.0
  * @date 2026-03-27
  *
@@ -9,10 +9,9 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-03-27 1.0     wdfk-prog   first version
+ * Date       Version Author        Description
+ * 2026-03-27 1.0     wdfk-prog    first version
  */
-
 /**
  * @addtogroup PAR_DEF
  * @{ <!-- BEGIN GROUP -->

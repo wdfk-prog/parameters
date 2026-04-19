@@ -1,7 +1,7 @@
 /**
  * @file par_atomic.h
  * @brief Define atomic helper types and macros for parameter storage.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.0
  * @date 2026-03-27
  *
@@ -9,10 +9,9 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-03-27 1.0     wdfk-prog   first version
+ * Date       Version Author        Description
+ * 2026-03-27 1.0     wdfk-prog    first version
  */
-
 #ifndef PAR_ATOMIC_H
 #define PAR_ATOMIC_H
 

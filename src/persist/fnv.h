@@ -1,8 +1,16 @@
 /**
  * @file fnv.h
- * @brief Minimal FNV declarations required by the bundled hash_32a.c implementation.
+ * @brief Declare the bundled 32-bit FNV-1a hash helpers used by table-ID support.
+ * @author wdfk-prog
+ * @version 1.0
+ * @date 2026-04-19
  *
- * @note This header exists to support the public-domain lcn2/fnv hash_32a.c source.
+ * @copyright Copyright (c) 2026 Ziga Miklosic. Distributed under the MIT license.
+ *
+ * @note :
+ * @par Change Log:
+ * Date       Version Author        Description
+ * 2026-04-19 1.0     wdfk-prog    first version
  */
 #ifndef _PAR_PERSIST_FNV_H_
 #define _PAR_PERSIST_FNV_H_

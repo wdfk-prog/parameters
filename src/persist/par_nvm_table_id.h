@@ -1,7 +1,7 @@
 /**
  * @file par_nvm_table_id.h
  * @brief Declare the parameter-table ID hash adapter.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.0
  * @date 2026-03-30
  *
@@ -9,8 +9,8 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-03-30 1.0     wdfk-prog   first version
+ * Date       Version Author        Description
+ * 2026-03-30 1.0     wdfk-prog     first version
  */
 #ifndef _PAR_NVM_TABLE_ID_H_
 #define _PAR_NVM_TABLE_ID_H_

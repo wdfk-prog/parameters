@@ -144,7 +144,7 @@ ID-based lookup is generated statically when `PAR_CFG_ENABLE_ID = 1`. Optional s
 - `PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK`
 - `PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK`
 
-When NVM is enabled, the parameters module requires a concrete packaged storage backend implementation. `src/persist/par_nvm.c` resolves and validates the backend API once during initialization, then uses the mounted callbacks directly for later reads, writes, erases, and sync operations. The RT-Thread AT24CXX backend is available today, while the generic flash backend Kconfig entry is currently only a placeholder and does not build an implementation yet. The module can reuse an already-initialized backend or initialize it on demand and later deinitialize it only when it owns that initialization. Module deinit is conservative: it attempts backend and interface cleanup, and it clears the top-level module init state only after the owned child deinit steps succeed.
+When NVM is enabled, the parameters module requires a concrete packaged storage backend implementation. `src/persist/par_nvm.c` resolves and validates the backend API once during initialization, then uses the mounted callbacks directly for later reads, writes, erases, and sync operations. The RT-Thread AT24CXX backend and the portable flash-ee backend are both available. The flash-ee core is packaged under `src/persist/backend/` and can be integrated either through the repository-root `backend/par_store_backend_flash_ee_fal.c` bridge or through product-specific native flash hooks in the repository-root `backend/par_store_backend_flash_ee_native.c` adapter. The module can reuse an already-initialized backend or initialize it on demand and later deinitialize it only when it owns that initialization. Module deinit is conservative: it attempts backend and interface cleanup, and it clears the top-level module init state only after the owned child deinit steps succeed.
 When `PAR_CFG_NVM_WRITE_VERIFY_EN = 1`, the NVM path also performs a backend sync plus readback verification after record writes and after header commits. The exact comparison rules are owned by the selected persisted-record layout adapter, not hard-coded in `par_nvm.c`.
 If your storage medium provides ECC or similar read-health status, keep the policy decision in the business layer. The parameter module does not decide whether that condition means report-only, parameter reset/rebuild, or a wider product fault response.
 
@@ -153,7 +153,7 @@ The persisted NVM image uses a compile-time selected record layout instead of th
 Backend choices:
 
 - enable the packaged RT-Thread AT24CXX backend
-- or reserve the generic flash backend configuration entry for later implementation
+- or enable the packaged flash-ee backend and choose either the FAL bridge or the native-flash hook path
 
 If `PAR_CFG_NVM_EN = 1` and the selected packaged backend implementation is not linked, the build fails at link time by design.
 

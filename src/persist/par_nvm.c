@@ -10,10 +10,8 @@
  * @note :
  * @par Change Log:
  * Date       Version Author        Description
- * 2026-01-29 V3.0.1  Ziga Miklosic
  * 2026-03-30 1.2     wdfk-prog     simplify NVM flow and table-ID handling
  */
-
 /**
  * @addtogroup PAR_NVM
  * @{ <!-- BEGIN GROUP -->
@@ -99,19 +97,10 @@
 #define PAR_NVM_FIRST_DATA_OBJ_ADDR  (PAR_NVM_HEAD_ADDR + PAR_NVM_HEAD_SIZE)
 
 /**
- * @brief Persisted parameter payload view used by the common load/save flow.
- *
- * @details
- * Live RAM layout and persisted NVM layout are intentionally different. RAM
- * storage is grouped by value width, while the persistence area stores a
- * compile-time ordered slot list using one selected serialized record layout.
- *
- * Layout-specific serialization and validation are implemented in dedicated
- * layout source files so the top-level NVM flow does not carry per-layout
- * branching in every read/write path.
- */
-/**
  * @brief Runtime persistence-slot state.
+ *
+ * @details The common NVM flow uses this structure to track which compiled
+ * persistent slots were reconstructed successfully from the serialized image.
  */
 typedef struct
 {
@@ -837,10 +826,11 @@ static uint32_t par_nvm_get_nvm_lut_addr(const par_num_t par_num)
  */
 static par_status_t par_nvm_load_all(const uint16_t num_of_par)
 {
+    /* Hold context for one load-path validation failure. */
     typedef struct
     {
-        const char *reason;
-        uint16_t stored_id;
+        const char *reason; /**< Short description of the validation failure. */
+        uint16_t stored_id; /**< Stored ID reported by the selected layout, when available. */
     } par_nvm_load_error_ctx_t;
 
     par_status_t status = ePAR_OK;
@@ -997,6 +987,19 @@ out:
     return status;
 }
 /**
+ * @brief Bind or prepare the active parameter-storage backend.
+ *
+ * @details This weak default keeps existing backends source-compatible when
+ * they do not need an explicit pre-bind step. Backends that must attach one
+ * concrete port or device context should provide a strong override.
+ *
+ * @return ePAR_OK because the default implementation has no work to perform.
+ */
+PAR_PORT_WEAK par_status_t par_store_backend_bind(void)
+{
+    return ePAR_OK;
+}
+/**
  * @brief Resolve, validate, and initialize the mounted storage backend.
  *
  * @return Status of operation.
@@ -1007,7 +1010,17 @@ static par_status_t par_nvm_init_nvm(void)
     bool is_nvm_init = false;
 
     PAR_DBG_PRINT("PAR_NVM: resolving storage backend");
-    gp_store = par_store_backend_get_api();
+    status = par_store_backend_bind();
+    if (ePAR_OK != status)
+    {
+        PAR_ERR_PRINT("PAR_NVM: backend bind failed, err=%u", (unsigned)status);
+        status = ePAR_ERROR_INIT;
+    }
+
+    if (ePAR_OK == status)
+    {
+        gp_store = par_store_backend_get_api();
+    }
     gp_layout = par_nvm_layout_init();
     gb_is_nvm_owner = false;
 
@@ -1265,10 +1278,16 @@ par_status_t par_nvm_deinit(void)
  * is copied to FLASH.
  *
  * @param par_num Parameter enumeration number.
- * @param nvm_sync Perform NVM sync after parameter write. When
+ * @param nvm_sync Request an explicit backend sync after parameter write. When
  *        PAR_CFG_NVM_WRITE_VERIFY_EN is enabled, write verification also
  *        forces a backend sync before the readback step even if this flag is
- *        false.
+ *        false. Backend implementations may also persist data before this
+ *        function returns when their write contract requires completed writes
+ *        to be durable on success. Therefore false does not mean RAM-only
+ *        staging, and a successful return means the backend-side work needed
+ *        for this request has completed. This flag still does not guarantee
+ *        transactional atomicity across any backend-specific internal
+ *        chunking.
  * @return Status of operation.
  */
 par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync)

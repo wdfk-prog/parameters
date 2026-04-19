@@ -1,3 +1,18 @@
+/**
+ * @file hash_32a.c
+ * @brief Provide bundled 32-bit FNV-1a hash support for table-ID calculation.
+ * @author Landon Curt Noll
+ * @version 1.0
+ * @date 2026-04-19
+ *
+ * @copyright Public-domain upstream FNV source bundled with this repository.
+ *
+ * @note :
+ * @par Change Log:
+ * Date       Version Author        Description
+ * 2026-04-19 1.0     wdfk-prog    add project file header for bundled FNV source
+ */
+
 /*
  * hash_32 - 32 bit Fowler/Noll/Vo FNV-1a hash code
  *
@@ -71,7 +86,6 @@
  *
  * Share and enjoy!  :-)
  */
-
 
 #include <stdlib.h>
 #include "fnv.h"

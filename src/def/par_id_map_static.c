@@ -1,7 +1,7 @@
 /**
  * @file par_id_map_static.c
- * @brief Compile-time generated ID lookup map
- * @author wdfk-prog ()
+ * @brief Compile-time generated ID lookup map.
+ * @author wdfk-prog
  * @version 1.0
  * @date 2026-03-24
  *
@@ -9,8 +9,8 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-03-24 1.0     wdfk-prog   first version
+ * Date       Version Author        Description
+ * 2026-03-24 1.0     wdfk-prog    first version
  */
 #include "def/par_id_map_static.h"
 

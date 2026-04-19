@@ -10,9 +10,8 @@
  * @note :
  * @par Change Log:
  * Date       Version Author        Description
- * 2026-01-29 V3.0.1  Ziga Miklosic
+ * 2026-01-29 V3.0.1  Ziga Miklosic first version
  */
-
 /**
  * @addtogroup PAR_IF
  * @{ <!-- BEGIN GROUP -->

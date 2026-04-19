@@ -1,7 +1,7 @@
 /**
  * @file par_nvm_layout.h
  * @brief Declare private persisted-record layout interfaces.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.2
  * @date 2026-04-13
  *
@@ -9,10 +9,10 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-04-06 1.0     wdfk-prog   first version
- * 2026-04-11 1.1     wdfk-prog   split layout structs by selected NVM layout
- * 2026-04-13 1.2     wdfk-prog   add layout-ops registration for NVM core
+ * Date       Version Author        Description
+ * 2026-04-06 1.0     wdfk-prog     first version
+ * 2026-04-11 1.1     wdfk-prog     split layout structs by selected NVM layout
+ * 2026-04-13 1.2     wdfk-prog     add layout-ops registration for NVM core
  */
 #ifndef _PAR_NVM_LAYOUT_H_
 #define _PAR_NVM_LAYOUT_H_

@@ -190,6 +190,26 @@ The runtime NVM core binds one compile-time selected layout ops table during ini
 
 If the selected storage backend or storage medium exposes ECC status, the parameter core still does not hard-code the recovery policy. Whether an ECC event should only be reported, should trigger parameter reset/rebuild, or should escalate into a wider system fault response must be decided by the business layer.
 
+### `par_nvm_write(..., nvm_sync)` semantics
+
+Treat `nvm_sync` as a request for an additional explicit backend sync step, not as a universal promise that `false` means RAM-only staging.
+
+- `nvm_sync = false` means the common layer does not request an extra sync after the write path. Backend-specific contracts may still persist data before the call returns.
+- `nvm_sync = true` asks the common layer to issue an explicit backend sync after the write path, in addition to any backend-internal persistence already required by that backend contract.
+- A successful `par_nvm_write()` return means the backend-side persistence work required for that request has completed.
+- This API does not provide transactional atomicity across backend-specific internal chunking.
+
+For the flash-emulated EEPROM backend specifically:
+
+- one dirty cache window may be synchronized before the next cache window is staged during one logical write or erase;
+- successful multi-window requests return only after the final dirty window is also durable;
+- failed multi-window requests may still leave earlier windows committed while later windows remain old.
+
+Integration guidance:
+
+- size the flash-ee cache window so common parameter objects fit within one window whenever practical;
+- avoid splitting one must-stay-consistent parameter group across multiple independently committed windows unless the application already has its own consistency/version marker.
+
 | Function | Description |
 | --- | --- |
 | `par_set_n_save(par_num, p_val)` | Set one parameter and persist it immediately. |

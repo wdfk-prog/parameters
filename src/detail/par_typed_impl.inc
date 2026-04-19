@@ -1,7 +1,7 @@
 /**
  * @file par_typed_impl.inc
  * @brief Generate typed getter and setter implementations.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.0
  * @date 2026-03-27
  *
@@ -9,10 +9,9 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-03-27 1.0     wdfk-prog   first version
+ * Date       Version Author        Description
+ * 2026-03-27 1.0     wdfk-prog    first version
  */
-
 /**
  * @brief Macro-generated typed parameter APIs and checked write core.
  * @details This fragment is included only by par.c and expands the typed setter/getter.

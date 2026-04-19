@@ -10,9 +10,8 @@
  * @note :
  * @par Change Log:
  * Date       Version Author        Description
- * 2026-01-29 V3.0.1  Ziga Miklosic
+ * 2026-01-29 V3.0.1  Ziga Miklosic first version
  */
-
 /**
  * @addtogroup PAR_NVM
  * @{ <!-- BEGIN GROUP -->
@@ -46,7 +45,14 @@ par_status_t par_nvm_deinit(void);
 /**
  * @brief Persist one parameter to non-volatile storage.
  * @param par_num Parameter number.
- * @param nvm_sync Synchronize the underlying NVM device after the write when true.
+ * @param nvm_sync Request an explicit backend sync after the write when true.
+ *        Some backends may still persist data before this call returns even
+ *        when this flag is false, as long as the backend-specific API contract
+ *        allows it. A successful call still means that the backend has
+ *        finished the persistence work required by its write contract for this
+ *        request. This flag does not guarantee that false means RAM-only
+ *        staging, and it also does not guarantee transactional atomicity
+ *        across any backend-specific internal chunking.
  * @return Operation status.
  */
 par_status_t par_nvm_write(const par_num_t par_num, const bool nvm_sync);

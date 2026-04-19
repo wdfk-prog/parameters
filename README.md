@@ -62,48 +62,58 @@ static void app_init(void)
 - [Getting started](docs/getting-started.md) for integration steps, required files, and first-use examples
 - [Architecture](docs/architecture.md) for storage model, validation flow, ID lookup, and layout design
 - [API reference](docs/api-reference.md) for the public API grouped by responsibility
+- [Flash-ee backend design](docs/flash-ee-backend-design.md) for the portable flash-emulated EEPROM core and adapter model
 
 ## Package layout
 
 ```text
-parameters/
-├── README.md
-├── CHANGE_LOG.md
-├── docs/
-│   ├── DeviceParameter_VerificationReport.xlsx
-│   ├── api-reference.md
-│   ├── architecture.md
-│   └── getting-started.md
-├── src/
-│   ├── par.c
-│   ├── par.h
-│   ├── par_cfg.h
-│   ├── def/
-│   │   ├── par_def.c
-│   │   ├── par_def.h
-│   │   ├── par_id_map_static.c
-│   │   └── par_id_map_static.h
-│   ├── detail/
-│   │   ├── par_bitwise_impl.inc
-│   │   ├── par_storage_init.inc
-│   │   └── par_typed_impl.inc
-│   ├── layout/
-│   │   ├── par_layout.c
-│   │   └── par_layout.h
-│   ├── persist/
-│   │   ├── backend/
-│   │   │   ├── par_store_backend.h
-│   │   │   └── par_store_backend_gel_nvm.c
-│   │   ├── par_nvm.c
-│   │   └── par_nvm.h
-│   └── port/
-│       ├── par_atomic.h
-│       ├── par_if.c
-│       └── par_if.h
-└── template/
-    ├── par_cfg_port.htmp
-    ├── par_layout_static.htmp
-    └── par_table.deftmp
+.
+├── Kconfig
+├── SConscript
+├── backend/
+│   ├── par_store_backend_flash_ee_fal.c
+│   ├── par_store_backend_flash_ee_native.c
+│   └── par_store_backend_rtt_at24cxx.c
+├── par_table.def
+├── parameters/
+│   ├── README.md
+│   ├── CHANGE_LOG.md
+│   ├── docs/
+│   │   ├── DeviceParameter_VerificationReport.xlsx
+│   │   ├── api-reference.md
+│   │   ├── architecture.md
+│   │   ├── flash-ee-backend-design.md
+│   │   └── getting-started.md
+│   ├── src/
+│   │   ├── par.c
+│   │   ├── par.h
+│   │   ├── par_cfg.h
+│   │   ├── def/
+│   │   ├── detail/
+│   │   ├── layout/
+│   │   ├── persist/
+│   │   │   ├── backend/
+│   │   │   │   ├── par_store_backend.h
+│   │   │   │   ├── par_store_backend_flash_ee.c
+│   │   │   │   ├── par_store_backend_flash_ee.h
+│   │   │   │   ├── par_store_backend_flash_ee_cfg.h
+│   │   │   │   └── par_store_backend_gel_nvm.c
+│   │   │   ├── fnv.h
+│   │   │   ├── hash_32a.c
+│   │   │   ├── par_nvm.c
+│   │   │   ├── par_nvm.h
+│   │   │   ├── par_nvm_cfg.h
+│   │   │   ├── par_nvm_layout*.c
+│   │   │   └── par_nvm_table_id.*
+│   │   └── port/
+│   └── template/
+│       ├── par_cfg_port.htmp
+│       ├── par_layout_static.htmp
+│       └── par_table.deftmp
+└── port/
+    ├── par_atomic_port.h
+    ├── par_cfg_port.h
+    └── par_if_port.c
 ```
 
 ## Required integration files
@@ -138,11 +148,16 @@ This repository contains the reusable module core and templates. A real integrat
 - The module separates **internal parameter enumeration** (`par_num_t`) from **external parameter IDs** (`id`).
 - The current ID lookup implementation uses a one-entry-per-bucket hash map generated at compile time from `par_table.def`. External IDs must therefore be not only unique, but also collision-free under the configured hash geometry. Optional runtime diagnostic scans can be enabled with `PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK` and `PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK` when additional startup logs are useful. See `docs/architecture.md` for the collision rule and avoidance guidance.
 - Unchecked setter APIs skip runtime validation callbacks and on-change callbacks, so they should be reserved for tightly controlled hot paths. Bitwise fast setters are further restricted to `U8` / `U16` / `U32` flags or bitmask parameters. Legacy `*_fast()` names remain as deprecated aliases.
-- NVM support is optional. When enabled, `src/persist/par_nvm.c` depends on a mounted storage backend interface. Whether runtime ID support must also be enabled depends on the selected persisted record layout and backend constraints: the payload-only layouts may be used with `PAR_CFG_ENABLE_ID = 0` only when `PAR_CFG_TABLE_ID_CHECK_EN = 1`, while the stored-ID layouts and the current flash backend path require `PAR_CFG_ENABLE_ID = 1`. Persistence metadata is compiled in automatically under `PAR_CFG_NVM_EN`. The package builds one packaged backend adapter selected from Kconfig. The RT-Thread AT24CXX backend is available today, and the generic flash backend entry is reserved as a placeholder for later implementation.
+- NVM support is optional. When enabled, `src/persist/par_nvm.c` depends on a mounted storage backend interface. Whether runtime ID support must also be enabled depends on the selected persisted record layout and backend constraints: the payload-only layouts may be used with `PAR_CFG_ENABLE_ID = 0` only when `PAR_CFG_TABLE_ID_CHECK_EN = 1`, while the stored-ID layouts and the current flash backend path require `PAR_CFG_ENABLE_ID = 1`. Persistence metadata is compiled in automatically under `PAR_CFG_NVM_EN`. The package builds one packaged backend adapter selected from Kconfig. The available packaged paths now include the RT-Thread AT24CXX adapter and the portable flash-ee backend core, which can be bound either to FAL through the repository-root `backend/par_store_backend_flash_ee_fal.c` bridge or to product-specific native flash hooks through the repository-root `backend/par_store_backend_flash_ee_native.c` adapter.
 - Live RAM layout and persisted NVM layout are intentionally different. RAM storage is grouped by value width, while the persistence area stores a compile-time ordered slot list using one selected serialized record layout: fixed 4-byte payload slot with size descriptor, fixed 4-byte payload slot without size descriptor, compact natural-width payload with size descriptor, fixed natural-width payload without stored ID, or grouped natural-width payload without stored ID.
 - Compile-time persistent order is the primary slot layout contract of the managed NVM image. The stored-ID layouts keep `id` in each record as an integrity and diagnostics field, while the payload-only layouts omit stored `id` and instead rely on compile-time slot order plus table-ID validation. The fixed-slot layouts keep one 4-byte payload slot per persistent parameter, while the compact and payload-only layouts store only the natural 1/2/4-byte payload width.
 - The serialized NVM header is written explicitly as a fixed 12-byte storage image (`sign(4) + obj_nb(2) + table_id(4) + crc16(2)`), so on-storage layout does not depend on compiler struct padding. Header CRC-16 covers the serialized `obj_nb + table_id` bytes, while each data record carries its own CRC-8 according to the selected record layout.
 - `par_nvm.c` now binds one selected persisted-record layout adapter during initialization. Record address calculation, object preparation, stored-object validation, compatibility policy, and optional write-readback comparison are all delegated through that layout ops table, so the common NVM flow no longer carries layout-specific branching. When `PAR_CFG_NVM_WRITE_VERIFY_EN = 1`, parameter writes and header commits force a backend sync and then perform layout-aware readback verification before the write is considered committed.
+- `par_nvm_write(par_num, false)` requests a normal parameter save without an additional caller-forced sync step. It does **not** guarantee RAM-only staging. Backend contracts may still persist data before the call returns, and a successful return means the backend-side persistence work required for that request is complete.
+- The flash-emulated EEPROM backend may synchronize one dirty cache window before loading the next window during one logical write or erase. Successful multi-window requests therefore finish fully persisted, but failures are still non-transactional and may leave earlier windows committed while later windows remain old.
+- For flash-emulated EEPROM integrations, size `PAR_CFG_NVM_BACKEND_FLASH_EE_CACHE_SIZE` so common parameter objects fit inside one cache window whenever practical. Also keep one must-stay-consistent parameter group within one independently committed window, or add an application-level consistency/version marker if that is not possible.
+- Flash-ee build-time configuration now rejects invalid pure-configuration geometry combinations such as logical-size/cache-size values that do not divide by the configured line size or program-size values that do not divide the 64-byte bank header exactly.
+- Native flash-ee integrations should provide strong definitions for the required public native hook ABI declared in `parameters/src/persist/backend/par_store_backend_flash_ee.h`; missing required operational or geometry hooks are intended to fail the final link instead of degrading into runtime stub behavior, while benign helper hooks may still use package defaults.
 - If the selected storage medium has ECC or other read-health reporting, treat that as a product-level policy input rather than as an automatic parameter-core decision. The business layer should decide whether an ECC event only needs reporting, should trigger parameter reset or rebuild, or should escalate to a wider system fault response.
 - CRC calculation is routed through port hooks with bundled software defaults. In this single-target profile the persisted image and the table-ID digest both use the native byte order of the running platform, so no additional byte-order conversion hook is required by the persistence path.
 - When `PAR_CFG_TABLE_ID_CHECK_EN = 1`, startup compares the stored table-ID against the live compatibility digest for the stored persistent prefix size from the header (`obj_nb`). Layouts with stored IDs hash external parameter IDs, so prefix ID renumbering still invalidates the image there. `FIXED_PAYLOAD_ONLY` intentionally excludes external parameter IDs and validates only prefix byte-layout compatibility (`obj_nb`, persistent order, and parameter type), which allows pure external-ID renumbering and compatible tail growth without a rebuild there. `GROUPED_PAYLOAD_ONLY` also excludes external parameter IDs, but because regrouped addresses depend on the full live persistent set it rebuilds whenever `stored_count != live_count`. Semantic-only prefix remaps that preserve the same byte layout must still be paired with an explicit `PAR_CFG_TABLE_ID_SCHEMA_VER` bump. Defaults, ranges, names, units, descriptions, and access flags remain outside the digest.
@@ -158,3 +173,8 @@ This repository contains the reusable module core and templates. A real integrat
 - [CLI module](https://github.com/GeneralEmbeddedCLibraries/cli)
 - [NVM module](https://github.com/GeneralEmbeddedCLibraries/nvm)
 - [General Embedded C Library Manual](https://github.com/GeneralEmbeddedCLibraries/documentation/blob/develop/General_Embedded_C_Library_Manual.pdf)
+
+
+## Flash-emulated EEPROM backend
+
+See `parameters/docs/flash-ee-backend-design.md` for the portable core, configuration header, commit/recovery model, cross-window write semantics, and FAL/native integration guidance.

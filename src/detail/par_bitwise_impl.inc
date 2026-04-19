@@ -1,7 +1,7 @@
 /**
  * @file par_bitwise_impl.inc
  * @brief Generate bitwise fast setter implementations.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.0
  * @date 2026-03-27
  *
@@ -9,10 +9,9 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-03-27 1.0     wdfk-prog   first version
+ * Date       Version Author        Description
+ * 2026-03-27 1.0     wdfk-prog    first version
  */
-
 /**
  * @brief Private include fragment. Included only by par.c.
  */

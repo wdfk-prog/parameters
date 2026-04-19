@@ -1,7 +1,7 @@
 /**
  * @file par_nvm_layout_grouped_payload_only.c
  * @brief Implement the grouped payload-only NVM layout.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.2
  * @date 2026-04-13
  *
@@ -9,10 +9,10 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-04-11 1.0     wdfk-prog   first version
- * 2026-04-13 1.1     wdfk-prog   add layout-ops adapter
- * 2026-04-13 1.2     wdfk-prog   auto-generate compile-time grouped-payload-only address LUT
+ * Date       Version Author        Description
+ * 2026-04-11 1.0     wdfk-prog     first version
+ * 2026-04-13 1.1     wdfk-prog     add layout-ops adapter
+ * 2026-04-13 1.2     wdfk-prog     auto-generate compile-time grouped-payload-only address LUT
  */
 #include "persist/par_nvm_layout.h"
 
@@ -22,10 +22,6 @@
 #include <string.h>
 
 #include "persist/par_nvm_table_id.h"
-
-#if (1 == PAR_CFG_NVM_BACKEND_FLASH_EN)
-#error "Payload-only NVM layouts are not supported with the flash backend because records are variable width and not guaranteed to stay 8-byte aligned."
-#endif
 
 #define PAR_NVM_LAYOUT_RECORD_OVERHEAD ((uint32_t)PAR_NVM_RECORD_CRC_SIZE)
 #define PAR_NVM_LAYOUT_RECORD_MAX_SIZE (PAR_NVM_LAYOUT_RECORD_OVERHEAD + PAR_NVM_RECORD_DATA_SLOT_SIZE)

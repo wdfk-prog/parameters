@@ -1,7 +1,7 @@
 /**
  * @file par_nvm_layout_fixed_slot_with_size.c
  * @brief Implement the fixed-slot persisted-record layout with a size descriptor.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.1
  * @date 2026-04-13
  *
@@ -9,9 +9,9 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-04-06 1.0     wdfk-prog   first version
- * 2026-04-13 1.1     wdfk-prog   add layout-ops adapter
+ * Date       Version Author        Description
+ * 2026-04-06 1.0     wdfk-prog     first version
+ * 2026-04-13 1.1     wdfk-prog     add layout-ops adapter
  */
 #include "persist/par_nvm_layout.h"
 

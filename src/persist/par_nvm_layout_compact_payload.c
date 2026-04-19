@@ -1,7 +1,7 @@
 /**
  * @file par_nvm_layout_compact_payload.c
  * @brief Implement the compact persisted-record layout with id, size, crc, and payload bytes.
- * @author wdfk-prog ()
+ * @author wdfk-prog
  * @version 1.2
  * @date 2026-04-13
  *
@@ -9,10 +9,10 @@
  *
  * @note :
  * @par Change Log:
- * Date       Version Author      Description
- * 2026-04-06 1.0     wdfk-prog   first version
- * 2026-04-13 1.1     wdfk-prog   add layout-ops adapter
- * 2026-04-13 1.2     wdfk-prog   auto-generate compile-time compact-payload address LUT
+ * Date       Version Author        Description
+ * 2026-04-06 1.0     wdfk-prog     first version
+ * 2026-04-13 1.1     wdfk-prog     add layout-ops adapter
+ * 2026-04-13 1.2     wdfk-prog     auto-generate compile-time compact-payload address LUT
  */
 #include "persist/par_nvm_layout.h"
 
