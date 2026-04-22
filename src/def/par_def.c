@@ -41,21 +41,21 @@
 /**
  * @brief Compile-time checks for each parameter value type.
  * @details Signature:
- * (enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_).
+ * (enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_).
  */
-#define PAR_CHECK_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
-#define PAR_CHECK_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
-#define PAR_CHECK_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
-#define PAR_CHECK_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
-#define PAR_CHECK_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
-#define PAR_CHECK_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
+#define PAR_CHECK_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)  PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
+#define PAR_CHECK_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
+#define PAR_CHECK_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
+#define PAR_CHECK_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)  PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
+#define PAR_CHECK_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
+#define PAR_CHECK_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) PAR_CHECK_INT_COMMON(enum_, min_, max_, def_)
 #else
-#define PAR_CHECK_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_CHECK_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_CHECK_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_CHECK_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_CHECK_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_CHECK_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_CHECK_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)
+#define PAR_CHECK_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)
+#define PAR_CHECK_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)
+#define PAR_CHECK_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)
+#define PAR_CHECK_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)
+#define PAR_CHECK_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)
 #endif
 /**
  * @brief NOTE: F32 range checks are runtime-only.
@@ -64,9 +64,9 @@
  * "variably modified '_static_assert_...' at file scope".
  */
 #if (1 == PAR_CFG_ENABLE_TYPE_F32)
-#define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_)
 #else
-#define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_STATIC_ASSERT(enum_##_f32_type_is_disabled__remove_PAR_ITEM_F32, 0)
+#define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) PAR_STATIC_ASSERT(enum_##_f32_type_is_disabled__remove_PAR_ITEM_F32, 0)
 #endif
 
 /**
@@ -107,8 +107,8 @@
  *
  * @note Duplicate ID values trigger duplicated "case" labels.
  */
-#define PAR_CHECK_ID_DUPLICATE_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    case ((uint32_t)(id_)):                                                                            \
+#define PAR_CHECK_ID_DUPLICATE_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    case ((uint32_t)(id_)):                                                                                                       \
         break;
 static void par_compile_check_duplicate_ids(void)
 {
@@ -143,8 +143,8 @@ static void par_compile_check_duplicate_ids(void)
  * This check intentionally fails the build early by generating duplicated.
  * "case" labels for colliding bucket indices.
  */
-#define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    case PAR_HASH_ID_CONST(id_):                                                                    \
+#define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    case PAR_HASH_ID_CONST(id_):                                                                                               \
         break;
 static void par_compile_check_hash_bucket_collision(void)
 {
@@ -205,7 +205,7 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
 /**
  * @brief X-Macro table initializers for each parameter value type.
  * @details Signature:
- * (enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_).
+ * (enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_).
  */
 #if (1 == PAR_CFG_ENABLE_ID)
 #define PAR_INIT_ID(id_) .id = (uint16_t)(id_),
@@ -249,6 +249,14 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
 #define PAR_INIT_ACCESS(access_)
 #endif
 
+#if (1 == PAR_CFG_ENABLE_ROLE_POLICY)
+#define PAR_INIT_READ_ROLES(read_roles_)   .read_roles = (read_roles_),
+#define PAR_INIT_WRITE_ROLES(write_roles_) .write_roles = (write_roles_),
+#else
+#define PAR_INIT_READ_ROLES(read_roles_)
+#define PAR_INIT_WRITE_ROLES(write_roles_)
+#endif
+
 #if (1 == PAR_CFG_NVM_EN)
 /**
  * @brief Translate the X-Macro persistence column into a stored persist slot index.
@@ -282,96 +290,111 @@ PAR_STATIC_ASSERT(par_compile_check_hash_bucket_collision_ref, (sizeof(&par_comp
 #define PAR_INIT_DESC(desc_)
 #endif
 
-#define PAR_INIT_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    [enum_] = {                                                                        \
-        PAR_INIT_ID(id_)                                                               \
-            PAR_INIT_NAME(name_)                                                       \
-                PAR_INIT_RANGE_U8(min_, max_)                                          \
-                    .def.u8 = (uint8_t)(def_),                                         \
-        PAR_INIT_UNIT(unit_)                                                           \
-            .type = ePAR_TYPE_U8,                                                      \
-        PAR_INIT_ACCESS(access_)                                                       \
-            PAR_INIT_PERSIST(enum_, pers_)                                             \
-                PAR_INIT_DESC(desc_)                                                   \
+#define PAR_INIT_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    [enum_] = {                                                                                                   \
+        PAR_INIT_ID(id_)                                                                                          \
+            PAR_INIT_NAME(name_)                                                                                  \
+                PAR_INIT_RANGE_U8(min_, max_)                                                                     \
+                    .def.u8 = (uint8_t)(def_),                                                                    \
+        PAR_INIT_UNIT(unit_)                                                                                      \
+            .type = ePAR_TYPE_U8,                                                                                 \
+        PAR_INIT_ACCESS(access_)                                                                                  \
+            PAR_INIT_READ_ROLES(read_roles_)                                                                      \
+                PAR_INIT_WRITE_ROLES(write_roles_)                                                                \
+                    PAR_INIT_PERSIST(enum_, pers_)                                                                \
+                        PAR_INIT_DESC(desc_)                                                                      \
     },
 
-#define PAR_INIT_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    [enum_] = {                                                                         \
-        PAR_INIT_ID(id_)                                                                \
-            PAR_INIT_NAME(name_)                                                        \
-                PAR_INIT_RANGE_U16(min_, max_)                                          \
-                    .def.u16 = (uint16_t)(def_),                                        \
-        PAR_INIT_UNIT(unit_)                                                            \
-            .type = ePAR_TYPE_U16,                                                      \
-        PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(enum_, pers_)                                              \
-                PAR_INIT_DESC(desc_)                                                    \
+#define PAR_INIT_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    [enum_] = {                                                                                                    \
+        PAR_INIT_ID(id_)                                                                                           \
+            PAR_INIT_NAME(name_)                                                                                   \
+                PAR_INIT_RANGE_U16(min_, max_)                                                                     \
+                    .def.u16 = (uint16_t)(def_),                                                                   \
+        PAR_INIT_UNIT(unit_)                                                                                       \
+            .type = ePAR_TYPE_U16,                                                                                 \
+        PAR_INIT_ACCESS(access_)                                                                                   \
+            PAR_INIT_READ_ROLES(read_roles_)                                                                       \
+                PAR_INIT_WRITE_ROLES(write_roles_)                                                                 \
+                    PAR_INIT_PERSIST(enum_, pers_)                                                                 \
+                        PAR_INIT_DESC(desc_)                                                                       \
     },
 
-#define PAR_INIT_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    [enum_] = {                                                                         \
-        PAR_INIT_ID(id_)                                                                \
-            PAR_INIT_NAME(name_)                                                        \
-                PAR_INIT_RANGE_U32(min_, max_)                                          \
-                    .def.u32 = (uint32_t)(def_),                                        \
-        PAR_INIT_UNIT(unit_)                                                            \
-            .type = ePAR_TYPE_U32,                                                      \
-        PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(enum_, pers_)                                              \
-                PAR_INIT_DESC(desc_)                                                    \
+#define PAR_INIT_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    [enum_] = {                                                                                                    \
+        PAR_INIT_ID(id_)                                                                                           \
+            PAR_INIT_NAME(name_)                                                                                   \
+                PAR_INIT_RANGE_U32(min_, max_)                                                                     \
+                    .def.u32 = (uint32_t)(def_),                                                                   \
+        PAR_INIT_UNIT(unit_)                                                                                       \
+            .type = ePAR_TYPE_U32,                                                                                 \
+        PAR_INIT_ACCESS(access_)                                                                                   \
+            PAR_INIT_READ_ROLES(read_roles_)                                                                       \
+                PAR_INIT_WRITE_ROLES(write_roles_)                                                                 \
+                    PAR_INIT_PERSIST(enum_, pers_)                                                                 \
+                        PAR_INIT_DESC(desc_)                                                                       \
     },
 
-#define PAR_INIT_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    [enum_] = {                                                                        \
-        PAR_INIT_ID(id_)                                                               \
-            PAR_INIT_NAME(name_)                                                       \
-                PAR_INIT_RANGE_I8(min_, max_)                                          \
-                    .def.i8 = (int8_t)(def_),                                          \
-        PAR_INIT_UNIT(unit_)                                                           \
-            .type = ePAR_TYPE_I8,                                                      \
-        PAR_INIT_ACCESS(access_)                                                       \
-            PAR_INIT_PERSIST(enum_, pers_)                                             \
-                PAR_INIT_DESC(desc_)                                                   \
+#define PAR_INIT_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    [enum_] = {                                                                                                   \
+        PAR_INIT_ID(id_)                                                                                          \
+            PAR_INIT_NAME(name_)                                                                                  \
+                PAR_INIT_RANGE_I8(min_, max_)                                                                     \
+                    .def.i8 = (int8_t)(def_),                                                                     \
+        PAR_INIT_UNIT(unit_)                                                                                      \
+            .type = ePAR_TYPE_I8,                                                                                 \
+        PAR_INIT_ACCESS(access_)                                                                                  \
+            PAR_INIT_READ_ROLES(read_roles_)                                                                      \
+                PAR_INIT_WRITE_ROLES(write_roles_)                                                                \
+                    PAR_INIT_PERSIST(enum_, pers_)                                                                \
+                        PAR_INIT_DESC(desc_)                                                                      \
     },
 
-#define PAR_INIT_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    [enum_] = {                                                                         \
-        PAR_INIT_ID(id_)                                                                \
-            PAR_INIT_NAME(name_)                                                        \
-                PAR_INIT_RANGE_I16(min_, max_)                                          \
-                    .def.i16 = (int16_t)(def_),                                         \
-        PAR_INIT_UNIT(unit_)                                                            \
-            .type = ePAR_TYPE_I16,                                                      \
-        PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(enum_, pers_)                                              \
-                PAR_INIT_DESC(desc_)                                                    \
+#define PAR_INIT_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    [enum_] = {                                                                                                    \
+        PAR_INIT_ID(id_)                                                                                           \
+            PAR_INIT_NAME(name_)                                                                                   \
+                PAR_INIT_RANGE_I16(min_, max_)                                                                     \
+                    .def.i16 = (int16_t)(def_),                                                                    \
+        PAR_INIT_UNIT(unit_)                                                                                       \
+            .type = ePAR_TYPE_I16,                                                                                 \
+        PAR_INIT_ACCESS(access_)                                                                                   \
+            PAR_INIT_READ_ROLES(read_roles_)                                                                       \
+                PAR_INIT_WRITE_ROLES(write_roles_)                                                                 \
+                    PAR_INIT_PERSIST(enum_, pers_)                                                                 \
+                        PAR_INIT_DESC(desc_)                                                                       \
     },
 
-#define PAR_INIT_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    [enum_] = {                                                                         \
-        PAR_INIT_ID(id_)                                                                \
-            PAR_INIT_NAME(name_)                                                        \
-                PAR_INIT_RANGE_I32(min_, max_)                                          \
-                    .def.i32 = (int32_t)(def_),                                         \
-        PAR_INIT_UNIT(unit_)                                                            \
-            .type = ePAR_TYPE_I32,                                                      \
-        PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(enum_, pers_)                                              \
-                PAR_INIT_DESC(desc_)                                                    \
+#define PAR_INIT_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    [enum_] = {                                                                                                    \
+        PAR_INIT_ID(id_)                                                                                           \
+            PAR_INIT_NAME(name_)                                                                                   \
+                PAR_INIT_RANGE_I32(min_, max_)                                                                     \
+                    .def.i32 = (int32_t)(def_),                                                                    \
+        PAR_INIT_UNIT(unit_)                                                                                       \
+            .type = ePAR_TYPE_I32,                                                                                 \
+        PAR_INIT_ACCESS(access_)                                                                                   \
+            PAR_INIT_READ_ROLES(read_roles_)                                                                       \
+                PAR_INIT_WRITE_ROLES(write_roles_)                                                                 \
+                    PAR_INIT_PERSIST(enum_, pers_)                                                                 \
+                        PAR_INIT_DESC(desc_)                                                                       \
     },
 
-#define PAR_INIT_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) \
-    [enum_] = {                                                                         \
-        PAR_INIT_ID(id_)                                                                \
-            PAR_INIT_NAME(name_)                                                        \
-                PAR_INIT_RANGE_F32(min_, max_)                                          \
-                    .def.f32 = (float32_t)(def_),                                       \
-        PAR_INIT_UNIT(unit_)                                                            \
-            .type = ePAR_TYPE_F32,                                                      \
-        PAR_INIT_ACCESS(access_)                                                        \
-            PAR_INIT_PERSIST(enum_, pers_)                                              \
-                PAR_INIT_DESC(desc_)                                                    \
-    }, /**< Dispatch map for table initialization. */
+#define PAR_INIT_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) \
+    [enum_] = {                                                                                                    \
+        PAR_INIT_ID(id_)                                                                                           \
+            PAR_INIT_NAME(name_)                                                                                   \
+                PAR_INIT_RANGE_F32(min_, max_)                                                                     \
+                    .def.f32 = (float32_t)(def_),                                                                  \
+        PAR_INIT_UNIT(unit_)                                                                                       \
+            .type = ePAR_TYPE_F32,                                                                                 \
+        PAR_INIT_ACCESS(access_)                                                                                   \
+            PAR_INIT_READ_ROLES(read_roles_)                                                                       \
+                PAR_INIT_WRITE_ROLES(write_roles_)                                                                 \
+                    PAR_INIT_PERSIST(enum_, pers_)                                                                 \
+                        PAR_INIT_DESC(desc_)                                                                       \
+    },
+
 #define PAR_ITEM_U8  PAR_INIT_U8
 #define PAR_ITEM_U16 PAR_INIT_U16
 #define PAR_ITEM_U32 PAR_INIT_U32
@@ -422,7 +445,7 @@ static const par_cfg_t g_par_table[ePAR_NUM_OF] = {
 /**
  * @brief Configuration-independent compile-time parameter-ID table.
  */
-#define PAR_ITEM_ID_VALUE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) [enum_] = (uint16_t)(id_),
+#define PAR_ITEM_ID_VALUE(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) [enum_] = (uint16_t)(id_),
 static const uint16_t g_par_id_table[ePAR_NUM_OF] = {
 #define PAR_ITEM_U8  PAR_ITEM_ID_VALUE
 #define PAR_ITEM_U16 PAR_ITEM_ID_VALUE

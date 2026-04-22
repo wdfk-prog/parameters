@@ -18,15 +18,15 @@
  * object and preserves the internal U8/U16/U32 width-group layout.
  */
 
-#define PAR_STORAGE_INIT_NOP(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_STORAGE_U8_FROM_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   (par_atomic_u8_t)((uint8_t)(def_)),
-#define PAR_STORAGE_U8_FROM_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)   (par_atomic_u8_t)((uint8_t)(int8_t)(def_)),
-#define PAR_STORAGE_U16_FROM_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u16_t)((uint16_t)(def_)),
-#define PAR_STORAGE_U16_FROM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u16_t)((uint16_t)(int16_t)(def_)),
-#define PAR_STORAGE_U32_FROM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)((uint32_t)(def_)),
-#define PAR_STORAGE_U32_FROM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)((uint32_t)(int32_t)(def_)),
+#define PAR_STORAGE_INIT_NOP(...)
+#define PAR_STORAGE_U8_FROM_U8(...)   (par_atomic_u8_t)((uint8_t)(PAR_XARG_DEF(__VA_ARGS__))),
+#define PAR_STORAGE_U8_FROM_I8(...)   (par_atomic_u8_t)((uint8_t)(int8_t)(PAR_XARG_DEF(__VA_ARGS__))),
+#define PAR_STORAGE_U16_FROM_U16(...) (par_atomic_u16_t)((uint16_t)(PAR_XARG_DEF(__VA_ARGS__))),
+#define PAR_STORAGE_U16_FROM_I16(...) (par_atomic_u16_t)((uint16_t)(int16_t)(PAR_XARG_DEF(__VA_ARGS__))),
+#define PAR_STORAGE_U32_FROM_U32(...) (par_atomic_u32_t)((uint32_t)(PAR_XARG_DEF(__VA_ARGS__))),
+#define PAR_STORAGE_U32_FROM_I32(...) (par_atomic_u32_t)((uint32_t)(int32_t)(PAR_XARG_DEF(__VA_ARGS__))),
 #if (1 == PAR_CFG_ENABLE_TYPE_F32)
-#define PAR_STORAGE_U32_FROM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) (par_atomic_u32_t)(0u),
+#define PAR_STORAGE_U32_FROM_F32(...) (par_atomic_u32_t)(0u),
 #endif
 
 static par_storage_groups_t gs_par_storage = {

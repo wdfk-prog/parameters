@@ -481,6 +481,13 @@ PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HA
 #endif
 
 /**
+ * @brief Enable/Disable optional external role-policy metadata and enforcement.
+ */
+#ifndef PAR_CFG_ENABLE_ROLE_POLICY
+#define PAR_CFG_ENABLE_ROLE_POLICY (0)
+#endif
+
+/**
  * @brief Enable/Disable description check.
  *
  * @note Default follows PAR_CFG_ENABLE_DESC.
@@ -504,6 +511,7 @@ PAR_STATIC_ASSERT(par_id_hash_bits_valid, ((PAR_ID_HASH_BITS > 0u) && (PAR_ID_HA
     (0 == PAR_CFG_TABLE_ID_CHECK_EN)
 #error "Parameter settings invalid: payload-only NVM layouts require PAR_CFG_TABLE_ID_CHECK_EN = 1!"
 #endif
+
 
 #if (0 == PAR_CFG_ENABLE_ID) && (1 == PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK)
 #error "Parameter settings invalid: runtime duplicate-ID diagnostics require PAR_CFG_ENABLE_ID = 1!"

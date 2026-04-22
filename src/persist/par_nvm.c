@@ -126,7 +126,7 @@ typedef struct
 #define PAR_PERSIST_SLOT_ENTRY_SELECT_false(enum_)
 #define PAR_PERSIST_SLOT_ENTRY_SELECT_1(enum_) [PAR_PERSIST_IDX_##enum_] = enum_,
 #define PAR_PERSIST_SLOT_ENTRY_SELECT_0(enum_)
-#define PAR_ITEM_PERSIST_SLOT(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_PERSIST_SLOT_ENTRY_SELECT(enum_, pers_)
+#define PAR_ITEM_PERSIST_SLOT(...) PAR_PERSIST_SLOT_ENTRY_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
 /**
  * @brief Compile-time mapping from persistent slot to live parameter number.
  *

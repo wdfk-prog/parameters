@@ -245,9 +245,9 @@ static par_status_t par_set_checked_core(const par_num_t par_num, const par_type
     }
 
 #if (1 == PAR_CFG_ENABLE_ACCESS)
-    if (ePAR_ACCESS_RW != par_cfg->access)
+    if (false == par_access_has_write(par_cfg->access))
     {
-        PAR_INFO_PRINT("PAR: write denied by access policy, par_num=%u", (unsigned)par_num);
+        PAR_INFO_PRINT("PAR: write denied by access capability, par_num=%u", (unsigned)par_num);
         return ePAR_ERROR_ACCESS;
     }
 #endif
@@ -342,6 +342,10 @@ PAR_TYPED_ROWS(PAR_TYPED_IMPL_FAST_SETTER)
         status = par_validate_expected_type(par_cfg, ETYPE);                       \
         if (ePAR_OK != status)                                                     \
             return status;                                                         \
+#if (1 == PAR_CFG_ENABLE_ACCESS)                                                   \
+        if (false == par_access_has_read(par_cfg->access))                         \
+            return ePAR_ERROR_ACCESS;                                              \
+#endif                                                                             \
         *p_val = PAR_GET_##PRIV##_PRIV(par_num);                                   \
         return ePAR_OK;                                                            \
     }

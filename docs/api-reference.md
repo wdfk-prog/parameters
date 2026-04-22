@@ -37,7 +37,7 @@ The module conditionally compiles parts of the API based on configuration.
 
 ## Status notes
 
-- `ePAR_ERROR_ACCESS` indicates that a checked public setter rejected a write to an `ePAR_ACCESS_RO` parameter.
+- `ePAR_ERROR_ACCESS` indicates that a checked public value API rejected the requested access. Checked setters reject targets without `ePAR_ACCESS_WRITE`; checked getters reject targets without `ePAR_ACCESS_READ`.
 - Warning bit values were shifted to make room for the new access-denied error bit.
 
 ## Lifecycle
@@ -61,7 +61,7 @@ These are relevant only when mutex support is enabled in the integration.
 
 | Function | Description |
 | --- | --- |
-| `par_set(par_num, p_val)` | Set a parameter from a typed pointer. This public setter path enforces access policy and returns `ePAR_ERROR_ACCESS` when the target parameter is externally read-only. |
+| `par_set(par_num, p_val)` | Set a parameter from a typed pointer. This checked public write path returns `ePAR_ERROR_ACCESS` when `PAR_CFG_ENABLE_ACCESS = 1` and the target lacks `ePAR_ACCESS_WRITE`. |
 | `par_set_fast(par_num, p_val)` | Set a parameter from a typed pointer through the unchecked fast path. This API resolves the runtime type and then dispatches to the matching `par_set_xxx_fast()` implementation. |
 | `par_set_by_id(id, p_val)` | Set a parameter using its external ID. This path resolves the ID to `par_num_t` and then uses the same checked setter flow as `par_set()`. |
 
@@ -89,7 +89,7 @@ These are relevant only when mutex support is enabled in the integration.
 | `par_set_i32()` | Set an `I32` parameter. |
 | `par_set_f32()` | Set an `F32` parameter. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. |
 
-Normal typed setters are the canonical checked setter path. They enforce access policy and may include runtime validation callbacks and on-change callbacks when the matching configuration options are enabled.
+Normal typed setters are the canonical checked setter path. When `PAR_CFG_ENABLE_ACCESS = 1`, they enforce external write capability and return `ePAR_ERROR_ACCESS` when the target does not expose `ePAR_ACCESS_WRITE`. They may also include runtime validation callbacks and on-change callbacks when the matching configuration options are enabled.
 
 ## Fast setters
 
@@ -144,8 +144,8 @@ These reset APIs are different from startup initialization:
 
 | Function | Description |
 | --- | --- |
-| `par_get(par_num, p_val)` | Read a parameter into a typed destination pointer. |
-| `par_get_by_id(id, p_val)` | Read a parameter using its external ID. |
+| `par_get(par_num, p_val)` | Read a parameter into a typed destination pointer. This checked public read path returns `ePAR_ERROR_ACCESS` when `PAR_CFG_ENABLE_ACCESS = 1` and the target lacks `ePAR_ACCESS_READ`. |
+| `par_get_by_id(id, p_val)` | Read a parameter using its external ID. After ID resolution, this uses the same checked public read flow as `par_get()`. |
 
 Typed getter macros are removed. Call the typed getter functions directly and always check the returned status.
 
@@ -160,7 +160,9 @@ Typed getter macros are removed. Call the typed getter functions directly and al
 | `par_get_u32(par_num, p_val)` | Read a `U32` parameter into `*p_val`. Returns status. |
 | `par_get_i32(par_num, p_val)` | Read an `I32` parameter into `*p_val`. Returns status. |
 | `par_get_f32(par_num, p_val)` | Read an `F32` parameter into `*p_val`. Available only when `PAR_CFG_ENABLE_TYPE_F32 = 1`. Returns status. |
-| `par_get_default(par_num, p_val)` | Read the configured default value for a parameter. |
+| `par_get_default(par_num, p_val)` | Read the configured default value for a parameter from the metadata table. This API does not consume runtime read capability metadata. |
+
+Checked typed getters are the canonical public read path. When `PAR_CFG_ENABLE_ACCESS = 1`, they enforce external read capability and return `ePAR_ERROR_ACCESS` when the target does not expose `ePAR_ACCESS_READ`.
 
 ## Metadata access
 
@@ -174,10 +176,16 @@ These APIs do not follow the same runtime usage pattern as the value access APIs
 | `par_get_unit(par_num)` | Return the engineering unit when unit metadata is enabled. |
 | `par_get_desc(par_num)` | Return the description string when description metadata is enabled. |
 | `par_get_type(par_num)` | Return the parameter type enum. |
-| `par_get_access(par_num)` | Return read-only or read-write access metadata when enabled. Public checked setter APIs consume this metadata to enforce write access. |
+| `par_get_access(par_num)` | Return the external access capability bit mask when enabled. Checked public value getters use its read bit; checked public setters use its write bit. |
+| `par_get_read_roles(par_num)` | Return the configured read-role bit set when role policy metadata is enabled. |
+| `par_get_write_roles(par_num)` | Return the configured write-role bit set when role policy metadata is enabled. |
+| `par_can_read(par_num, roles)` | Test the supplied caller role bits (`par_role_t`) against the parameter read-role metadata. When access metadata is enabled, read capability must also be present. |
+| `par_can_write(par_num, roles)` | Test the supplied caller role bits (`par_role_t`) against the parameter write-role metadata. When access metadata is enabled, write capability must also be present. |
 | `par_is_persistent(par_num)` | Return whether the parameter is marked persistent when enabled. |
 | `par_get_num_by_id(id, p_par_num)` | Convert an external ID to `par_num_t` through the compile-time generated static ID map. This metadata API does not require `par_init()`. |
 | `par_get_id_by_num(par_num, p_id)` | Convert `par_num_t` to external ID. |
+
+The role-policy option does not own a global login/session state inside the core. Integrators are expected to supply the current caller role bits (`par_role_t`) from their own CLI, service, or transport context when calling `par_can_read()` / `par_can_write()`. Core value getters/setters do not implicitly consume role masks unless an integration layer chooses to wrap those APIs with role-aware policy checks.
 
 ## NVM APIs
 

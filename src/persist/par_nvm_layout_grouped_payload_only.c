@@ -60,25 +60,25 @@ static uint32_t par_nvm_layout_grouped_payload_only_record_size_from_par_num(con
  * 32-bit payloads. `offsetof()` on the generated members therefore yields the
  * exact grouped-layout address without runtime scans or handwritten offsets.
  */
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_MAP_BASE_SIZE 1U
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_RECORD_SIZE_BYTES(payload_size_)     (PAR_NVM_LAYOUT_RECORD_OVERHEAD + (uint32_t)(payload_size_))
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, emit_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_I(enum_, pers_, emit_)
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_I(enum_, pers_, emit_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_##pers_(enum_, emit_)
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_1(enum_, emit_)  emit_(enum_)
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_MAP_BASE_SIZE                  1U
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_RECORD_SIZE_BYTES(payload_size_)      (PAR_NVM_LAYOUT_RECORD_OVERHEAD + (uint32_t)(payload_size_))
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, emit_)   PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_I(enum_, pers_, emit_)
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_I(enum_, pers_, emit_) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_##pers_(enum_, emit_)
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_1(enum_, emit_)        emit_(enum_)
 #define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT_0(enum_, emit_)
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_1(enum_)     uint8_t slot_##enum_[PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_RECORD_SIZE_BYTES(1U)];
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_2(enum_)     uint8_t slot_##enum_[PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_RECORD_SIZE_BYTES(2U)];
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_4(enum_)     uint8_t slot_##enum_[PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_RECORD_SIZE_BYTES(4U)];
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_1(enum_) uint8_t slot_##enum_[PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_RECORD_SIZE_BYTES(1U)];
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_2(enum_) uint8_t slot_##enum_[PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_RECORD_SIZE_BYTES(2U)];
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_4(enum_) uint8_t slot_##enum_[PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_RECORD_SIZE_BYTES(4U)];
 typedef struct
 {
     uint8_t base__[PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_MAP_BASE_SIZE];
-#define PAR_ITEM_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_1)
-#define PAR_ITEM_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_1)
-#define PAR_ITEM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_ITEM_U8(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__), PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_1)
+#define PAR_ITEM_U16(...)
+#define PAR_ITEM_U32(...)
+#define PAR_ITEM_I8(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__), PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_1)
+#define PAR_ITEM_I16(...)
+#define PAR_ITEM_I32(...)
+#define PAR_ITEM_F32(...)
 #include "../../par_table.def"
 #undef PAR_ITEM_U8
 #undef PAR_ITEM_U16
@@ -87,13 +87,13 @@ typedef struct
 #undef PAR_ITEM_I16
 #undef PAR_ITEM_I32
 #undef PAR_ITEM_F32
-#define PAR_ITEM_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_2)
-#define PAR_ITEM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_2)
-#define PAR_ITEM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
+#define PAR_ITEM_U8(...)
+#define PAR_ITEM_U16(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__), PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_2)
+#define PAR_ITEM_U32(...)
+#define PAR_ITEM_I8(...)
+#define PAR_ITEM_I16(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__), PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_2)
+#define PAR_ITEM_I32(...)
+#define PAR_ITEM_F32(...)
 #include "../../par_table.def"
 #undef PAR_ITEM_U8
 #undef PAR_ITEM_U16
@@ -102,13 +102,13 @@ typedef struct
 #undef PAR_ITEM_I16
 #undef PAR_ITEM_I32
 #undef PAR_ITEM_F32
-#define PAR_ITEM_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_4)
-#define PAR_ITEM_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)
-#define PAR_ITEM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_4)
-#define PAR_ITEM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(enum_, pers_, PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_4)
+#define PAR_ITEM_U8(...)
+#define PAR_ITEM_U16(...)
+#define PAR_ITEM_U32(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__), PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_4)
+#define PAR_ITEM_I8(...)
+#define PAR_ITEM_I16(...)
+#define PAR_ITEM_I32(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__), PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_4)
+#define PAR_ITEM_F32(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_PERSIST_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__), PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_MEMBER_4)
 #include "../../par_table.def"
 #undef PAR_ITEM_U8
 #undef PAR_ITEM_U16
@@ -118,19 +118,19 @@ typedef struct
 #undef PAR_ITEM_I32
 #undef PAR_ITEM_F32
 } par_nvm_layout_grouped_payload_only_offset_map_t;
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_OF(enum_)     ((uint32_t)offsetof(par_nvm_layout_grouped_payload_only_offset_map_t, slot_##enum_) - PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_MAP_BASE_SIZE)
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_I(enum_, pers_)
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_I(enum_, pers_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_##pers_(enum_)
-#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_1(enum_)     [PAR_PERSIST_IDX_##enum_] = PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_OF(enum_),
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_OF(enum_)                  ((uint32_t)offsetof(par_nvm_layout_grouped_payload_only_offset_map_t, slot_##enum_) - PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_MAP_BASE_SIZE)
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)   PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_I(enum_, pers_)
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_I(enum_, pers_) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_##pers_(enum_)
+#define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_1(enum_)        [PAR_PERSIST_IDX_##enum_] = PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_OFFSET_OF(enum_),
 #define PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT_0(enum_)
 static const uint32_t g_par_nvm_layout_grouped_payload_only_addr_lut[PAR_PERSIST_SLOT_MAP_CAPACITY] = {
-#define PAR_ITEM_U8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)
-#define PAR_ITEM_U16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)
-#define PAR_ITEM_U32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)
-#define PAR_ITEM_I8(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)
-#define PAR_ITEM_I16(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)
-#define PAR_ITEM_I32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)
-#define PAR_ITEM_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(enum_, pers_)
+#define PAR_ITEM_U8(...)  PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
+#define PAR_ITEM_U16(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
+#define PAR_ITEM_U32(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
+#define PAR_ITEM_I8(...)  PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
+#define PAR_ITEM_I16(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
+#define PAR_ITEM_I32(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
+#define PAR_ITEM_F32(...) PAR_NVM_LAYOUT_GROUPED_PAYLOAD_ONLY_ADDR_ENTRY_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
 #include "../../par_table.def"
 #undef PAR_ITEM_U8
 #undef PAR_ITEM_U16
@@ -316,9 +316,7 @@ static par_nvm_compat_result_t par_nvm_layout_grouped_payload_only_check_compat(
         return ePAR_NVM_COMPAT_REBUILD;
     }
 
-    return (p_head_obj->obj_nb == (uint16_t)PAR_PERSISTENT_COMPILE_COUNT) ?
-               ePAR_NVM_COMPAT_EXACT_MATCH :
-               ePAR_NVM_COMPAT_REBUILD;
+    return (p_head_obj->obj_nb == (uint16_t)PAR_PERSISTENT_COMPILE_COUNT) ? ePAR_NVM_COMPAT_EXACT_MATCH : ePAR_NVM_COMPAT_REBUILD;
 }
 
 #if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)

@@ -40,7 +40,7 @@
 /**
  * @brief Parameter status.
  */
-enum
+typedef enum
 {
     ePAR_OK = 0U, /**< Normal operation. */
 
@@ -55,7 +55,7 @@ enum
     ePAR_ERROR_VALUE = 0x0040U,    /**< Invalid parameter value (validation failed). */
     ePAR_ERROR_PARAM = 0x0080U,    /**< Invalid function argument. */
     ePAR_ERROR_PAR_NUM = 0x0100U,  /**< Invalid parameter number. */
-    ePAR_ERROR_ACCESS = 0x0200U,   /**< Write access denied by parameter access policy. */
+    ePAR_ERROR_ACCESS = 0x0200U,   /**< Access denied by parameter access policy. */
     ePAR_ERROR_TABLE_ID = 0x0400U, /**< Stored parameter-table ID does not match the live table. */
 
     /* Warning status bits. */
@@ -64,12 +64,11 @@ enum
     ePAR_WAR_NVM_REWRITTEN = 0x1000U, /**< NVM parameters area completely re-written. */
     ePAR_WAR_NO_PERSISTENT = 0x2000U, /**< No persistent parameters -> set PAR_CFG_NVM_EN to 0. */
     ePAR_WAR_LIMITED = 0x4000U,       /**< Parameter value limited within [min,max]. */
-};
-typedef uint16_t par_status_t;
+} par_status_t;
 /**
  * @brief Parameters type enumeration.
  */
-enum
+typedef enum
 {
     ePAR_TYPE_U8 = 0, /**< Unsigned 8-bit value. */
     ePAR_TYPE_U16,    /**< Unsigned 16-bit value. */
@@ -79,17 +78,32 @@ enum
     ePAR_TYPE_I32,    /**< Signed 32-bit value. */
     ePAR_TYPE_F32,    /**< 32-bit floating value. */
     ePAR_TYPE_NUM_OF
-};
-typedef uint8_t par_type_list_t;
+} par_type_list_t;
 /**
- * @brief Parameter R/W access.
+ * @brief Parameter read/write capability bit mask.
  */
-enum
+typedef enum
 {
-    ePAR_ACCESS_RO = 0, /**< Parameter read only. */
-    ePAR_ACCESS_RW      /**< Parameter read/write. */
-};
-typedef uint8_t par_access_t;
+    ePAR_ACCESS_NONE = 0U,                                    /**< No external read/write capability. */
+    ePAR_ACCESS_READ = (1U << 0),                             /**< External read capability. */
+    ePAR_ACCESS_WRITE = (1U << 1),                            /**< External write capability. */
+    ePAR_ACCESS_RO = ePAR_ACCESS_READ,                        /**< Parameter read only. */
+    ePAR_ACCESS_RW = (ePAR_ACCESS_READ | ePAR_ACCESS_WRITE),  /**< Parameter read/write. */
+} par_access_t;
+#if (1 == PAR_CFG_ENABLE_ROLE_POLICY)
+/**
+ * @brief External role-mask bits used by optional parameter role policy.
+ */
+typedef enum
+{
+    ePAR_ROLE_NONE = 0U,                                   /**< No external role granted. */
+    ePAR_ROLE_PUBLIC = (1U << 0),                          /**< End-user/public role. */
+    ePAR_ROLE_SERVICE = (1U << 1),                         /**< Service/maintenance role. */
+    ePAR_ROLE_DEVELOPER = (1U << 2),                       /**< Developer/debug role. */
+    ePAR_ROLE_MANUFACTURING = (1U << 3),                   /**< Manufacturing/production role. */
+    ePAR_ROLE_ALL = (ePAR_ROLE_PUBLIC | ePAR_ROLE_SERVICE | ePAR_ROLE_DEVELOPER | ePAR_ROLE_MANUFACTURING), /**< All external roles. */
+} par_role_t;
+#endif
 /**
  * @brief 32-bit floating data type definition.
  */
@@ -142,7 +156,11 @@ typedef struct par_cfg_s
 #endif
     par_type_list_t type;  /**< Parameter type. */
 #if (1 == PAR_CFG_ENABLE_ACCESS)
-    par_access_t access;   /**< Parameter access from external device point-of-view. */
+    par_access_t access;   /**< External access capability mask. */
+#endif
+#if (1 == PAR_CFG_ENABLE_ROLE_POLICY)
+    par_role_t read_roles;  /**< External roles allowed to read the parameter. */
+    par_role_t write_roles; /**< External roles allowed to write the parameter. */
 #endif
 #if (1 == PAR_CFG_NVM_EN)
     bool persistent;       /**< Parameter persistence flag. */
@@ -473,10 +491,18 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
  * @brief Getting parameter value API (module must be first initialized before using those func).
  */
 /**
+ * @brief Checked public value-read APIs.
+ * @details `par_get()`, `par_get_by_id()`, and the typed `par_get_xxx()` family enforce
+ * external read capability when `PAR_CFG_ENABLE_ACCESS = 1`. Metadata getters and
+ * `par_get_default()` read the configuration table directly and therefore remain outside
+ * that runtime access-check boundary.
+ */
+/**
  * @brief Read one parameter into a typed output pointer.
  * @param par_num Parameter number.
  * @param p_val Pointer to the output value.
- * @return Operation status.
+ * @return Operation status. Returns `ePAR_ERROR_ACCESS` when access metadata is enabled
+ * and the target parameter does not expose external read capability.
  */
 par_status_t par_get(const par_num_t par_num, void * const p_val);
 #if (1 == PAR_CFG_ENABLE_ID)
@@ -484,7 +510,8 @@ par_status_t par_get(const par_num_t par_num, void * const p_val);
  * @brief Read one parameter by external parameter ID.
  * @param id External parameter ID.
  * @param p_val Pointer to the output value.
- * @return Operation status.
+ * @return Operation status. Returns `ePAR_ERROR_ACCESS` when access metadata is enabled
+ * and the target parameter does not expose external read capability.
  */
 par_status_t par_get_by_id(const uint16_t id, void * const p_val);
 #endif
@@ -540,7 +567,7 @@ par_status_t par_get_i32(const par_num_t par_num, int32_t * const p_val);
 par_status_t par_get_f32(const par_num_t par_num, float32_t * const p_val);
 #endif
 /**
- * @brief Read the configured default value for one parameter.
+ * @brief Read the configured default value for one parameter from the metadata table.
  * @param par_num Parameter number.
  * @param p_val Pointer to the output value.
  * @return Operation status.
@@ -575,15 +602,39 @@ const char *par_get_desc(const par_num_t par_num);
 par_type_list_t par_get_type(const par_num_t par_num);
 #if (1 == PAR_CFG_ENABLE_ACCESS)
 /**
- * @brief Return parameter access metadata used by public setter access enforcement.
- * @details when PAR_CFG_ENABLE_ACCESS = 1.
- */
-/**
- * @brief Return the configured external access policy for one parameter.
+ * @brief Return the configured external read/write capability mask for one parameter.
  * @param par_num Parameter number.
- * @return Configured access policy.
+ * @return Configured external capability mask.
  */
 par_access_t par_get_access(const par_num_t par_num);
+#endif
+#if (1 == PAR_CFG_ENABLE_ROLE_POLICY)
+/**
+ * @brief Return the configured external read-role mask for one parameter.
+ * @param par_num Parameter number.
+ * @return Configured read-role mask.
+ */
+par_role_t par_get_read_roles(const par_num_t par_num);
+/**
+ * @brief Return the configured external write-role mask for one parameter.
+ * @param par_num Parameter number.
+ * @return Configured write-role mask.
+ */
+par_role_t par_get_write_roles(const par_num_t par_num);
+/**
+ * @brief Test whether a caller role mask may read one parameter.
+ * @param par_num Parameter number.
+ * @param roles Caller role mask.
+ * @return True when read is allowed; otherwise false.
+ */
+bool par_can_read(const par_num_t par_num, const par_role_t roles);
+/**
+ * @brief Test whether a caller role mask may write one parameter.
+ * @param par_num Parameter number.
+ * @param roles Caller role mask.
+ * @return True when write is allowed; otherwise false.
+ */
+bool par_can_write(const par_num_t par_num, const par_role_t roles);
 #endif
 #if (1 == PAR_CFG_NVM_EN)
 /**

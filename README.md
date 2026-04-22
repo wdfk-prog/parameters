@@ -15,7 +15,7 @@ It is designed for projects that need a clean way to:
 
 - **Single source of truth** through `par_table.def`
 - **Typed APIs** for `U8`, `I8`, `U16`, `I16`, `U32`, `I32`, and, when enabled, `F32`
-- **Optional metadata** such as name, unit, description, access, ID, and persistence flags
+- **Optional metadata** such as name, unit, description, access, ID, persistence flags, and optional role-based read/write visibility metadata
 - **Validation pipeline** with compile-time checks for integer ranges and optional runtime hooks for dynamic rules
 - **Static live-value storage** grouped by width instead of heap allocation
 - **Fast external lookup by ID** through a compile-time generated static hash map
@@ -31,7 +31,7 @@ It is designed for projects that need a clean way to:
 3. Provide `port/par_cfg_port.h` in your include path.
 4. Optionally provide `port/par_if_port.c` and `port/par_atomic_port.h` when your platform needs them.
 5. Call `par_init()` before using runtime APIs.
-6. Use the typed `par_set_*` / `par_get_*` APIs in application code. Getter APIs now use an explicit output pointer and return `par_status_t`.
+6. Use the typed `par_set_*` / `par_get_*` APIs in application code. Getter APIs now use an explicit output pointer and return `par_status_t`. When `PAR_CFG_ENABLE_ACCESS = 1`, checked public read APIs also reject parameters that do not expose external read capability.
 
 A minimal example:
 
@@ -56,6 +56,25 @@ static void app_init(void)
     }
 }
 ```
+
+
+## Optional role-policy metadata
+
+When `PAR_CFG_ENABLE_ROLE_POLICY = 1`, each row in `par_table.def` also carries:
+
+- `read_roles_`
+- `write_roles_`
+
+These fields are **metadata and helper-policy inputs**, not a built-in login/session system.
+The package exposes `par_can_read()` / `par_can_write()` so the integration layer
+(such as msh, CLI, RPC, or diagnostic service code) can decide which caller roles
+are currently active and enforce them consistently.
+
+The core checked value APIs still consume only the access capability bits (`ePAR_ACCESS_READ` / `ePAR_ACCESS_WRITE`).
+Role masks are evaluated only when the integration calls `par_can_read()` / `par_can_write()` or wraps them in a higher-level public interface such as the packaged RT-Thread shell port.
+Metadata getters and `par_get_default()` continue to read the configuration table directly and therefore do not consume role-policy metadata.
+
+`msh info` and `msh json` also show the configured role metadata when this option is enabled. In the packaged RT-Thread shell port, `par get`, `par set`, and the live-value fields printed by `par info` / `par json` are all filtered through the current shell role mask.
 
 ## Documentation map
 

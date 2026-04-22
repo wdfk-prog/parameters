@@ -225,9 +225,11 @@ This keeps runtime lookup simple and deterministic, but it also means a conflict
 
 ### Access enforcement boundary
 
-`par_get_access()` remains metadata, but the metadata is now consumed by the checked setter core. Public write entry points enforce `ePAR_ACCESS_RW` and reject writes to `ePAR_ACCESS_RO` with `ePAR_ERROR_ACCESS`.
+`par_get_access()` remains metadata, but the metadata is now consumed by the checked public value-access boundary. Public write entry points (`par_set()`, `par_set_by_id()`, and typed setters) enforce external write capability and reject targets without `ePAR_ACCESS_WRITE` with `ePAR_ERROR_ACCESS`. Public read entry points (`par_get()`, `par_get_by_id()`, and typed getters) enforce external read capability and reject targets without `ePAR_ACCESS_READ` with the same status.
 
-Fast setters and internal restore paths intentionally remain outside that checked boundary. They are used for startup/default/NVM restore flows where the firmware must rehydrate trusted values without invoking public access-control policy.
+Fast setters and internal restore paths intentionally remain outside that checked boundary. They are used for startup/default/NVM restore flows where the firmware must rehydrate trusted values without invoking public access-control policy. Metadata getters and `par_get_default()` also remain outside that boundary because they read the configuration table rather than the external-facing live-value path.
+
+Role-policy metadata is intentionally one layer higher. The core exposes `par_can_read()` / `par_can_write()` helper predicates, but it does not own login/session state or automatically apply role masks inside the generic value getters/setters. Integrators such as CLI, RPC, or diagnostic transports decide when to combine caller-role context with the access-capability bits.
 
 ### Hash geometry and collision rule
 

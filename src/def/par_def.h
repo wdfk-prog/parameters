@@ -37,10 +37,28 @@ extern "C" {
  */
 typedef struct par_cfg_s par_cfg_t;
 /**
+ * @brief Centralized argument extractors for par_table.def X-Macro rows.
+ * @details Keep row-signature changes localized here. Consumers can use
+ * variadic wrappers plus these selectors instead of repeating the full row
+ * signature in every macro definition.
+ */
+#define PAR_XARG_ENUM(enum_, ...)                                                                                   enum_
+#define PAR_XARG_ID(_enum, id_, ...)                                                                                id_
+#define PAR_XARG_NAME(_enum, _id, name_, ...)                                                                       name_
+#define PAR_XARG_MIN(_enum, _id, _name, min_, ...)                                                                  min_
+#define PAR_XARG_MAX(_enum, _id, _name, _min, max_, ...)                                                            max_
+#define PAR_XARG_DEF(_enum, _id, _name, _min, _max, def_, ...)                                                      def_
+#define PAR_XARG_UNIT(_enum, _id, _name, _min, _max, _def, unit_, ...)                                              unit_
+#define PAR_XARG_ACCESS(_enum, _id, _name, _min, _max, _def, _unit, access_, ...)                                   access_
+#define PAR_XARG_READ_ROLES(_enum, _id, _name, _min, _max, _def, _unit, _access, read_roles_, ...)                  read_roles_
+#define PAR_XARG_WRITE_ROLES(_enum, _id, _name, _min, _max, _def, _unit, _access, _read_roles, write_roles_, ...)   write_roles_
+#define PAR_XARG_PERS(_enum, _id, _name, _min, _max, _def, _unit, _access, _read_roles, _write_roles, pers_, ...)   pers_
+#define PAR_XARG_DESC(_enum, _id, _name, _min, _max, _def, _unit, _access, _read_roles, _write_roles, _pers, desc_) desc_
+/**
  * @brief List of device parameters.
  * @note Must be started with 0! @note Enum expansion is intentionally configuration-independent: PAR_ITEM_F32 always maps to PAR_ITEM_ENUM. F32 enable/disable fail-fast is enforced in par_def.c.
  */
-#define PAR_ITEM_ENUM(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) enum_,
+#define PAR_ITEM_ENUM(...) PAR_XARG_ENUM(__VA_ARGS__),
 enum
 {
 #define PAR_ITEM_U8  PAR_ITEM_ENUM
@@ -72,8 +90,8 @@ typedef uint16_t par_num_t;
  * @brief Compile-time storage group counts derived from par_table.def.
  * @note These constants are used by layout and static storage allocation.
  */
-#define PAR_ITEM_COUNT_ONE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)  +1u
-#define PAR_ITEM_COUNT_ZERO(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) +0u
+#define PAR_ITEM_COUNT_ONE(...)  +1u
+#define PAR_ITEM_COUNT_ZERO(...) +0u
 
 enum
 {
@@ -146,11 +164,11 @@ enum
  * resulting PAR_PERSIST_IDX_<enum_> constants are dense and ordered exactly as
  * the source table.
  */
-#define PAR_PERSIST_ENUM_SELECT(enum_, pers_) PAR_PERSIST_ENUM_SELECT_I(enum_, pers_)
+#define PAR_PERSIST_ENUM_SELECT(enum_, pers_)   PAR_PERSIST_ENUM_SELECT_I(enum_, pers_)
 #define PAR_PERSIST_ENUM_SELECT_I(enum_, pers_) PAR_PERSIST_ENUM_SELECT_##pers_(enum_)
-#define PAR_PERSIST_ENUM_SELECT_1(enum_)  PAR_PERSIST_IDX_##enum_,
+#define PAR_PERSIST_ENUM_SELECT_1(enum_)        PAR_PERSIST_IDX_##enum_,
 #define PAR_PERSIST_ENUM_SELECT_0(enum_)
-#define PAR_ITEM_PERSIST_ENUM(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_)     PAR_PERSIST_ENUM_SELECT(enum_, pers_)
+#define PAR_ITEM_PERSIST_ENUM(...) PAR_PERSIST_ENUM_SELECT(PAR_XARG_ENUM(__VA_ARGS__), PAR_XARG_PERS(__VA_ARGS__))
 enum
 {
 #define PAR_ITEM_U8  PAR_ITEM_PERSIST_ENUM

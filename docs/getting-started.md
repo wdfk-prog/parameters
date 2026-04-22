@@ -15,7 +15,7 @@ This guide shows how to integrate the `Device Parameters` module into a firmware
    - raw reset-all support
    - `F32` parameter support
 5. Call `par_init()` before runtime access.
-6. Use the typed APIs. Getter calls take an explicit output pointer and return `par_status_t`.
+6. Use the typed APIs. Getter calls take an explicit output pointer and return `par_status_t`. When `PAR_CFG_ENABLE_ACCESS = 1`, checked public read APIs also return `ePAR_ERROR_ACCESS` for parameters without external read capability.
 
 ## Required files
 
@@ -29,6 +29,7 @@ Each row defines one parameter and is reused to build:
 - the parameter configuration table
 - compile-time integer validation checks
 - compile-time storage counts
+- optional role-based metadata columns used by `par_can_read()` / `par_can_write()`
 
 A minimal example:
 
@@ -42,6 +43,8 @@ PAR_ITEM_U8 (
     0U,
     NULL,
     ePAR_ACCESS_RW,
+    ePAR_ROLE_ALL,
+    ePAR_ROLE_ALL,
     true,
     "Application operating mode"
 )
@@ -55,12 +58,16 @@ PAR_ITEM_F32(
     25.0f,
     "degC",
     ePAR_ACCESS_RW,
+    ePAR_ROLE_ALL,
+    ePAR_ROLE_ALL,
     true,
     "Requested control target temperature"
 )
 ```
 
 Use `template/par_table.deftmp` as the starting point.
+
+The `read_roles_` / `write_roles_` columns are part of the fixed `PAR_ITEM_*` row signature even when role policy is disabled. If you keep role policy disabled, use `ePAR_ROLE_ALL` / `ePAR_ROLE_NONE` as neutral placeholders in the extra role columns, or keep the template defaults and leave enforcement to the access bit only.
 
 This example requires `PAR_CFG_ENABLE_TYPE_F32 = 1`. If `F32` support is disabled, remove all `PAR_ITEM_F32(...)` rows from `par_table.def`.
 
@@ -433,13 +440,13 @@ src/par_cfg.h:160:53: note: in expansion of macro 'PAR_PORT_STATIC_ASSERT'
   160 | #define PAR_STATIC_ASSERT(name, expn)               PAR_PORT_STATIC_ASSERT(name, expn);
       |                                                     ^~~~~~~~~~~~~~~~~~~~~~
 src/def/par_def.c:73:94: note: in expansion of macro 'PAR_STATIC_ASSERT'
-   73 |     #define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) PAR_STATIC_ASSERT(enum_##_f32_type_is_disabled__remove_PAR_ITEM_F32, 0)
+   73 |     #define PAR_CHECK_F32(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) PAR_STATIC_ASSERT(enum_##_f32_type_is_disabled__remove_PAR_ITEM_F32, 0)
       |                                                                                              ^~~~~~~~~~~~~~~~~
 src/def/par_def.c:85:23: note: in expansion of macro 'PAR_CHECK_F32'
    85 | #define PAR_ITEM_F32  PAR_CHECK_F32
       |                       ^~~~~~~~~~~~~
 par_table.def:189:1: note: in expansion of macro 'PAR_ITEM_F32'
-  189 | PAR_ITEM_F32(ePAR_SYS_CPU_LOAD_MAX, 10011,  "CPU Max. load",               0.0f,        100.0f,     0.0f,       "%",    ePAR_ACCESS_RO,  false,  "Maximum CPU load in %")
+  189 | PAR_ITEM_F32(ePAR_SYS_CPU_LOAD_MAX, 10011,  "CPU Max. load",               0.0f,        100.0f,     0.0f,       "%",    ePAR_ACCESS_RO,  ePAR_ROLE_ALL, ePAR_ROLE_NONE, false,  "Maximum CPU load in %")
       | ^~~~~~~~~~~~
 ```
 
@@ -457,7 +464,7 @@ Example:
 ```log
 par_table.def: In function 'par_compile_check_hash_bucket_collision':
 src/def/par_def.c:156:105: error: duplicate case value
-  156 | #define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) case PAR_HASH_ID_CONST(id_): break;
+  156 | #define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) case PAR_HASH_ID_CONST(id_): break;
       |                                                                                                         ^~~~
 src/def/par_def.c:162:31: note: in expansion of macro 'PAR_CHECK_ID_BUCKET_CASE'
   162 |         #define PAR_ITEM_U16  PAR_CHECK_ID_BUCKET_CASE
@@ -466,7 +473,7 @@ par_table.def:141:1: note: in expansion of macro 'PAR_ITEM_U16'
   141 | PAR_ITEM_U16(ePAR_CH3_VOL_RAW, 253, "Ch3 Raw Vout", ...)
       | ^~~~~~~~~~~~
 src/def/par_def.c:156:105: note: previously used here
-  156 | #define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, pers_, desc_) case PAR_HASH_ID_CONST(id_): break;
+  156 | #define PAR_CHECK_ID_BUCKET_CASE(enum_, id_, name_, min_, max_, def_, unit_, access_, read_roles_, write_roles_, pers_, desc_) case PAR_HASH_ID_CONST(id_): break;
       |                                                                                                         ^~~~
 src/def/par_def.c:167:31: note: in expansion of macro 'PAR_CHECK_ID_BUCKET_CASE'
   167 |         #define PAR_ITEM_F32  PAR_CHECK_ID_BUCKET_CASE

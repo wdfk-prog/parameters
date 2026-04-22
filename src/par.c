@@ -170,10 +170,43 @@ static const char *gs_status[] = {
  * @brief Function declarations.
  */
 static par_status_t par_set_checked_core(const par_num_t par_num, const par_type_list_t expected_type, const par_type_t * const p_typed_val, const void * const p_ptr_val);
+#if (1 == PAR_CFG_ENABLE_ACCESS)
+static bool par_access_has_read(const par_access_t access);
+static bool par_access_has_write(const par_access_t access);
+#endif
+#if (1 == PAR_CFG_ENABLE_ROLE_POLICY)
+static bool par_roles_are_valid(const par_role_t roles);
+#endif
 
 /**
  * @brief Function declarations and definitions.
  */
+#if (1 == PAR_CFG_ENABLE_ACCESS)
+/**
+ * @brief Return whether the access mask contains read capability.
+ */
+static bool par_access_has_read(const par_access_t access)
+{
+    return (0U != ((uint32_t)access & (uint32_t)ePAR_ACCESS_READ));
+}
+
+/**
+ * @brief Return whether the access mask contains write capability.
+ */
+static bool par_access_has_write(const par_access_t access)
+{
+    return (0U != ((uint32_t)access & (uint32_t)ePAR_ACCESS_WRITE));
+}
+#endif
+#if (1 == PAR_CFG_ENABLE_ROLE_POLICY)
+/**
+ * @brief Validate that a role mask contains only supported role bits.
+ */
+static bool par_roles_are_valid(const par_role_t roles)
+{
+    return (0U == ((uint32_t)roles & (uint32_t)(~((uint32_t)ePAR_ROLE_ALL))));
+}
+#endif
 #if (1 == PAR_CFG_ENABLE_DESC) && (1 == PAR_CFG_ENABLE_DESC_CHECK)
 /**
  * @brief Validate parameter description string.
@@ -1179,7 +1212,7 @@ par_type_list_t par_get_type(const par_num_t par_num)
     return ePAR_TYPE_NUM_OF;
 }
 /**
- * @brief Get parameter access (RO, RW).
+ * @brief Get parameter external capability mask.
  *
  * @param par_num Parameter number (enumeration).
  * @return Parameter access.
@@ -1194,8 +1227,76 @@ par_access_t par_get_access(const par_num_t par_num)
         return par_cfg->access;
     }
 
-    return ePAR_ACCESS_RO;
+    return ePAR_ACCESS_NONE;
 }
+#endif
+#if (1 == PAR_CFG_ENABLE_ROLE_POLICY)
+par_role_t par_get_read_roles(const par_num_t par_num)
+{
+    const par_cfg_t *par_cfg = NULL;
+
+    if (ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
+    {
+        return par_cfg->read_roles;
+    }
+
+    return ePAR_ROLE_NONE;
+}
+
+par_role_t par_get_write_roles(const par_num_t par_num)
+{
+    const par_cfg_t *par_cfg = NULL;
+
+    if (ePAR_OK == par_resolve_metadata(par_num, NULL, false, &par_cfg))
+    {
+        return par_cfg->write_roles;
+    }
+
+    return ePAR_ROLE_NONE;
+}
+
+bool par_can_read(const par_num_t par_num, const par_role_t roles)
+{
+    const par_cfg_t *par_cfg = NULL;
+
+    if ((false == par_roles_are_valid(roles)) ||
+        (ePAR_OK != par_resolve_metadata(par_num, NULL, false, &par_cfg)) ||
+        (NULL == par_cfg))
+    {
+        return false;
+    }
+
+#if (1 == PAR_CFG_ENABLE_ACCESS)
+    if (false == par_access_has_read(par_cfg->access))
+    {
+        return false;
+    }
+#endif
+
+    return (0U != ((uint32_t)par_cfg->read_roles & (uint32_t)roles));
+}
+
+bool par_can_write(const par_num_t par_num, const par_role_t roles)
+{
+    const par_cfg_t *par_cfg = NULL;
+
+    if ((false == par_roles_are_valid(roles)) ||
+        (ePAR_OK != par_resolve_metadata(par_num, NULL, false, &par_cfg)) ||
+        (NULL == par_cfg))
+    {
+        return false;
+    }
+
+#if (1 == PAR_CFG_ENABLE_ACCESS)
+    if (false == par_access_has_write(par_cfg->access))
+    {
+        return false;
+    }
+#endif
+
+    return (0U != ((uint32_t)par_cfg->write_roles & (uint32_t)roles));
+}
+
 #endif
 /**
  * @brief Is parameter persistent (does it store to NVM).
