@@ -41,7 +41,6 @@ See [Upstream relationship](./docs/upstream.md) for the import baseline and main
 | Object parameters | [docs/object-parameters.md](./docs/object-parameters.md) | [docs/object-parameters.zh-CN.md](./docs/object-parameters.zh-CN.md) |
 | Flash-ee backend | [docs/flash-ee-backend-design.md](./docs/flash-ee-backend-design.md) | [docs/flash-ee-backend-design.zh-CN.md](./docs/flash-ee-backend-design.zh-CN.md) |
 | Upstream relationship | [docs/upstream.md](./docs/upstream.md) | [docs/upstream.zh-CN.md](./docs/upstream.zh-CN.md) |
-| Changelog | [CHANGE_LOG.md](./CHANGE_LOG.md) | [CHANGE_LOG.zh-CN.md](./CHANGE_LOG.zh-CN.md) |
 
 ## Quick integration
 
@@ -90,7 +89,6 @@ The `F32` APIs are available only when `PAR_CFG_ENABLE_TYPE_F32` is enabled.
 
 ```text
 .
-├── CHANGE_LOG.md
 ├── README.md
 ├── docs/
 ├── generated/

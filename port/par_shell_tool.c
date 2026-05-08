@@ -182,6 +182,49 @@ static const char *par_shell_access_str(const par_access_t access)
 static par_role_t gs_par_shell_roles = ePAR_ROLE_PUBLIC;
 
 /**
+ * @brief Append one role token to a bounded shell string.
+ * @param buf Destination buffer.
+ * @param buf_size Destination buffer size.
+ * @param[in,out] p_used Number of bytes already stored in the buffer.
+ * @param token Role token to append.
+ */
+static void par_shell_append_role_token(char *buf,
+                                        const rt_size_t buf_size,
+                                        rt_size_t *const p_used,
+                                        const char *token)
+{
+    int written;
+    const rt_size_t free_size = (buf_size > *p_used) ? (buf_size - *p_used) : 0U;
+
+    if (free_size == 0U)
+    {
+        buf[buf_size - 1U] = '\0';
+        return;
+    }
+
+    written = rt_snprintf(buf + *p_used,
+                          free_size,
+                          "%s%s",
+                          (*p_used > 0U) ? "|" : "",
+                          token);
+    if (written < 0)
+    {
+        buf[*p_used] = '\0';
+        return;
+    }
+
+    if ((rt_size_t)written >= free_size)
+    {
+        *p_used = buf_size - 1U;
+        buf[*p_used] = '\0';
+    }
+    else
+    {
+        *p_used += (rt_size_t)written;
+    }
+}
+
+/**
  * @brief Format one role mask as a printable string.
  * @param roles Role mask.
  * @param buf Destination buffer.
@@ -207,19 +250,19 @@ static const char *par_shell_roles_to_cstr(const par_role_t roles, char *buf, co
 
     if (0U != ((uint32_t)roles & (uint32_t)ePAR_ROLE_PUBLIC))
     {
-        used += (rt_size_t)rt_snprintf(buf + used, (used < buf_size) ? (buf_size - used) : 0U, "%spublic", (used > 0U) ? "|" : "");
+        par_shell_append_role_token(buf, buf_size, &used, "public");
     }
     if (0U != ((uint32_t)roles & (uint32_t)ePAR_ROLE_SERVICE))
     {
-        used += (rt_size_t)rt_snprintf(buf + used, (used < buf_size) ? (buf_size - used) : 0U, "%sservice", (used > 0U) ? "|" : "");
+        par_shell_append_role_token(buf, buf_size, &used, "service");
     }
     if (0U != ((uint32_t)roles & (uint32_t)ePAR_ROLE_DEVELOPER))
     {
-        used += (rt_size_t)rt_snprintf(buf + used, (used < buf_size) ? (buf_size - used) : 0U, "%sdeveloper", (used > 0U) ? "|" : "");
+        par_shell_append_role_token(buf, buf_size, &used, "developer");
     }
     if (0U != ((uint32_t)roles & (uint32_t)ePAR_ROLE_MANUFACTURING))
     {
-        used += (rt_size_t)rt_snprintf(buf + used, (used < buf_size) ? (buf_size - used) : 0U, "%smanufacturing", (used > 0U) ? "|" : "");
+        par_shell_append_role_token(buf, buf_size, &used, "manufacturing");
     }
 
     return buf;
@@ -430,8 +473,7 @@ static const char *par_shell_print_group_marker(const par_num_t par_num, const c
  */
 static void par_shell_f32_to_str(char *buf, const rt_size_t buf_size, float32_t value)
 {
-    char *dot;
-    char *tail;
+    const char *dot;
 
     if ((buf == RT_NULL) || (buf_size == 0U))
     {
@@ -443,7 +485,7 @@ static void par_shell_f32_to_str(char *buf, const rt_size_t buf_size, float32_t 
     dot = strchr(buf, '.');
     if (dot != RT_NULL)
     {
-        tail = buf + strlen(buf) - 1;
+        char *tail = buf + strlen(buf) - 1;
         while ((tail > dot) && (*tail == '0'))
         {
             *tail = '\0';

@@ -31,7 +31,7 @@ This repository is maintained independently because the RT-Thread package work a
 
 When importing future upstream work:
 
-1. Record the upstream repository and commit hash in this document and `CHANGE_LOG.md`.
+1. Record the upstream repository and commit hash in this document.
 2. Review conflicts against RT-Thread package files, port interfaces, generator output, object parameter behavior, and NVM backend contracts.
 3. Regenerate generated artifacts when schema or generator behavior changes.
 4. Keep local extension commits separate from upstream sync commits where practical.

@@ -41,7 +41,6 @@
 | 对象参数 | [docs/object-parameters.md](./docs/object-parameters.md) | [docs/object-parameters.zh-CN.md](./docs/object-parameters.zh-CN.md) |
 | Flash-ee 后端 | [docs/flash-ee-backend-design.md](./docs/flash-ee-backend-design.md) | [docs/flash-ee-backend-design.zh-CN.md](./docs/flash-ee-backend-design.zh-CN.md) |
 | 上游关系 | [docs/upstream.md](./docs/upstream.md) | [docs/upstream.zh-CN.md](./docs/upstream.zh-CN.md) |
-| 变更记录 | [CHANGE_LOG.md](./CHANGE_LOG.md) | [CHANGE_LOG.zh-CN.md](./CHANGE_LOG.zh-CN.md) |
 
 ## 快速集成
 
@@ -90,7 +89,6 @@ static void app_init(void)
 
 ```text
 .
-├── CHANGE_LOG.md
 ├── README.md
 ├── docs/
 ├── generated/

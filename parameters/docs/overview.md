@@ -16,7 +16,7 @@ The repository contains a portable parameter manager core and documentation for 
 | Integrate as an RT-Thread package | [RT-Thread package](./rt-thread-package.md) | [Flash-ee backend design](./flash-ee-backend-design.md) |
 | Understand internal ownership and data flow | [Architecture](./architecture.md) | [Object parameters](./object-parameters.md) |
 | Maintain the parameter table | [CSV generator](./csv-generator.md) | [Architecture](./architecture.md) |
-| Review upstream provenance | [Upstream relationship](./upstream.md) | [Changelog](../CHANGE_LOG.md) |
+| Review upstream provenance | [Upstream relationship](./upstream.md) | [Architecture](./architecture.md) |
 
 ## Document set
 
