@@ -1007,6 +1007,7 @@ par_status_t par_get_arr_u32_by_id(const uint16_t id,
 }
 #endif /* (1 == PAR_CFG_ENABLE_TYPE_ARR_U32) */
 
+#if (1 == PAR_CFG_OBJECT_TYPES_ENABLED)
 /**
  * @brief Return the current payload length of one object parameter by external ID.
  * @param id External parameter ID.
@@ -1044,6 +1045,7 @@ par_status_t par_get_obj_capacity_by_id(const uint16_t id, uint16_t *p_capacity)
 
     return par_get_obj_capacity(par_num, p_capacity);
 }
+#endif /* (1 == PAR_CFG_OBJECT_TYPES_ENABLED) */
 
 #if (1 == PAR_CFG_ENABLE_TYPE_BYTES)
 /**

@@ -31,7 +31,7 @@ a4ad57ffa43b17d88333c2e63ce4e45a5651f7d9
 
 后续导入上游变更时：
 
-1. 在本文档和 `CHANGE_LOG.md` 中记录上游仓库和 commit hash。
+1. 在本文档中记录上游仓库和 commit hash。
 2. 重点审查 RT-Thread 软件包文件、移植接口、生成产物、对象参数行为和 NVM 后端契约是否冲突。
 3. schema 或生成器行为变化时重新生成产物。
 4. 尽量将上游同步 commit 与本地扩展 commit 拆分。

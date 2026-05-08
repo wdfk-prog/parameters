@@ -847,7 +847,7 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
     case ePAR_TYPE_U8:
     {
         uint8_t cur = 0U;
-        const par_status_t status = par_get_u8(par_num, &cur);
+        status = par_get_u8(par_num, &cur);
         if (ePAR_OK != status)
             return status;
         *p_has_changed = (cur != par_cfg->value_cfg.scalar.def.u8);
@@ -857,7 +857,7 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
     case ePAR_TYPE_I8:
     {
         int8_t cur = 0;
-        const par_status_t status = par_get_i8(par_num, &cur);
+        status = par_get_i8(par_num, &cur);
         if (ePAR_OK != status)
             return status;
         *p_has_changed = (cur != par_cfg->value_cfg.scalar.def.i8);
@@ -867,7 +867,7 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
     case ePAR_TYPE_U16:
     {
         uint16_t cur = 0U;
-        const par_status_t status = par_get_u16(par_num, &cur);
+        status = par_get_u16(par_num, &cur);
         if (ePAR_OK != status)
             return status;
         *p_has_changed = (cur != par_cfg->value_cfg.scalar.def.u16);
@@ -877,7 +877,7 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
     case ePAR_TYPE_I16:
     {
         int16_t cur = 0;
-        const par_status_t status = par_get_i16(par_num, &cur);
+        status = par_get_i16(par_num, &cur);
         if (ePAR_OK != status)
             return status;
         *p_has_changed = (cur != par_cfg->value_cfg.scalar.def.i16);
@@ -887,7 +887,7 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
     case ePAR_TYPE_U32:
     {
         uint32_t cur = 0U;
-        const par_status_t status = par_get_u32(par_num, &cur);
+        status = par_get_u32(par_num, &cur);
         if (ePAR_OK != status)
             return status;
         *p_has_changed = (cur != par_cfg->value_cfg.scalar.def.u32);
@@ -897,7 +897,7 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
     case ePAR_TYPE_I32:
     {
         int32_t cur = 0;
-        const par_status_t status = par_get_i32(par_num, &cur);
+        status = par_get_i32(par_num, &cur);
         if (ePAR_OK != status)
             return status;
         *p_has_changed = (cur != par_cfg->value_cfg.scalar.def.i32);
@@ -908,7 +908,7 @@ par_status_t par_has_changed(const par_num_t par_num, bool * const p_has_changed
     case ePAR_TYPE_F32:
     {
         float32_t cur = 0.0f;
-        const par_status_t status = par_get_f32(par_num, &cur);
+        status = par_get_f32(par_num, &cur);
         if (ePAR_OK != status)
             return status;
         *p_has_changed = !par_core_scalar_f32_bits_equal(cur, par_cfg->value_cfg.scalar.def.f32);
@@ -1438,7 +1438,6 @@ void par_register_validation(const par_num_t par_num, const pf_par_validation_t 
  */
 const char *par_get_status_str(const par_status_t status)
 {
-    uint8_t i = 0;
     const char *str = "N/A";
 
     if (ePAR_OK == status)
@@ -1447,9 +1446,9 @@ const char *par_get_status_str(const par_status_t status)
     }
     else
     {
-        for (i = 0; i < 16; i++)
+        for (uint8_t i = 0U; i < 16U; i++)
         {
-            if (status & (1 << i))
+            if (status & (1U << i))
             {
                 str = (const char *)gs_status[i + 1];
                 break;

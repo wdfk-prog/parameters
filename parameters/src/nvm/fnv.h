@@ -22,7 +22,7 @@ typedef uint32_t Fnv32_t;
 
 #define FNV1_32A_INIT ((Fnv32_t)0x811C9DC5U)
 
-Fnv32_t fnv_32a_buf(void *buf, size_t len, Fnv32_t hval);
+Fnv32_t fnv_32a_buf(const void *buf, size_t len, Fnv32_t hval);
 Fnv32_t fnv_32a_str(char *str, Fnv32_t hval);
 
 #endif /* !defined(_PAR_PERSIST_FNV_H_) */

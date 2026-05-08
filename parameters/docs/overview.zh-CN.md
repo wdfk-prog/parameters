@@ -16,7 +16,7 @@
 | 作为 RT-Thread 软件包集成 | [RT-Thread 软件包](./rt-thread-package.zh-CN.md) | [Flash-ee 后端设计](./flash-ee-backend-design.zh-CN.md) |
 | 理解内部所有权和数据流 | [架构](./architecture.zh-CN.md) | [对象参数](./object-parameters.zh-CN.md) |
 | 维护参数表 | [CSV 生成器](./csv-generator.zh-CN.md) | [架构](./architecture.zh-CN.md) |
-| 审查上游来源 | [上游关系](./upstream.zh-CN.md) | [变更记录](../CHANGE_LOG.zh-CN.md) |
+| 审查上游来源 | [上游关系](./upstream.zh-CN.md) | [架构](./architecture.zh-CN.md) |
 
 ## 文档集合
 
