@@ -1,0 +1,90 @@
+#ifndef _PAR_CFG_PORT_H_
+#define _PAR_CFG_PORT_H_
+
+/* Optional platform overrides */
+/* Optional object-type switches; keep defaults aligned with Kconfig. */
+#define PAR_CFG_ENABLE_TYPE_STR                       ( 1 )
+#define PAR_CFG_ENABLE_TYPE_BYTES                     ( 1 )
+#define PAR_CFG_ENABLE_TYPE_ARR_U8                    ( 1 )
+#define PAR_CFG_ENABLE_TYPE_ARR_U16                   ( 1 )
+#define PAR_CFG_ENABLE_TYPE_ARR_U32                   ( 1 )
+#if ((1 == PAR_CFG_ENABLE_TYPE_STR)    || (1 == PAR_CFG_ENABLE_TYPE_BYTES)  || \
+     (1 == PAR_CFG_ENABLE_TYPE_ARR_U8) || (1 == PAR_CFG_ENABLE_TYPE_ARR_U16) || \
+     (1 == PAR_CFG_ENABLE_TYPE_ARR_U32))
+#define PAR_CFG_OBJECT_TYPES_ENABLED                  ( 1 )
+#else
+#define PAR_CFG_OBJECT_TYPES_ENABLED                  ( 0 )
+#endif /* ((1 == PAR_CFG_ENABLE_TYPE_STR) || (1 == PAR_CFG_ENABLE_TYPE_BYTES) || (1 == PAR_CFG_ENABLE_TYPE_ARR_U8) || (1 == PAR_CFG_ENABLE_TYPE_ARR_U16) || (1 == PAR_CFG_ENABLE_TYPE_ARR_U32)) */
+
+/* #define PAR_CFG_ENABLE_RUNTIME_TABLE_CHECK             ( 1 ) */
+/* #define PAR_CFG_ENABLE_RUNTIME_ID_DUP_CHECK            ( 0 ) */
+/* #define PAR_CFG_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK ( 0 ) */
+/* #define PAR_CFG_ENABLE_ACCESS                          ( 1 ) */
+/* #define PAR_CFG_ENABLE_ROLE_POLICY                     ( 0 ) */
+/* #define PAR_CFG_NVM_WRITE_VERIFY_EN                    ( 0 ) */
+
+/**
+ * @brief Enable managed NVM storage from AUTOGEN_PM_USING_NVM.
+ */
+#if defined(AUTOGEN_PM_USING_NVM)
+#define PAR_CFG_NVM_EN                                  ( 1 )
+#else
+#define PAR_CFG_NVM_EN                                  ( 0 )
+#endif /* defined(AUTOGEN_PM_USING_NVM) */
+
+#if defined(AUTOGEN_PM_NVM_SCALAR)
+#define PAR_CFG_NVM_SCALAR_EN                           ( 1 )
+#else
+#define PAR_CFG_NVM_SCALAR_EN                           ( 0 )
+#endif /* defined(AUTOGEN_PM_NVM_SCALAR) */
+
+#if defined(AUTOGEN_PM_NVM_OBJECT)
+#define PAR_CFG_NVM_OBJECT_EN                           ( 1 )
+#else
+#define PAR_CFG_NVM_OBJECT_EN                           ( 0 )
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT) */
+
+/* Generic object block migration is intentionally unsupported because
+ * flash-safe relocation requires product-specific transaction storage,
+ * power-loss recovery, and erase-block planning.
+ */
+#if defined(AUTOGEN_PM_NVM_OBJECT_MIGRATION) || \
+    defined(AUTOGEN_PM_NVM_OBJECT_MIGRATION_SRC_ADDR)
+#error "Object persistence migration Kconfig is not supported; use fixed or dedicated placement!"
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT_MIGRATION) || defined(AUTOGEN_PM_NVM_OBJECT_MIGRATION_SRC_ADDR) */
+
+/* Object persistence storage target/address options from Kconfig. */
+#if defined(AUTOGEN_PM_NVM_OBJECT_STORE_SHARED)
+#define PAR_CFG_NVM_OBJECT_STORE_MODE                   PAR_CFG_NVM_OBJECT_STORE_SHARED
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT_STORE_SHARED) */
+
+#if defined(AUTOGEN_PM_NVM_OBJECT_STORE_DEDICATED)
+#define PAR_CFG_NVM_OBJECT_STORE_MODE                   PAR_CFG_NVM_OBJECT_STORE_DEDICATED
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT_STORE_DEDICATED) */
+
+#if defined(AUTOGEN_PM_NVM_OBJECT_ADDR_AFTER_SCALAR)
+#define PAR_CFG_NVM_OBJECT_ADDR_MODE                    PAR_CFG_NVM_OBJECT_ADDR_AFTER_SCALAR
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT_ADDR_AFTER_SCALAR) */
+
+#if defined(AUTOGEN_PM_NVM_OBJECT_ADDR_FIXED)
+#define PAR_CFG_NVM_OBJECT_ADDR_MODE                    PAR_CFG_NVM_OBJECT_ADDR_FIXED
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT_ADDR_FIXED) */
+
+#if defined(AUTOGEN_PM_NVM_OBJECT_FIXED_ADDR)
+#define PAR_CFG_NVM_OBJECT_FIXED_ADDR                   ( AUTOGEN_PM_NVM_OBJECT_FIXED_ADDR )
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT_FIXED_ADDR) */
+
+#if defined(AUTOGEN_PM_NVM_OBJECT_REGION_SIZE)
+#define PAR_CFG_NVM_OBJECT_REGION_SIZE                  ( AUTOGEN_PM_NVM_OBJECT_REGION_SIZE )
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT_REGION_SIZE) */
+
+#if defined(AUTOGEN_PM_NVM_OBJECT_DEDICATED_BASE_ADDR)
+#define PAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR          ( AUTOGEN_PM_NVM_OBJECT_DEDICATED_BASE_ADDR )
+#endif /* defined(AUTOGEN_PM_NVM_OBJECT_DEDICATED_BASE_ADDR) */
+/* #define PAR_CFG_NVM_RECORD_LAYOUT                      ( PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE ) */
+/*          or PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE                                             */
+/*          or PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD                                                */
+/*          or PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY                                             */
+/*          or PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY                                           */
+
+#endif /* !defined(_PAR_CFG_PORT_H_) */

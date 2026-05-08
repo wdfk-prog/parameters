@@ -1,0 +1,825 @@
+{
+    "version": 1,
+    "generator": "pargen.py 1.0.0",
+    "source": "parameters/schema/par_table.csv",
+    "param_count_max": 100,
+    "layout_max": {
+        "count8": 24,
+        "count16": 16,
+        "count32": 55,
+        "count_obj": 5,
+        "obj_pool_bytes": 66
+    },
+    "persistent_max": {
+        "scalar_count": 12,
+        "object_count": 0
+    },
+    "id_hash_validation": {
+        "bits": 8,
+        "size": 256,
+        "algorithm": "(((uint32_t)id * 0x61C88647u) >> (32u - bits))",
+        "collisions": 0
+    },
+    "rows": [
+        {
+            "enum": "ePAR_CH1_CTRL",
+            "id": 0,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 control"
+        },
+        {
+            "enum": "ePAR_CH1_AFE_MEAS_EN",
+            "id": 1,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 control"
+        },
+        {
+            "enum": "ePAR_CH1_TEST_MODE_EN",
+            "id": 2,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 control"
+        },
+        {
+            "enum": "ePAR_CH1_REF_SEL",
+            "id": 3,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 control"
+        },
+        {
+            "enum": "ePAR_CH1_REF_VAL",
+            "id": 4,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 control"
+        },
+        {
+            "enum": "ePAR_CH1_STATUS",
+            "id": 10,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 status"
+        },
+        {
+            "enum": "ePAR_CH1_FSM_STATE",
+            "id": 11,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 status"
+        },
+        {
+            "enum": "ePAR_CH1_TSIM",
+            "id": 21,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_RSIM",
+            "id": 22,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_VOUT",
+            "id": 23,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_ISINK",
+            "id": 24,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_VSET",
+            "id": 25,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_VTH",
+            "id": 26,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_VDAC_C",
+            "id": 27,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_VDAC_F",
+            "id": 28,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_VDAC_F_RAW",
+            "id": 29,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_VDAC_C_RAW",
+            "id": 30,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 reference values"
+        },
+        {
+            "enum": "ePAR_CH1_CUR",
+            "id": 50,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 measurements"
+        },
+        {
+            "enum": "ePAR_CH1_VOL",
+            "id": 52,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 measurements"
+        },
+        {
+            "enum": "ePAR_CH1_CUR_RAW",
+            "id": 53,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 measurements"
+        },
+        {
+            "enum": "ePAR_CH1_VOL_RAW",
+            "id": 54,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 measurements"
+        },
+        {
+            "enum": "ePAR_CH1_AFE_VCC",
+            "id": 55,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 measurements"
+        },
+        {
+            "enum": "ePAR_CH1_AFE_RES",
+            "id": 56,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 1",
+            "section": "Channel 1 measurements"
+        },
+        {
+            "enum": "ePAR_CH2_CTRL",
+            "id": 100,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 control"
+        },
+        {
+            "enum": "ePAR_CH2_AFE_MEAS_EN",
+            "id": 101,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 control"
+        },
+        {
+            "enum": "ePAR_CH2_TEST_MODE_EN",
+            "id": 102,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 control"
+        },
+        {
+            "enum": "ePAR_CH2_REF_SEL",
+            "id": 103,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 control"
+        },
+        {
+            "enum": "ePAR_CH2_REF_VAL",
+            "id": 104,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 control"
+        },
+        {
+            "enum": "ePAR_CH2_STATUS",
+            "id": 111,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 status"
+        },
+        {
+            "enum": "ePAR_CH2_FSM_STATE",
+            "id": 112,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 status"
+        },
+        {
+            "enum": "ePAR_CH2_TSIM",
+            "id": 120,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_RSIM",
+            "id": 121,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_VOUT",
+            "id": 122,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_ISINK",
+            "id": 123,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_VSET",
+            "id": 124,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_VTH",
+            "id": 125,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_VDAC_C",
+            "id": 126,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_VDAC_F",
+            "id": 127,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_VDAC_F_RAW",
+            "id": 128,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_VDAC_C_RAW",
+            "id": 129,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 reference values"
+        },
+        {
+            "enum": "ePAR_CH2_CUR",
+            "id": 150,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 measurements"
+        },
+        {
+            "enum": "ePAR_CH2_VOL",
+            "id": 151,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 measurements"
+        },
+        {
+            "enum": "ePAR_CH2_CUR_RAW",
+            "id": 152,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 measurements"
+        },
+        {
+            "enum": "ePAR_CH2_VOL_RAW",
+            "id": 153,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 measurements"
+        },
+        {
+            "enum": "ePAR_CH2_AFE_VCC",
+            "id": 154,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 measurements"
+        },
+        {
+            "enum": "ePAR_CH2_AFE_RES",
+            "id": 155,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 2",
+            "section": "Channel 2 measurements"
+        },
+        {
+            "enum": "ePAR_CH3_CTRL",
+            "id": 200,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 control"
+        },
+        {
+            "enum": "ePAR_CH3_AFE_MEAS_EN",
+            "id": 201,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 control"
+        },
+        {
+            "enum": "ePAR_CH3_TEST_MODE_EN",
+            "id": 202,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 control"
+        },
+        {
+            "enum": "ePAR_CH3_REF_SEL",
+            "id": 203,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 control"
+        },
+        {
+            "enum": "ePAR_CH3_REF_VAL",
+            "id": 204,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 control"
+        },
+        {
+            "enum": "ePAR_CH3_STATUS",
+            "id": 210,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 status"
+        },
+        {
+            "enum": "ePAR_CH3_FSM_STATE",
+            "id": 211,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 status"
+        },
+        {
+            "enum": "ePAR_CH3_TSIM",
+            "id": 220,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_RSIM",
+            "id": 221,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_VOUT",
+            "id": 222,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_ISINK",
+            "id": 223,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_VSET",
+            "id": 224,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_VTH",
+            "id": 225,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_VDAC_C",
+            "id": 226,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_VDAC_F",
+            "id": 227,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_VDAC_F_RAW",
+            "id": 228,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_VDAC_C_RAW",
+            "id": 229,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 reference values"
+        },
+        {
+            "enum": "ePAR_CH3_CUR",
+            "id": 250,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 measurements"
+        },
+        {
+            "enum": "ePAR_CH3_VOL",
+            "id": 251,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 measurements"
+        },
+        {
+            "enum": "ePAR_CH3_CUR_RAW",
+            "id": 252,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 measurements"
+        },
+        {
+            "enum": "ePAR_CH3_VOL_RAW",
+            "id": 253,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 measurements"
+        },
+        {
+            "enum": "ePAR_CH3_AFE_VCC",
+            "id": 254,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 measurements"
+        },
+        {
+            "enum": "ePAR_CH3_AFE_RES",
+            "id": 255,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 3",
+            "section": "Channel 3 measurements"
+        },
+        {
+            "enum": "ePAR_CH4_CTRL",
+            "id": 300,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 control"
+        },
+        {
+            "enum": "ePAR_CH4_AFE_MEAS_EN",
+            "id": 301,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 control"
+        },
+        {
+            "enum": "ePAR_CH4_TEST_MODE_EN",
+            "id": 302,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 control"
+        },
+        {
+            "enum": "ePAR_CH4_REF_SEL",
+            "id": 303,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 control"
+        },
+        {
+            "enum": "ePAR_CH4_REF_VAL",
+            "id": 304,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 control"
+        },
+        {
+            "enum": "ePAR_CH4_STATUS",
+            "id": 310,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 status"
+        },
+        {
+            "enum": "ePAR_CH4_FSM_STATE",
+            "id": 311,
+            "type": "U8",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 status"
+        },
+        {
+            "enum": "ePAR_CH4_TSIM",
+            "id": 320,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_RSIM",
+            "id": 321,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_VOUT",
+            "id": 322,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_ISINK",
+            "id": 323,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_VSET",
+            "id": 324,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_VTH",
+            "id": 325,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_VDAC_C",
+            "id": 326,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_VDAC_F",
+            "id": 327,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_VDAC_F_RAW",
+            "id": 328,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_VDAC_C_RAW",
+            "id": 329,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 reference values"
+        },
+        {
+            "enum": "ePAR_CH4_CUR",
+            "id": 360,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 measurements"
+        },
+        {
+            "enum": "ePAR_CH4_VOL",
+            "id": 361,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 measurements"
+        },
+        {
+            "enum": "ePAR_CH4_CUR_RAW",
+            "id": 362,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 measurements"
+        },
+        {
+            "enum": "ePAR_CH4_VOL_RAW",
+            "id": 363,
+            "type": "U16",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 measurements"
+        },
+        {
+            "enum": "ePAR_CH4_AFE_VCC",
+            "id": 364,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 measurements"
+        },
+        {
+            "enum": "ePAR_CH4_AFE_RES",
+            "id": 366,
+            "type": "F32",
+            "condition": "",
+            "group": "CHANNEL 4",
+            "section": "Channel 4 measurements"
+        },
+        {
+            "enum": "ePAR_SYS_STATUS",
+            "id": 10000,
+            "type": "U32",
+            "condition": "",
+            "group": "SYSTEM",
+            "section": "System status"
+        },
+        {
+            "enum": "ePAR_SYS_CPU_LOAD",
+            "id": 10010,
+            "type": "F32",
+            "condition": "",
+            "group": "SYSTEM",
+            "section": "System status"
+        },
+        {
+            "enum": "ePAR_SYS_CPU_LOAD_MAX",
+            "id": 10018,
+            "type": "F32",
+            "condition": "",
+            "group": "SYSTEM",
+            "section": "System status"
+        },
+        {
+            "enum": "ePAR_WIFI_SSID",
+            "id": 50001,
+            "type": "STR",
+            "condition": "(1 == PAR_CFG_ENABLE_TYPE_STR)",
+            "group": "OBJECT",
+            "section": ""
+        },
+        {
+            "enum": "ePAR_AES_KEY",
+            "id": 50002,
+            "type": "BYTES",
+            "condition": "(1 == PAR_CFG_ENABLE_TYPE_BYTES)",
+            "group": "OBJECT",
+            "section": ""
+        },
+        {
+            "enum": "ePAR_U8_LUT",
+            "id": 50003,
+            "type": "ARR_U8",
+            "condition": "(1 == PAR_CFG_ENABLE_TYPE_ARR_U8)",
+            "group": "OBJECT",
+            "section": ""
+        },
+        {
+            "enum": "ePAR_U16_LUT",
+            "id": 50004,
+            "type": "ARR_U16",
+            "condition": "(1 == PAR_CFG_ENABLE_TYPE_ARR_U16)",
+            "group": "OBJECT",
+            "section": ""
+        },
+        {
+            "enum": "ePAR_U32_LUT",
+            "id": 50005,
+            "type": "ARR_U32",
+            "condition": "(1 == PAR_CFG_ENABLE_TYPE_ARR_U32)",
+            "group": "OBJECT",
+            "section": ""
+        }
+    ]
+}

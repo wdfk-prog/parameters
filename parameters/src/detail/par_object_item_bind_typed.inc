@@ -1,0 +1,70 @@
+/**
+ * @file par_object_item_bind_typed.inc
+ * @brief Bind object-row item macros for one `par_table.def` expansion site.
+ *
+ * @details The including translation unit must define one handler macro for
+ * each object row type plus `PAR_OBJECT_ITEM_DISABLED_HANDLER` before
+ * including this fragment. Enabled object rows map to their type-specific
+ * handler. Disabled object rows map to the disabled handler.
+ *
+ * This fragment intentionally has no include guards because it is designed for
+ * repeated X-macro expansion sites.
+ * @author wdfk-prog
+ * @version 1.0
+ * @date 2026-04-23
+ *
+ * @copyright Copyright (c) 2026 Ziga Miklosic. Distributed under the MIT license.
+ *
+ * @note :
+ * @par Change Log:
+ * Date       Version Author        Description
+ * 2026-04-23 1.0     wdfk-prog     first version
+ */
+#ifndef PAR_OBJECT_ITEM_STR_HANDLER
+#error "PAR_OBJECT_ITEM_STR_HANDLER must be defined before including par_object_item_bind_typed.inc"
+#endif /* !defined(PAR_OBJECT_ITEM_STR_HANDLER) */
+#ifndef PAR_OBJECT_ITEM_BYTES_HANDLER
+#error "PAR_OBJECT_ITEM_BYTES_HANDLER must be defined before including par_object_item_bind_typed.inc"
+#endif /* !defined(PAR_OBJECT_ITEM_BYTES_HANDLER) */
+#ifndef PAR_OBJECT_ITEM_ARR_U8_HANDLER
+#error "PAR_OBJECT_ITEM_ARR_U8_HANDLER must be defined before including par_object_item_bind_typed.inc"
+#endif /* !defined(PAR_OBJECT_ITEM_ARR_U8_HANDLER) */
+#ifndef PAR_OBJECT_ITEM_ARR_U16_HANDLER
+#error "PAR_OBJECT_ITEM_ARR_U16_HANDLER must be defined before including par_object_item_bind_typed.inc"
+#endif /* !defined(PAR_OBJECT_ITEM_ARR_U16_HANDLER) */
+#ifndef PAR_OBJECT_ITEM_ARR_U32_HANDLER
+#error "PAR_OBJECT_ITEM_ARR_U32_HANDLER must be defined before including par_object_item_bind_typed.inc"
+#endif /* !defined(PAR_OBJECT_ITEM_ARR_U32_HANDLER) */
+#ifndef PAR_OBJECT_ITEM_DISABLED_HANDLER
+#error "PAR_OBJECT_ITEM_DISABLED_HANDLER must be defined before including par_object_item_bind_typed.inc"
+#endif /* !defined(PAR_OBJECT_ITEM_DISABLED_HANDLER) */
+
+#if (1 == PAR_CFG_ENABLE_TYPE_STR)
+#define PAR_ITEM_STR PAR_OBJECT_ITEM_STR_HANDLER
+#else
+#define PAR_ITEM_STR PAR_OBJECT_ITEM_DISABLED_HANDLER
+#endif /* (1 == PAR_CFG_ENABLE_TYPE_STR) */
+
+#if (1 == PAR_CFG_ENABLE_TYPE_BYTES)
+#define PAR_ITEM_BYTES PAR_OBJECT_ITEM_BYTES_HANDLER
+#else
+#define PAR_ITEM_BYTES PAR_OBJECT_ITEM_DISABLED_HANDLER
+#endif /* (1 == PAR_CFG_ENABLE_TYPE_BYTES) */
+
+#if (1 == PAR_CFG_ENABLE_TYPE_ARR_U8)
+#define PAR_ITEM_ARR_U8 PAR_OBJECT_ITEM_ARR_U8_HANDLER
+#else
+#define PAR_ITEM_ARR_U8 PAR_OBJECT_ITEM_DISABLED_HANDLER
+#endif /* (1 == PAR_CFG_ENABLE_TYPE_ARR_U8) */
+
+#if (1 == PAR_CFG_ENABLE_TYPE_ARR_U16)
+#define PAR_ITEM_ARR_U16 PAR_OBJECT_ITEM_ARR_U16_HANDLER
+#else
+#define PAR_ITEM_ARR_U16 PAR_OBJECT_ITEM_DISABLED_HANDLER
+#endif /* (1 == PAR_CFG_ENABLE_TYPE_ARR_U16) */
+
+#if (1 == PAR_CFG_ENABLE_TYPE_ARR_U32)
+#define PAR_ITEM_ARR_U32 PAR_OBJECT_ITEM_ARR_U32_HANDLER
+#else
+#define PAR_ITEM_ARR_U32 PAR_OBJECT_ITEM_DISABLED_HANDLER
+#endif /* (1 == PAR_CFG_ENABLE_TYPE_ARR_U32) */

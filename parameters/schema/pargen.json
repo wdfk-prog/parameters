@@ -1,0 +1,11 @@
+{
+    "default_id_range": [0, 65535],
+    "id_ranges": {
+        "CHANNEL 1": [0, 99],
+        "CHANNEL 2": [100, 199],
+        "CHANNEL 3": [200, 299],
+        "CHANNEL 4": [300, 399],
+        "SYSTEM": [10000, 10999],
+        "OBJECT": [50000, 50999]
+    }
+}
