@@ -212,14 +212,163 @@ autogen_pm_ci_verify_config_pruning() {
         minimal-scalar-no-nvm|scalar-no-metadata|scalar-no-access-role|scalar-no-validation-callback)
             autogen_pm_ci_assert_config_bool_state \
                 "$profile" "$config_file" AUTOGEN_PM_USING_NVM n
+            autogen_pm_ci_assert_config_bool_state \
+                "$profile" "$config_file" AUTOGEN_PM_USING_DEBUG n
+            autogen_pm_ci_assert_config_bool_state \
+                "$profile" "$config_file" AUTOGEN_PM_MSH_CMD_SAVE_CLEAN n
             autogen_pm_ci_assert_config_value_absent \
                 "$profile" "$config_file" AUTOGEN_PM_FLASH_EE_LOGICAL_SIZE
             autogen_pm_ci_assert_config_value_absent \
                 "$profile" "$config_file" AUTOGEN_PM_RTT_AT24_I2C_BUS_NAME
             ;;
+        *)
+            autogen_pm_ci_assert_config_bool_state \
+                "$profile" "$config_file" AUTOGEN_PM_USING_DEBUG y
+            autogen_pm_ci_assert_config_bool_state \
+                "$profile" "$config_file" AUTOGEN_PM_MSH_CMD_SAVE_CLEAN y
+            ;;
     esac
 
     rm -f "$config_file"
+}
+
+
+autogen_pm_ci_expect_invalid_config() {
+    local name="$1"
+    local expected="$2"
+    local src_file
+    local log_file
+    local stub_dir
+
+    shift 2
+    stub_dir="$(mktemp -d "${AUTOGEN_PM_CI_INVALID_TMP_ROOT:-${TMPDIR:-/tmp}}/autogen-pm-invalid-stub-${name}.XXXXXX")"
+    cat > "$stub_dir/rtthread.h" <<'RTTHREAD_STUB'
+#ifndef AUTOGEN_PM_INVALID_RTTHREAD_H
+#define AUTOGEN_PM_INVALID_RTTHREAD_H
+#include <stddef.h>
+typedef size_t rt_size_t;
+#define RT_NULL ((void *)0)
+#define RT_UNUSED(x_) ((void)(x_))
+#define RT_ASSERT(x_) ((void)sizeof(x_))
+#define RT_STATIC_ASSERT(name_, expr_) typedef char rt_static_assert_##name_[(expr_) ? 1 : -1]
+#define rt_weak __attribute__((weak))
+#endif /* !defined(AUTOGEN_PM_INVALID_RTTHREAD_H) */
+RTTHREAD_STUB
+    cat > "$stub_dir/rtdbg.h" <<'RTDBG_STUB'
+#ifndef AUTOGEN_PM_INVALID_RTDBG_H
+#define AUTOGEN_PM_INVALID_RTDBG_H
+#define DBG_LOG 0
+#define DBG_INFO 1
+#define LOG_I(...) ((void)0)
+#define LOG_D(...) ((void)0)
+#define LOG_W(...) ((void)0)
+#define LOG_E(...) ((void)0)
+#endif /* !defined(AUTOGEN_PM_INVALID_RTDBG_H) */
+RTDBG_STUB
+    src_file="$(mktemp "${AUTOGEN_PM_CI_INVALID_TMP_ROOT:-${TMPDIR:-/tmp}}/autogen-pm-invalid-${name}.XXXXXX.c")"
+    log_file="${src_file%.c}.log"
+    printf '#include "par.h"\nint main(void) { return 0; }\n' > "$src_file"
+
+    if gcc -fsyntax-only \
+        -I"$stub_dir" \
+        -Iport \
+        -Iparameters/tests/host/fixtures \
+        -I. \
+        -Ibackend \
+        -Iparameters/include \
+        -Iparameters/src \
+        -Iparameters/src/def \
+        -Iparameters/src/detail \
+        -Iparameters/src/layout \
+        -Iparameters/src/nvm \
+        -Iparameters/src/nvm/backend \
+        -Iparameters/src/nvm/object \
+        -Iparameters/src/nvm/object/addr \
+        -Iparameters/src/nvm/object/store \
+        -Iparameters/src/nvm/scalar \
+        -Iparameters/src/nvm/scalar/layout \
+        -Iparameters/src/nvm/scalar/store \
+        -Iparameters/src/object \
+        -Iparameters/src/port \
+        -Iparameters/src/scalar \
+        "$@" "$src_file" > "$log_file" 2>&1; then
+        echo "invalid config $name unexpectedly compiled" >&2
+        cat "$log_file" >&2
+        rm -f "$src_file" "$log_file"
+        rm -rf "$stub_dir"
+        return 1
+    fi
+
+    if ! grep -F -- "$expected" "$log_file" >/dev/null; then
+        echo "invalid config $name failed for the wrong reason; expected: $expected" >&2
+        cat "$log_file" >&2
+        rm -f "$src_file" "$log_file"
+        rm -rf "$stub_dir"
+        return 1
+    fi
+
+    rm -f "$src_file" "$log_file"
+    rm -rf "$stub_dir"
+    echo "CONFIG_INVALID_OK $name"
+}
+
+autogen_pm_ci_cleanup_invalid_config_matrix() {
+    if [ -n "${AUTOGEN_PM_CI_INVALID_TMP_ROOT:-}" ]; then
+        rm -rf "$AUTOGEN_PM_CI_INVALID_TMP_ROOT"
+        unset AUTOGEN_PM_CI_INVALID_TMP_ROOT
+    fi
+}
+
+autogen_pm_ci_verify_invalid_config_matrix() {
+    AUTOGEN_PM_CI_INVALID_TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/autogen-pm-invalid-matrix.XXXXXX")"
+    export AUTOGEN_PM_CI_INVALID_TMP_ROOT
+    trap 'autogen_pm_ci_cleanup_invalid_config_matrix' RETURN
+
+    autogen_pm_ci_expect_invalid_config nvm-requires-storage-class \
+        "NVM requires scalar or object persistence to be enabled" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_ENABLE_TYPE_F32
+
+    autogen_pm_ci_expect_invalid_config scalar-requires-nvm \
+        "scalar persistence requires PAR_CFG_NVM_EN = 1" \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_ENABLE_TYPE_F32
+
+    autogen_pm_ci_expect_invalid_config object-requires-object-types \
+        "object persistence requires at least one object type enabled" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_OBJECT \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DAUTOGEN_PM_ENABLE_TYPE_F32
+
+    autogen_pm_ci_expect_invalid_config layout-id-required \
+        "selected NVM layout requires PAR_CFG_ENABLE_ID = 1" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
+        -DAUTOGEN_PM_ENABLE_TYPE_F32
+
+    autogen_pm_ci_expect_invalid_config payload-layout-table-id-required \
+        "payload-only NVM layouts require PAR_CFG_TABLE_ID_CHECK_EN = 1" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DAUTOGEN_PM_ENABLE_TYPE_F32
+
+    autogen_pm_ci_expect_invalid_config fixed-object-address-required \
+        "fixed object persistence mode requires PAR_CFG_NVM_OBJECT_FIXED_ADDR != 0" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_NVM_OBJECT \
+        -DAUTOGEN_PM_NVM_OBJECT_STORE_SHARED \
+        -DAUTOGEN_PM_NVM_OBJECT_ADDR_FIXED \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DAUTOGEN_PM_ENABLE_TYPE_F32 \
+        -DAUTOGEN_PM_ENABLE_TYPE_STR
+
+    autogen_pm_ci_cleanup_invalid_config_matrix
+    trap - RETURN
 }
 
 for profile in "${profiles[@]}"; do
@@ -271,4 +420,7 @@ for profile in "${profiles[@]}"; do
     echo "CONFIG_PROFILE_OK $profile"
 done
 
+autogen_pm_ci_verify_invalid_config_matrix
+
 printf 'CONFIG_PROFILE_SUMMARY Passed %u/%u\n' "${#profiles[@]}" "${#profiles[@]}"
+printf 'CONFIG_INVALID_SUMMARY Passed %u/%u\n' 6 6

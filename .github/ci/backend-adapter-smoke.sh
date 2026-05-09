@@ -75,4 +75,16 @@ build_and_run rtt_at24cxx \
     .github/ci/test/par_backend_adapter_ci_stubs.c \
     backend/par_store_backend_rtt_at24cxx.c
 
-printf 'BACKEND_ADAPTER_SUMMARY Passed %u/%u\n' 2 2
+build_and_run rtt_at24cxx_base_offset \
+    -DPAR_CFG_NVM_BACKEND_FLASH_EE_EN=0 \
+    -DPAR_CFG_NVM_BACKEND_RTT_AT24CXX_EN=1 \
+    -DPAR_CFG_RTT_AT24_I2C_BUS_NAME='"i2c1"' \
+    -DPAR_CFG_RTT_AT24_ADDR_INPUT=0 \
+    -DPAR_CFG_RTT_AT24_BASE_ADDR=1 \
+    -DPAR_CFG_RTT_AT24_SIZE=64 \
+    -DPAR_STORE_RTT_AT24_ERASE_CHUNK=8 \
+    parameters/tests/host/test_par_backend_rtt_at24cxx_smoke.c \
+    .github/ci/test/par_backend_adapter_ci_stubs.c \
+    backend/par_store_backend_rtt_at24cxx.c
+
+printf 'BACKEND_ADAPTER_SUMMARY Passed %u/%u\n' 3 3

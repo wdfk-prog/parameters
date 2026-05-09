@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import re
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -573,6 +574,60 @@ class PargenTests(unittest.TestCase):
                 "--config", str(cfg_path),
                 "--check",
             ]), 1)
+
+
+    def test_csv_reader_preserves_quoted_text_for_c_string_output(self) -> None:
+        """Quoted CSV fields survive parsing and remain valid C strings."""
+        rows = base_rows()
+        rows[0]["name"] = "Mode, Primary"
+        rows[0]["desc"] = 'Line one\nquoted "mode" with comma, and slash token'
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertEqual(generated_rows[0].name, "Mode, Primary")
+        self.assertEqual(generated_rows[0].desc, 'Line one\nquoted "mode" with comma, and slash token')
+        self.assertIn('"Mode, Primary"', outputs.par_table_def)
+        self.assertIn('Line one\\nquoted \\\"mode\\\" with comma', outputs.par_table_def)
+
+    def test_manifest_output_is_deterministic_across_runs(self) -> None:
+        """Manifest generation is deterministic for identical resolved schemas."""
+        rows_a, stats_a = self.run_generator(base_rows())
+        rows_b, stats_b = self.run_generator(base_rows())
+        self.assertEqual(pargen.generate_outputs(rows_a, stats_a).manifest_json,
+                         pargen.generate_outputs(rows_b, stats_b).manifest_json)
+
+    def test_nested_condition_expression_is_emitted_verbatim(self) -> None:
+        """Nested condition expressions remain intact in generated C guards."""
+        rows = base_rows()
+        rows[2]["condition"] = "((1 == PAR_CFG_ENABLE_TYPE_STR) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED))"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertIn("#if ((1 == PAR_CFG_ENABLE_TYPE_STR) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED))",
+                      outputs.par_table_def)
+        self.assertIn("PAR_LAYOUT_ROW_ENABLED_ePAR_WIFI_SSID", outputs.layout_h)
+
+    def test_ci_shell_scripts_have_valid_bash_syntax(self) -> None:
+        """CI shell entrypoints remain parseable by bash after workflow edits."""
+        scripts = sorted((ROOT / ".github" / "ci").glob("*.sh"))
+        self.assertGreater(len(scripts), 0)
+        for script in scripts:
+            with self.subTest(script=script.name):
+                subprocess.run(["bash", "-n", str(script)], check=True)
+
+    def test_ci_profile_lists_do_not_contain_unknown_profiles(self) -> None:
+        """Profile list files must only name profiles implemented by the CI profile script."""
+        profile_script = (ROOT / ".github" / "ci" / "autogen-pm-ci-profile.sh").read_text(encoding="utf-8")
+        implemented: set[str] = set()
+        for match in re.findall(r"^        ([a-z0-9-|]+)\)", profile_script, re.M):
+            implemented.update(match.split("|"))
+        for list_name in ["profile-list.txt", "rtthread-profile-list.txt"]:
+            with self.subTest(list=list_name):
+                profiles = [
+                    line.strip()
+                    for line in (ROOT / ".github" / "ci" / list_name).read_text(encoding="utf-8").splitlines()
+                    if line.strip() and not line.lstrip().startswith("#")
+                ]
+                self.assertEqual(len(profiles), len(set(profiles)))
+                self.assertTrue(set(profiles).issubset(implemented))
 
     def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
         """Fixed-seed negative corpus rejects malformed object defaults."""

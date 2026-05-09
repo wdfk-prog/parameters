@@ -10,6 +10,8 @@ AUTOGEN_PM_CI_BOOL_SYMBOLS=(
     # Cover Kconfig default shell paths when RT-Thread FINSH is available.
     RT_USING_FINSH
     RT_USING_HEAP
+    # Required by AUTOGEN_PM_MSH_CMD_SAVE_CLEAN in package Kconfig.
+    AUTOGEN_PM_USING_DEBUG
     AUTOGEN_PM_USING_MUTEX
     AUTOGEN_PM_ENABLE_RANGE
     AUTOGEN_PM_ENABLE_NAME
@@ -45,6 +47,7 @@ AUTOGEN_PM_CI_BOOL_SYMBOLS=(
     AUTOGEN_PM_MSH_CMD_DEF
     AUTOGEN_PM_MSH_CMD_DEF_ALL
     AUTOGEN_PM_MSH_CMD_SAVE
+    AUTOGEN_PM_MSH_CMD_SAVE_CLEAN
     AUTOGEN_PM_MSH_CMD_JSON
 )
 
@@ -268,6 +271,7 @@ autogen_pm_ci_disable_object_types() {
 }
 
 autogen_pm_ci_disable_nvm() {
+    autogen_pm_ci_add_unset AUTOGEN_PM_USING_DEBUG
     autogen_pm_ci_add_unset AUTOGEN_PM_USING_NVM
     autogen_pm_ci_add_unset AUTOGEN_PM_NVM_SCALAR
     autogen_pm_ci_add_unset AUTOGEN_PM_NVM_OBJECT
@@ -282,6 +286,7 @@ autogen_pm_ci_disable_nvm() {
     autogen_pm_ci_add_unset AUTOGEN_PM_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY
     autogen_pm_ci_add_unset AUTOGEN_PM_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY
     autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_SAVE
+    autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_SAVE_CLEAN
     autogen_pm_ci_remove_nvm_values
 }
 
@@ -376,6 +381,7 @@ autogen_pm_ci_apply_profile() {
             autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_DEF
             autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_DEF_ALL
             autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_SAVE
+            autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_SAVE_CLEAN
             autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_JSON
             ;;
         scalar-no-metadata)
@@ -393,6 +399,7 @@ autogen_pm_ci_apply_profile() {
             autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_DEF
             autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_DEF_ALL
             autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_SAVE
+            autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_SAVE_CLEAN
             autogen_pm_ci_add_unset AUTOGEN_PM_MSH_CMD_JSON
             ;;
         scalar-no-access-role)
