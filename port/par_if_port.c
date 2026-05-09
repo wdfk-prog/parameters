@@ -137,9 +137,9 @@ par_status_t par_if_deinit(void)
 /**
  * @brief Acquire mutex for specified parameter.
  *
- * @note User shall provide definition of that function based on used platform!
- *
- * If mutex is not needed leave empty space between user code begin and end.
+ * @note This port uses an RT-Thread mutex and relies on recursive acquisition
+ * by the same thread. Parameter callbacks may call public parameter APIs while
+ * the outer parameter API still owns the mutex.
  *
  * @param par_num Parameter number (enumeration).
  * @return Status of operation.
@@ -161,12 +161,10 @@ par_status_t par_if_aquire_mutex(const par_num_t par_num)
 /**
  * @brief Release mutex for specified parameter.
  *
- * @note User shall provide definition of that function based on used platform!
- *
- * If mutex is not needed leave empty space between user code begin and end.
+ * @note Releases one recursive acquisition level previously acquired by
+ * par_if_aquire_mutex().
  *
  * @param par_num Parameter number (enumeration).
- * @return Status of operation.
  */
 void par_if_release_mutex(const par_num_t par_num)
 {

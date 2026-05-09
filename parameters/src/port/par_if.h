@@ -51,12 +51,23 @@ par_status_t par_if_init(void);
 par_status_t par_if_deinit(void);
 /**
  * @brief Acquire the parameter mutex for one parameter path.
+ *
+ * @details Port implementations must support recursive acquisition by the
+ * same execution context. Parameter change callbacks may call public parameter
+ * APIs before the outer API releases the mutex. Each successful acquisition
+ * must be matched by exactly one release.
+ *
  * @param par_num Parameter number.
  * @return Operation status.
  */
 par_status_t par_if_aquire_mutex(const par_num_t par_num);
 /**
  * @brief Release the parameter mutex for one parameter path.
+ *
+ * @details This function releases one recursion level acquired by
+ * par_if_aquire_mutex(). The mutex must remain held until the number of
+ * releases matches the number of successful recursive acquisitions.
+ *
  * @param par_num Parameter number.
  */
 void par_if_release_mutex(const par_num_t par_num);

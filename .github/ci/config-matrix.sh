@@ -367,6 +367,49 @@ autogen_pm_ci_verify_invalid_config_matrix() {
         -DAUTOGEN_PM_ENABLE_TYPE_F32 \
         -DAUTOGEN_PM_ENABLE_TYPE_STR
 
+    autogen_pm_ci_expect_invalid_config object-requires-id \
+        "object persistence requires PAR_CFG_ENABLE_ID = 1" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_OBJECT \
+        -DAUTOGEN_PM_ENABLE_TYPE_STR
+
+    autogen_pm_ci_expect_invalid_config invalid-object-store-mode \
+        "PAR_CFG_NVM_OBJECT_STORE_MODE must be SHARED or DEDICATED" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_OBJECT \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DAUTOGEN_PM_ENABLE_TYPE_STR \
+        -DPAR_CFG_NVM_OBJECT_STORE_MODE=99U
+
+    autogen_pm_ci_expect_invalid_config invalid-object-address-mode \
+        "PAR_CFG_NVM_OBJECT_ADDR_MODE must be AFTER_SCALAR or FIXED" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_OBJECT \
+        -DAUTOGEN_PM_NVM_OBJECT_STORE_SHARED \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DAUTOGEN_PM_ENABLE_TYPE_STR \
+        -DPAR_CFG_NVM_OBJECT_ADDR_MODE=99U
+
+    autogen_pm_ci_expect_invalid_config runtime-dup-id-requires-id \
+        "runtime duplicate-ID diagnostics require PAR_CFG_ENABLE_ID = 1" \
+        -DAUTOGEN_PM_ENABLE_RUNTIME_ID_DUP_CHECK
+
+    autogen_pm_ci_expect_invalid_config runtime-id-hash-requires-id \
+        "runtime ID hash-collision diagnostics require PAR_CFG_ENABLE_ID = 1" \
+        -DAUTOGEN_PM_ENABLE_RUNTIME_ID_HASH_COLLISION_CHECK
+
+    autogen_pm_ci_expect_invalid_config invalid-layout-source \
+        "PAR_CFG_LAYOUT_SOURCE must be PAR_CFG_LAYOUT_COMPILE_SCAN or PAR_CFG_LAYOUT_SCRIPT" \
+        -DPAR_CFG_LAYOUT_SOURCE=99U
+
+    autogen_pm_ci_expect_invalid_config flash-ee-logical-size-not-line-multiple \
+        "flash-ee logical size must be an integer multiple of the line size" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_FLASH_EE_BACKEND \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_LOGICAL_SIZE=130U \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_LINE_SIZE=16U
+
     autogen_pm_ci_cleanup_invalid_config_matrix
     trap - RETURN
 }
@@ -423,4 +466,4 @@ done
 autogen_pm_ci_verify_invalid_config_matrix
 
 printf 'CONFIG_PROFILE_SUMMARY Passed %u/%u\n' "${#profiles[@]}" "${#profiles[@]}"
-printf 'CONFIG_INVALID_SUMMARY Passed %u/%u\n' 6 6
+printf 'CONFIG_INVALID_SUMMARY Passed %u/%u\n' 13 13
