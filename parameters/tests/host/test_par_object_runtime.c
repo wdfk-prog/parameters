@@ -158,17 +158,107 @@ static bool test_object_by_id_and_capacity(void)
     char str_buf[9] = { 0 };
     uint16_t len = 0U;
     uint16_t capacity = 0U;
+    uint16_t str_id = 0U;
 
     TEST_ASSERT(init_module());
-    TEST_ASSERT_OK(par_set_str_by_id(9U, "idpath"));
-    TEST_ASSERT_OK(par_get_str_by_id(9U, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT_OK(par_get_id_by_num(ePAR_TEST_STR, &str_id));
+    TEST_ASSERT_OK(par_set_str_by_id(str_id, "idpath"));
+    TEST_ASSERT_OK(par_get_str_by_id(str_id, str_buf, sizeof(str_buf), &len));
     TEST_ASSERT(len == 6U);
     TEST_ASSERT(strcmp(str_buf, "idpath") == 0);
-    TEST_ASSERT_OK(par_get_obj_capacity_by_id(9U, &capacity));
+    TEST_ASSERT_OK(par_get_obj_capacity_by_id(str_id, &capacity));
     TEST_ASSERT(capacity == 8U);
-    TEST_ASSERT_OK(par_get_obj_len_by_id(9U, &len));
+    TEST_ASSERT_OK(par_get_obj_len_by_id(str_id, &len));
     TEST_ASSERT(len == 6U);
     TEST_ASSERT_STATUS(par_get_str_by_id(0xFFFFU, str_buf, sizeof(str_buf), &len), ePAR_ERROR);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify object byte and array ID wrappers plus default-by-ID paths. */
+static bool test_object_bytes_and_arrays_by_id_wrappers(void)
+{
+    uint8_t bytes_buf[4] = { 0U };
+    uint8_t arr_u8_buf[3] = { 0U };
+    uint16_t arr_u16_buf[2] = { 0U };
+    uint32_t arr_u32_buf[2] = { 0U };
+    uint16_t out_count = 0U;
+    uint16_t bytes_id = 0U;
+    uint16_t arr_u8_id = 0U;
+    uint16_t arr_u16_id = 0U;
+    uint16_t arr_u32_id = 0U;
+    const uint8_t bytes_payload[4] = { 5U, 6U, 7U, 8U };
+    const uint8_t arr_u8_payload[3] = { 9U, 8U, 7U };
+    const uint16_t arr_u16_payload[2] = { 500U, 600U };
+    const uint32_t arr_u32_payload[2] = { 5000UL, 6000UL };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_id_by_num(ePAR_TEST_BYTES, &bytes_id));
+    TEST_ASSERT_OK(par_get_id_by_num(ePAR_TEST_ARR_U8, &arr_u8_id));
+    TEST_ASSERT_OK(par_get_id_by_num(ePAR_TEST_ARR_U16, &arr_u16_id));
+    TEST_ASSERT_OK(par_get_id_by_num(ePAR_TEST_ARR_U32, &arr_u32_id));
+    TEST_ASSERT_OK(par_set_bytes_by_id(bytes_id, bytes_payload, (uint16_t)sizeof(bytes_payload)));
+    TEST_ASSERT_OK(par_get_bytes_by_id(bytes_id, bytes_buf, sizeof(bytes_buf), &out_count));
+    TEST_ASSERT(out_count == (uint16_t)sizeof(bytes_payload));
+    TEST_ASSERT(0 == memcmp(bytes_buf, bytes_payload, sizeof(bytes_payload)));
+    memset(bytes_buf, 0, sizeof(bytes_buf));
+    TEST_ASSERT_OK(par_get_default_bytes_by_id(bytes_id, bytes_buf, sizeof(bytes_buf), &out_count));
+    TEST_ASSERT(out_count == 2U);
+    TEST_ASSERT(bytes_buf[0] == 1U && bytes_buf[1] == 2U);
+
+    TEST_ASSERT_OK(par_set_arr_u8_by_id(arr_u8_id, arr_u8_payload, 3U));
+    TEST_ASSERT_OK(par_get_arr_u8_by_id(arr_u8_id, arr_u8_buf, 3U, &out_count));
+    TEST_ASSERT(out_count == 3U);
+    TEST_ASSERT(0 == memcmp(arr_u8_buf, arr_u8_payload, sizeof(arr_u8_payload)));
+    memset(arr_u8_buf, 0, sizeof(arr_u8_buf));
+    TEST_ASSERT_OK(par_get_default_arr_u8_by_id(arr_u8_id, arr_u8_buf, 3U, &out_count));
+    TEST_ASSERT(out_count == 3U);
+    TEST_ASSERT(arr_u8_buf[0] == 1U && arr_u8_buf[1] == 2U && arr_u8_buf[2] == 3U);
+
+    TEST_ASSERT_OK(par_set_arr_u16_by_id(arr_u16_id, arr_u16_payload, 2U));
+    TEST_ASSERT_OK(par_get_arr_u16_by_id(arr_u16_id, arr_u16_buf, 2U, &out_count));
+    TEST_ASSERT(out_count == 2U);
+    TEST_ASSERT(arr_u16_buf[0] == 500U && arr_u16_buf[1] == 600U);
+    memset(arr_u16_buf, 0, sizeof(arr_u16_buf));
+    TEST_ASSERT_OK(par_get_default_arr_u16_by_id(arr_u16_id, arr_u16_buf, 2U, &out_count));
+    TEST_ASSERT(out_count == 2U);
+    TEST_ASSERT(arr_u16_buf[0] == 100U && arr_u16_buf[1] == 200U);
+
+    TEST_ASSERT_OK(par_set_arr_u32_by_id(arr_u32_id, arr_u32_payload, 2U));
+    TEST_ASSERT_OK(par_get_arr_u32_by_id(arr_u32_id, arr_u32_buf, 2U, &out_count));
+    TEST_ASSERT(out_count == 2U);
+    TEST_ASSERT(arr_u32_buf[0] == 5000UL && arr_u32_buf[1] == 6000UL);
+    memset(arr_u32_buf, 0, sizeof(arr_u32_buf));
+    TEST_ASSERT_OK(par_get_default_arr_u32_by_id(arr_u32_id, arr_u32_buf, 2U, &out_count));
+    TEST_ASSERT(out_count == 2U);
+    TEST_ASSERT(arr_u32_buf[0] == 1000UL && arr_u32_buf[1] == 2000UL);
+
+    TEST_ASSERT_STATUS(par_set_bytes_by_id(0xFFFFU, bytes_payload, 1U), ePAR_ERROR);
+    TEST_ASSERT_STATUS(par_get_arr_u8_by_id(0xFFFFU, arr_u8_buf, 3U, &out_count), ePAR_ERROR);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify object default string and metadata helper ID wrappers. */
+static bool test_object_default_str_and_metadata_by_id_wrappers(void)
+{
+    char str_buf[9] = { 0 };
+    uint16_t out_len = 0U;
+    uint16_t capacity = 0U;
+    uint16_t str_id = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_id_by_num(ePAR_TEST_STR, &str_id));
+    TEST_ASSERT_OK(par_set_str_by_id(str_id, "runtime"));
+    TEST_ASSERT_OK(par_get_default_str_by_id(str_id, str_buf, sizeof(str_buf), &out_len));
+    TEST_ASSERT(out_len == 2U);
+    TEST_ASSERT(strcmp(str_buf, "ap") == 0);
+    TEST_ASSERT_OK(par_get_obj_len_by_id(str_id, &out_len));
+    TEST_ASSERT(out_len == 7U);
+    TEST_ASSERT_OK(par_get_obj_capacity_by_id(str_id, &capacity));
+    TEST_ASSERT(capacity == 8U);
+    TEST_ASSERT_STATUS(par_get_obj_len_by_id(0xFFFFU, &out_len), ePAR_ERROR);
+    TEST_ASSERT_STATUS(par_get_obj_capacity_by_id(0xFFFFU, &capacity), ePAR_ERROR);
     TEST_ASSERT_OK(par_deinit());
     return true;
 }
@@ -206,6 +296,8 @@ int main(void)
         { "object_arr_u16_count_to_byte_length", test_object_arr_u16_count_to_byte_length },
         { "object_arr_u32_count_to_byte_length", test_object_arr_u32_count_to_byte_length },
         { "object_by_id_and_capacity", test_object_by_id_and_capacity },
+        { "object_bytes_and_arrays_by_id_wrappers", test_object_bytes_and_arrays_by_id_wrappers },
+        { "object_default_str_and_metadata_by_id_wrappers", test_object_default_str_and_metadata_by_id_wrappers },
         { "object_validation_and_default_reset", test_object_validation_and_default_reset },
     };
 

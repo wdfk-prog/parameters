@@ -60,6 +60,7 @@ jobs:
         target:
           - par_core_runtime
           - par_object_runtime
+          - par_mutex_runtime
           - par_shell_tool
           - par_nvm_flash_ee
           - par_nvm_flash_ee_matrix

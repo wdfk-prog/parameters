@@ -57,6 +57,10 @@ PAR_PORT_WEAK par_status_t par_if_deinit(void)
  * @note Default weak implementation does not provide locking.
  * Integrator may provide a strong definition in port/par_if_port.c.
  *
+ * @details Strong port implementations must support recursive acquisition by
+ * the same execution context. Each successful acquisition must be matched by
+ * one par_if_release_mutex() call.
+ *
  * @param par_num Parameter number (enumeration).
  * @return Status of operation.
  */
@@ -70,6 +74,9 @@ PAR_PORT_WEAK par_status_t par_if_aquire_mutex(const par_num_t par_num)
  *
  * @note Default weak implementation does not provide locking.
  * Integrator may provide a strong definition in port/par_if_port.c.
+ *
+ * @details Strong port implementations must release one recursive acquisition
+ * level per call.
  *
  * @param par_num Parameter number (enumeration).
  */
@@ -199,7 +206,7 @@ PAR_PORT_WEAK uint8_t par_if_crc8_accumulate(uint8_t crc, const uint8_t * const 
 static osMutexId_t g_par_mutex_id = NULL;
 const osMutexAttr_t g_par_mutex_attr = {
     .name = "par",
-    .attr_bits = (osMutexPrioInherit),
+    .attr_bits = (osMutexRecursive | osMutexPrioInherit),
 };
 /**
  * @brief USER VARIABLES END...
@@ -253,9 +260,11 @@ par_status_t par_if_deinit(void)
 /**
  * @brief Acquire mutex for specified parameter.
  *
- * @note User shall provide definition of that function based on used platform!
+ * @note This port uses a CMSIS-RTOS2 recursive mutex. Parameter callbacks may
+ * call public parameter APIs while the outer API still owns the mutex.
  *
- * If mutex is not needed leave empty space between user code begin and end.
+ * @details Each successful recursive acquisition must be matched by exactly
+ * one par_if_release_mutex() call.
  *
  * @param par_num Parameter number (enumeration).
  * @return Status of operation.
@@ -275,12 +284,10 @@ par_status_t par_if_aquire_mutex(const par_num_t par_num)
 /**
  * @brief Release mutex for specified parameter.
  *
- * @note User shall provide definition of that function based on used platform!
- *
- * If mutex is not needed leave empty space between user code begin and end.
+ * @note Releases one recursive acquisition level previously acquired by
+ * par_if_aquire_mutex().
  *
  * @param par_num Parameter number (enumeration).
- * @return Status of operation.
  */
 void par_if_release_mutex(const par_num_t par_num)
 {

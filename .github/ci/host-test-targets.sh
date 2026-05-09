@@ -4,6 +4,7 @@
 host_targets=(
     par_core_runtime
     par_object_runtime
+    par_mutex_runtime
     par_shell_tool
     par_nvm_flash_ee
     par_nvm_flash_ee_matrix
@@ -62,6 +63,12 @@ run_host_target() {
         par_object_runtime)
             compile_and_run par_object_runtime \
                 parameters/tests/host/test_par_object_runtime.c \
+                "${base_sources[@]}"
+            ;;
+        par_mutex_runtime)
+            compile_and_run par_mutex_runtime \
+                -DPAR_CFG_MUTEX_EN=1 \
+                parameters/tests/host/test_par_mutex_runtime.c \
                 "${base_sources[@]}"
             ;;
         par_shell_tool)

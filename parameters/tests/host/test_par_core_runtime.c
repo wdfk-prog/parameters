@@ -242,6 +242,48 @@ static bool test_scalar_change_callback_reentrant_updates_other_parameter(void)
     return true;
 }
 
+/** @brief Verify metadata and role-policy helper APIs without module init. */
+static bool test_scalar_metadata_and_role_policy_helpers(void)
+{
+    const par_cfg_t *cfg = NULL;
+    par_range_t range = { 0 };
+
+    if (par_is_init())
+    {
+        TEST_ASSERT_OK(par_deinit());
+    }
+
+    cfg = par_get_config(ePAR_TEST_MODE);
+    TEST_ASSERT(NULL != cfg);
+    TEST_ASSERT(NULL == par_get_config(ePAR_NUM_OF));
+    TEST_ASSERT(strcmp(par_get_name(ePAR_TEST_MODE), "Mode") == 0);
+    TEST_ASSERT(NULL == par_get_name(ePAR_NUM_OF));
+    TEST_ASSERT(strcmp(par_get_unit(ePAR_TEST_F32), "V") == 0);
+    TEST_ASSERT(NULL == par_get_unit(ePAR_NUM_OF));
+    TEST_ASSERT(strcmp(par_get_desc(ePAR_TEST_MODE), "Persistent U8 test value") == 0);
+    TEST_ASSERT(NULL == par_get_desc(ePAR_NUM_OF));
+    TEST_ASSERT(par_get_type(ePAR_TEST_U16) == ePAR_TYPE_U16);
+    TEST_ASSERT(par_get_type(ePAR_NUM_OF) == ePAR_TYPE_NUM_OF);
+
+    range = par_get_range(ePAR_TEST_MODE);
+    TEST_ASSERT(range.min.u8 == 0U);
+    TEST_ASSERT(range.max.u8 == 10U);
+    range = par_get_range(ePAR_TEST_STR);
+    TEST_ASSERT(range.min.u32 == 0U && range.max.u32 == 0U);
+
+    TEST_ASSERT(par_get_access(ePAR_TEST_RO) == ePAR_ACCESS_RO);
+    TEST_ASSERT(par_get_access(ePAR_NUM_OF) == ePAR_ACCESS_NONE);
+    TEST_ASSERT(par_get_read_roles(ePAR_TEST_RO) == ePAR_ROLE_ALL);
+    TEST_ASSERT(par_get_write_roles(ePAR_TEST_RO) == ePAR_ROLE_NONE);
+    TEST_ASSERT(par_can_read(ePAR_TEST_RO, ePAR_ROLE_PUBLIC));
+    TEST_ASSERT(!par_can_write(ePAR_TEST_RO, ePAR_ROLE_PUBLIC));
+    TEST_ASSERT(par_can_write(ePAR_TEST_MODE, ePAR_ROLE_DEVELOPER));
+    TEST_ASSERT(!par_can_read(ePAR_NUM_OF, ePAR_ROLE_PUBLIC));
+    TEST_ASSERT(!par_can_read(ePAR_TEST_MODE, (par_role_t)(1UL << 8U)));
+    TEST_ASSERT(!par_can_write(ePAR_TEST_MODE, ePAR_ROLE_NONE));
+    return true;
+}
+
 /** @brief Verify default reset and has-changed tracking. */
 static bool test_scalar_reset_default_and_has_changed(void)
 {
@@ -283,6 +325,7 @@ int main(void)
         { "scalar_validation_and_fast_policy", test_scalar_validation_and_fast_policy },
         { "scalar_change_callback_called_once", test_scalar_change_callback_called_once },
         { "scalar_change_callback_reentrant_updates_other_parameter", test_scalar_change_callback_reentrant_updates_other_parameter },
+        { "scalar_metadata_and_role_policy_helpers", test_scalar_metadata_and_role_policy_helpers },
         { "scalar_reset_default_and_has_changed", test_scalar_reset_default_and_has_changed },
     };
 
