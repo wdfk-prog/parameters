@@ -1,0 +1,3 @@
+kconfiglib==14.1.0
+scons==4.10.1
+tqdm==4.67.3

@@ -1,1 +1,5 @@
+/build/
+/_ci/
+cppcheck.txt
+doxygen.log
 **/*.pyc

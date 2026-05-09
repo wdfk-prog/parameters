@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -108,6 +109,34 @@ def base_rows() -> list[dict[str, str]]:
     ]
 
 
+def collect_ci_workflow_host_targets() -> list[str]:
+    """Return host runtime target names from the GitHub Actions matrix."""
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    match = re.search(
+        r"  host-runtime-tests:.*?\n"
+        r"(?:.*?\n)*?"
+        r"        target:\n"
+        r"(?P<body>(?:          - [A-Za-z0-9_]+\n)+)",
+        workflow,
+    )
+    if match is None:
+        raise AssertionError("host-runtime-tests matrix target list not found")
+    return [line.split("-", 1)[1].strip() for line in match.group("body").splitlines()]
+
+
+def collect_host_test_dispatch_targets() -> list[str]:
+    """Return target names accepted by the host-test dispatcher."""
+    dispatcher = (ROOT / ".github" / "ci" / "host-test-targets.sh").read_text(encoding="utf-8")
+    match = re.search(r"host_targets=\(\n(?P<body>.*?)\n\)", dispatcher, re.S)
+    if match is None:
+        raise AssertionError("host_targets array not found")
+    return [
+        line.strip()
+        for line in match.group("body").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+
 class PargenTests(unittest.TestCase):
     """Validate pargen schema checks and generated outputs."""
 
@@ -156,6 +185,13 @@ class PargenTests(unittest.TestCase):
         stats = pargen.validate_and_resolve(rows, lock, cfg)
         outputs = pargen.generate_outputs(rows, stats)
         pargen.verify_outputs(args, outputs)
+
+    def test_ci_host_target_matrix_matches_dispatcher(self) -> None:
+        """CI host target matrix must stay synchronized with the dispatcher."""
+        workflow_targets = collect_ci_workflow_host_targets()
+        dispatch_targets = collect_host_test_dispatch_targets()
+        self.assertEqual(workflow_targets, dispatch_targets)
+        self.assertEqual(len(workflow_targets), len(set(workflow_targets)))
 
     def test_all_conditional_rows_generate_layout_header(self) -> None:
         """Layout generation works when every schema row is conditionally compiled."""
@@ -347,6 +383,217 @@ class PargenTests(unittest.TestCase):
         )
         with self.assertRaises(pargen.PargenError):
             self.run_generator(rows)
+
+
+    def test_load_config_missing_and_invalid_range(self) -> None:
+        """Missing config uses defaults and invalid ranges fail."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            self.assertEqual(pargen.load_config(tmpdir / "missing.json").default_id_range, (0, 65535))
+            bad_cfg = tmpdir / "bad.json"
+            bad_cfg.write_text('{"default_id_range": [10, 1]}', encoding="utf-8")
+            with self.assertRaises(pargen.PargenError):
+                pargen.load_config(bad_cfg)
+
+    def test_read_rows_rejects_missing_header_columns_and_empty_schema(self) -> None:
+        """CSV input must include required columns and at least one data row."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            missing_columns = tmpdir / "missing_columns.csv"
+            missing_columns.write_text("enum,id,type\n", encoding="utf-8")
+            with self.assertRaises(pargen.PargenError):
+                pargen.read_rows(missing_columns)
+
+            empty_schema = tmpdir / "empty.csv"
+            write_csv(empty_schema, [])
+            with self.assertRaises(pargen.PargenError):
+                pargen.read_rows(empty_schema)
+
+    def test_read_lock_rejects_non_object_and_out_of_range_ids(self) -> None:
+        """Lock files must be JSON objects with uint16 external IDs."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            not_object = tmpdir / "not_object.json"
+            not_object.write_text("[]", encoding="utf-8")
+            with self.assertRaises(pargen.PargenError):
+                pargen.read_lock(not_object)
+
+            out_of_range = tmpdir / "out_of_range.json"
+            out_of_range.write_text('{"ids": {"ePAR_SYS_MODE": 65536}}', encoding="utf-8")
+            with self.assertRaises(pargen.PargenError):
+                pargen.read_lock(out_of_range)
+
+            non_integer = tmpdir / "non_integer.json"
+            non_integer.write_text('{"ids": {"ePAR_SYS_MODE": "not-an-id"}}', encoding="utf-8")
+            with self.assertRaises(ValueError):
+                pargen.read_lock(non_integer)
+
+    def test_validate_rejects_bad_enum_type_access_role_and_missing_desc(self) -> None:
+        """Basic schema validation rejects malformed row metadata."""
+        cases = [
+            ("enum", "BAD_ENUM"),
+            ("type", "U64"),
+            ("access", "WO"),
+            ("read_roles", "ROOT"),
+            ("desc", ""),
+        ]
+        for field, value in cases:
+            rows = base_rows()
+            rows[0][field] = value
+            with self.subTest(field=field):
+                with self.assertRaises(pargen.PargenError):
+                    self.run_generator(rows)
+
+    def test_invalid_id_tokens_and_duplicate_enums_fail(self) -> None:
+        """Invalid external IDs and duplicate enums are rejected."""
+        rows = base_rows()
+        rows[0]["id"] = "not-a-number"
+        with self.assertRaises(pargen.PargenError):
+            self.run_generator(rows)
+
+        rows = base_rows()
+        rows[1]["enum"] = rows[0]["enum"]
+        with self.assertRaises(pargen.PargenError):
+            self.run_generator(rows)
+
+    def test_object_defaults_cover_arr_u16_and_arr_u32_lengths(self) -> None:
+        """ARR_U16 and ARR_U32 defaults generate byte lengths, not element counts."""
+        rows = base_rows()
+        rows.extend([
+            {
+                "group": "OBJECT",
+                "section": "LUT",
+                "condition": "",
+                "enum": "ePAR_U16_LUT",
+                "id": "50004",
+                "type": "ARR_U16",
+                "name": "U16 LUT",
+                "min": "2",
+                "max": "2",
+                "default": "100,200",
+                "unit": "",
+                "access": "RW",
+                "read_roles": "ALL",
+                "write_roles": "ALL",
+                "persistent": "0",
+                "desc": "U16 LUT.",
+                "comment": "",
+            },
+            {
+                "group": "OBJECT",
+                "section": "LUT",
+                "condition": "",
+                "enum": "ePAR_U32_LUT",
+                "id": "50005",
+                "type": "ARR_U32",
+                "name": "U32 LUT",
+                "min": "2",
+                "max": "2",
+                "default": "1000,2000",
+                "unit": "",
+                "access": "RW",
+                "read_roles": "ALL",
+                "write_roles": "ALL",
+                "persistent": "0",
+                "desc": "U32 LUT.",
+                "comment": "",
+            },
+        ])
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertIn(".len = (uint16_t)(2U * sizeof(uint16_t))", outputs.par_table_def)
+        self.assertIn(".len = (uint16_t)(2U * sizeof(uint32_t))", outputs.par_table_def)
+        self.assertEqual(generated_rows[3].obj_default_len, 4)
+        self.assertEqual(generated_rows[4].obj_default_len, 8)
+
+    def test_verify_reports_missing_output(self) -> None:
+        """Verification mode reports missing generated output files."""
+        rows, stats = self.run_generator(base_rows())
+        outputs = pargen.generate_outputs(rows, stats)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            args = pargen.parse_args([
+                "--csv", str(tmpdir / "schema.csv"),
+                "--id-lock", str(tmpdir / "lock.json"),
+                "--config", str(tmpdir / "cfg.json"),
+                "--out-def", str(tmpdir / "par_table.def"),
+                "--out-dir", str(tmpdir / "generated"),
+                "--manifest", str(tmpdir / "generated" / "par_manifest.json"),
+            ])
+            with self.assertRaises(pargen.PargenError):
+                pargen.verify_outputs(args, outputs)
+
+    def test_verify_reports_stale_output(self) -> None:
+        """Verification mode reports existing generated files with stale content."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            csv_path = tmpdir / "schema.csv"
+            lock_path = tmpdir / "lock.json"
+            cfg_path = tmpdir / "cfg.json"
+            out_def = tmpdir / "par_table.def"
+            out_dir = tmpdir / "generated"
+            manifest = out_dir / "par_manifest.json"
+            write_csv(csv_path, base_rows())
+            lock_path.write_text("{}", encoding="utf-8")
+            cfg_path.write_text('{"default_id_range": [0, 65535]}', encoding="utf-8")
+            common_args = [
+                "--csv", str(csv_path),
+                "--id-lock", str(lock_path),
+                "--config", str(cfg_path),
+                "--out-def", str(out_def),
+                "--out-dir", str(out_dir),
+                "--manifest", str(manifest),
+            ]
+            self.assertEqual(pargen.main(common_args), 0)
+            out_def.write_text(out_def.read_text(encoding="utf-8") + "/* stale */\n", encoding="utf-8")
+            self.assertEqual(pargen.main(common_args + ["--verify"]), 1)
+
+    def test_main_check_success_and_invalid_csv_failure(self) -> None:
+        """CLI --check succeeds for valid CSV and returns 1 for invalid CSV."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            csv_path = tmpdir / "par_table.csv"
+            lock_path = tmpdir / "par_id_lock.json"
+            cfg_path = tmpdir / "pargen.json"
+            write_csv(csv_path, base_rows())
+            lock_path.write_text("{}", encoding="utf-8")
+            cfg_path.write_text('{"default_id_range": [0, 65535]}', encoding="utf-8")
+            self.assertEqual(pargen.main([
+                "--csv", str(csv_path),
+                "--id-lock", str(lock_path),
+                "--config", str(cfg_path),
+                "--check",
+            ]), 0)
+
+            bad_csv = tmpdir / "bad.csv"
+            bad_csv.write_text("enum,id,type\n", encoding="utf-8")
+            self.assertEqual(pargen.main([
+                "--csv", str(bad_csv),
+                "--id-lock", str(lock_path),
+                "--config", str(cfg_path),
+                "--check",
+            ]), 1)
+
+    def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
+        """Fixed-seed negative corpus rejects malformed object defaults."""
+        cases = [
+            ("BYTES", "0", "2", "0x100"),
+            ("ARR_U8", "2", "2", "1,300"),
+            ("ARR_U16", "2", "2", "1,70000"),
+            ("ARR_U32", "2", "2", "1,-1"),
+            ("ARR_U8", "1", "2", "1,2"),
+        ]
+        for type_name, min_text, max_text, default_text in cases:
+            rows = base_rows()
+            rows[2].update({
+                "type": type_name,
+                "min": min_text,
+                "max": max_text,
+                "default": default_text,
+            })
+            with self.subTest(type=type_name, default=default_text):
+                with self.assertRaises(pargen.PargenError):
+                    self.run_generator(rows)
 
 
 if __name__ == "__main__":

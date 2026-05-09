@@ -27,9 +27,18 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Install Doxygen and Graphviz
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y doxygen graphviz
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -qq \
+            -o Acquire::Retries=5 \
+            -o Acquire::http::Timeout=30 \
+            -o Acquire::https::Timeout=30
+          timeout 10m sudo apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=5 \
+            -o Acquire::http::Timeout=30 \
+            -o Acquire::https::Timeout=30 \
+            doxygen graphviz
 
       - name: Prepare output directory
         run: mkdir -p build/doxygen
