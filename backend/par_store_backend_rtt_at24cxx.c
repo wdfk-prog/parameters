@@ -42,11 +42,14 @@
  * - The parameter-owned window must fit in the AT24CXX memory space.
  * - Zero-sized window is invalid.
  * - Overflow is rejected by checking the exclusive end address.
+ * - Page and erase transfer chunks must be non-zero.
  */
 RT_STATIC_ASSERT(par_rtt_at24_window_size_nonzero, ((uint32_t)(PAR_CFG_RTT_AT24_SIZE) > 0u));
 RT_STATIC_ASSERT(par_rtt_at24_window_base_in_range, ((uint32_t)(PAR_CFG_RTT_AT24_BASE_ADDR) < (uint32_t)(AT24CXX_MAX_MEM_ADDRESS)));
 RT_STATIC_ASSERT(par_rtt_at24_window_end_in_range, (PAR_STORE_RTT_AT24_WINDOW_END <= (uint32_t)(AT24CXX_MAX_MEM_ADDRESS)));
 RT_STATIC_ASSERT(par_rtt_at24_window_no_overflow, (PAR_STORE_RTT_AT24_WINDOW_END >= (uint32_t)(PAR_CFG_RTT_AT24_BASE_ADDR)));
+RT_STATIC_ASSERT(par_rtt_at24_page_size_nonzero, ((uint32_t)(AT24CXX_PAGE_BYTE) > 0u));
+RT_STATIC_ASSERT(par_rtt_at24_erase_chunk_nonzero, ((uint32_t)(PAR_STORE_RTT_AT24_ERASE_CHUNK) > 0u));
 /**
  * @brief Convert a backend-relative offset to an EEPROM absolute offset.
  */
@@ -93,6 +96,35 @@ static rt_bool_t par_store_rtt_at24_is_range_valid(uint32_t addr, uint32_t size)
     }
 
     return RT_TRUE;
+}
+
+/**
+ * @brief Return the largest transfer that stays inside one AT24CXX page.
+ *
+ * @param abs_addr Absolute EEPROM address.
+ * @param remaining Remaining bytes in the caller request.
+ * @param limit Caller-specific maximum transfer length.
+ * @return Transfer length in bytes.
+ */
+static uint16_t par_store_rtt_at24_page_limited_xfer(uint32_t abs_addr,
+                                                     uint32_t remaining,
+                                                     uint32_t limit)
+{
+    uint32_t xfer = remaining;
+    const uint32_t page_remain = (uint32_t)AT24CXX_PAGE_BYTE -
+                                 (abs_addr % (uint32_t)AT24CXX_PAGE_BYTE);
+
+    if (xfer > page_remain)
+    {
+        xfer = page_remain;
+    }
+
+    if (xfer > limit)
+    {
+        xfer = limit;
+    }
+
+    return (uint16_t)xfer;
 }
 
 /**
@@ -228,7 +260,8 @@ static par_status_t par_store_rtt_at24_write(const uint32_t addr, const uint32_t
 
     while (remaining > 0u)
     {
-        uint16_t xfer = (remaining > (uint32_t)AT24CXX_PAGE_BYTE) ? (uint16_t)AT24CXX_PAGE_BYTE : (uint16_t)remaining;
+        uint16_t xfer = par_store_rtt_at24_page_limited_xfer(
+            abs_addr, remaining, (uint32_t)AT24CXX_PAGE_BYTE);
         /* The AT24CXX write API accepts a non-const buffer pointer, but the
          * backend only passes source bytes for transmission and does not expect the
          * driver to modify them. Cast away constness locally to match the driver
@@ -279,7 +312,8 @@ static par_status_t par_store_rtt_at24_erase(const uint32_t addr, const uint32_t
 
     while (remaining > 0u)
     {
-        uint16_t xfer = (remaining > (uint32_t)PAR_STORE_RTT_AT24_ERASE_CHUNK) ? (uint16_t)PAR_STORE_RTT_AT24_ERASE_CHUNK : (uint16_t)remaining;
+        uint16_t xfer = par_store_rtt_at24_page_limited_xfer(
+            abs_addr, remaining, (uint32_t)sizeof(erase_buf));
 
         if (RT_EOK != at24cxx_page_write(gp_at24_dev, abs_addr, erase_buf, xfer))
         {

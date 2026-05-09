@@ -10,10 +10,12 @@
  * @copyright Copyright (c) 2026 Ziga Miklosic. Distributed under the MIT license.
  */
 #include "test_host_common.h"
+#include "rtthread.h"
 #include "par_nvm_api.h"
 #include "par_store_backend_flash_ee.h"
 #include "par_store_backend.h"
 
+#include <stdarg.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -28,11 +30,101 @@
 
 /** @brief Host fake flash image path buffer length. */
 #define HOST_FLASH_IMAGE_PATH_LEN (128U)
+/** @brief Offset of the serialized scalar NVM table-ID field in host flash. */
+#define HOST_NVM_HEAD_TABLE_ID_OFFSET \
+    ((uint32_t)sizeof(uint32_t) + (uint32_t)sizeof(uint16_t))
+/** @brief Size of the serialized scalar NVM table-ID field in host flash. */
+#define HOST_NVM_HEAD_TABLE_ID_SIZE   ((uint32_t)sizeof(uint32_t))
 
 #ifndef PAR_HOST_TEST_PROFILE_NAME
 /** @brief Human-readable host NVM profile name printed by matrix tests. */
 #define PAR_HOST_TEST_PROFILE_NAME "default"
 #endif /* !defined(PAR_HOST_TEST_PROFILE_NAME) */
+
+
+/** @brief Captured shell output buffer size for NVM shell command tests. */
+#define NVM_SHELL_CAPTURE_SIZE (8192U)
+
+/** @brief Captured shell output for NVM shell command tests. */
+static char g_nvm_shell_capture[NVM_SHELL_CAPTURE_SIZE];
+/** @brief Number of used bytes in g_nvm_shell_capture. */
+static size_t g_nvm_shell_capture_used;
+
+/** @brief Reset the NVM shell output capture buffer. */
+static void nvm_shell_capture_reset(void)
+{
+    g_nvm_shell_capture[0] = '\0';
+    g_nvm_shell_capture_used = 0U;
+}
+
+/**
+ * @brief Return whether captured NVM shell output contains a substring.
+ * @param needle Null-terminated substring to find.
+ * @return true when @p needle is present in the capture buffer.
+ */
+static bool nvm_shell_capture_contains(const char *needle)
+{
+    return (NULL != strstr(g_nvm_shell_capture, needle));
+}
+
+/** @brief Host rt_kprintf stub used by the included MSH command implementation. */
+int rt_kprintf(const char *fmt, ...)
+{
+    int written;
+    va_list args;
+    size_t free_size = (g_nvm_shell_capture_used < NVM_SHELL_CAPTURE_SIZE) ?
+                       (NVM_SHELL_CAPTURE_SIZE - g_nvm_shell_capture_used) : 0U;
+
+    if (0U == free_size)
+    {
+        return 0;
+    }
+
+    va_start(args, fmt);
+    written = vsnprintf(&g_nvm_shell_capture[g_nvm_shell_capture_used], free_size, fmt, args);
+    va_end(args);
+
+    if (written < 0)
+    {
+        return written;
+    }
+    if ((size_t)written >= free_size)
+    {
+        g_nvm_shell_capture_used = NVM_SHELL_CAPTURE_SIZE;
+    }
+    else
+    {
+        g_nvm_shell_capture_used += (size_t)written;
+    }
+
+    return written;
+}
+
+/** @brief Host rt_snprintf stub used by the included MSH command implementation. */
+int rt_snprintf(char *buf, rt_size_t size, const char *fmt, ...)
+{
+    int written;
+    va_list args;
+
+    va_start(args, fmt);
+    written = vsnprintf(buf, size, fmt, args);
+    va_end(args);
+    return written;
+}
+
+/** @brief Host heap allocation stub used by object-printing shell paths. */
+void *rt_malloc(rt_size_t size)
+{
+    return malloc(size);
+}
+
+/** @brief Host heap free stub used by object-printing shell paths. */
+void rt_free(void *ptr)
+{
+    free(ptr);
+}
+
+#include "../../../port/par_shell_tool.c"
 
 /** @brief Raw fake flash bytes used by the native Flash EE port hooks. */
 static uint8_t g_flash[HOST_FLASH_SIZE];
@@ -50,6 +142,14 @@ static int g_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
 static uint8_t g_object_flash[HOST_FLASH_SIZE];
 /** @brief Dedicated object-store initialization flag. */
 static bool g_object_flash_is_init;
+/** @brief Dedicated object-store write failpoint countdown; negative disables it. */
+static int g_object_fail_write_after = HOST_FLASH_FAIL_DISABLED;
+/** @brief Dedicated object-store read failpoint countdown; negative disables it. */
+static int g_object_fail_read_after = HOST_FLASH_FAIL_DISABLED;
+/** @brief Dedicated object-store erase failpoint countdown; negative disables it. */
+static int g_object_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
+/** @brief Dedicated object-store sync failpoint countdown; negative disables it. */
+static int g_object_fail_sync_after = HOST_FLASH_FAIL_DISABLED;
 
 /**
  * @brief Return the process-unique fake flash image path.
@@ -146,6 +246,10 @@ static void host_flash_reset_erased(void)
     g_fail_program_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_read_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_fail_write_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_fail_read_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_fail_sync_after = HOST_FLASH_FAIL_DISABLED;
 }
 
 /** @brief Clear transient fake flash failpoints without erasing contents. */
@@ -154,6 +258,10 @@ static void host_flash_clear_failpoints(void)
     g_fail_program_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_read_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_fail_write_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_fail_read_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_fail_sync_after = HOST_FLASH_FAIL_DISABLED;
 }
 
 /** @brief Flip one byte in fake flash to emulate physical corruption. */
@@ -354,6 +462,15 @@ static par_status_t host_object_backend_read(const uint32_t addr,
         return ePAR_ERROR;
     }
 
+    if (0 == g_object_fail_read_after)
+    {
+        return ePAR_ERROR;
+    }
+    if (g_object_fail_read_after > 0)
+    {
+        g_object_fail_read_after--;
+    }
+
     memcpy(p_buf, &g_object_flash[addr], size);
     return ePAR_OK;
 }
@@ -369,6 +486,15 @@ static par_status_t host_object_backend_write(const uint32_t addr,
         return ePAR_ERROR;
     }
 
+    if (0 == g_object_fail_write_after)
+    {
+        return ePAR_ERROR;
+    }
+    if (g_object_fail_write_after > 0)
+    {
+        g_object_fail_write_after--;
+    }
+
     memcpy(&g_object_flash[addr], p_buf, size);
     return ePAR_OK;
 }
@@ -381,6 +507,15 @@ static par_status_t host_object_backend_erase(const uint32_t addr, const uint32_
         return ePAR_ERROR;
     }
 
+    if (0 == g_object_fail_erase_after)
+    {
+        return ePAR_ERROR;
+    }
+    if (g_object_fail_erase_after > 0)
+    {
+        g_object_fail_erase_after--;
+    }
+
     memset(&g_object_flash[addr], 0xFF, size);
     return ePAR_OK;
 }
@@ -388,6 +523,15 @@ static par_status_t host_object_backend_erase(const uint32_t addr, const uint32_
 /** @brief Flush the dedicated object-store fake backend. */
 static par_status_t host_object_backend_sync(void)
 {
+    if (0 == g_object_fail_sync_after)
+    {
+        return ePAR_ERROR;
+    }
+    if (g_object_fail_sync_after > 0)
+    {
+        g_object_fail_sync_after--;
+    }
+
     return ePAR_OK;
 }
 
@@ -425,6 +569,17 @@ static bool init_module(void)
 
     TEST_ASSERT_OK(par_init());
     return true;
+}
+
+/**
+ * @brief Run the included shell command dispatcher with an argv vector.
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ */
+static void run_nvm_shell(int argc, char **argv)
+{
+    nvm_shell_capture_reset();
+    par_msh(argc, argv);
 }
 
 /** @brief Verify first boot on erased flash restores and writes defaults. */
@@ -731,6 +886,154 @@ static bool test_flash_ee_program_one_to_zero_semantics(void)
     return true;
 }
 
+
+/** @brief Save a committed value, then fail a later save without graceful deinit. */
+static bool host_flash_child_fail_save_after_commit(const int program_fail_after)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
+    g_fail_program_after = program_fail_after;
+    TEST_ASSERT((par_save(ePAR_TEST_MODE) & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    return true;
+}
+
+/** @brief Verify early and mid-write program failpoints preserve last committed values. */
+static bool test_flash_ee_program_failpoint_matrix_preserves_last_commit(void)
+{
+    static const int fail_after_cases[] = { 0, 1 };
+
+    for (size_t i = 0U; i < (sizeof(fail_after_cases) / sizeof(fail_after_cases[0])); i++)
+    {
+        pid_t child_pid;
+
+        host_flash_reset_erased();
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(host_flash_child_fail_save_after_commit(fail_after_cases[i]));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(host_flash_child_verify_mode_value(4U));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+    }
+
+    return true;
+}
+
+/** @brief Verify table-ID/header incompatibility rebuilds defaults instead of loading stale values. */
+static bool test_nvm_table_id_mismatch_rebuilds_defaults(void)
+{
+    uint8_t value = 0U;
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 9U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+    TEST_ASSERT_OK(par_deinit());
+
+    /* Corrupt the serialized table-ID field in the scalar NVM header. */
+    for (uint32_t addr = HOST_NVM_HEAD_TABLE_ID_OFFSET;
+         addr < (HOST_NVM_HEAD_TABLE_ID_OFFSET + HOST_NVM_HEAD_TABLE_ID_SIZE);
+         addr++)
+    {
+        host_flash_xor_byte(addr, 0xA5U);
+    }
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &value));
+    TEST_ASSERT(value == 1U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify shell save persists live values across a restart. */
+static bool test_msh_save_persists_live_scalar_after_restart(void)
+{
+    char *save_args[] = { "par", "save" };
+    uint8_t value = 0U;
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 8U));
+    run_nvm_shell(2, save_args);
+    TEST_ASSERT(nvm_shell_capture_contains("OK"));
+    TEST_ASSERT_OK(par_deinit());
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &value));
+    TEST_ASSERT(value == 8U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify shell save_clean rewrites the managed NVM area with live values. */
+static bool test_msh_save_clean_rewrites_live_values(void)
+{
+    char *save_clean_args[] = { "par", "save_clean" };
+    uint8_t value = 0U;
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 6U));
+    run_nvm_shell(2, save_clean_args);
+    TEST_ASSERT(nvm_shell_capture_contains("OK"));
+    TEST_ASSERT_OK(par_deinit());
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &value));
+    TEST_ASSERT(value == 6U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify shell save reports backend write errors. */
+static bool test_msh_save_reports_backend_error(void)
+{
+    char *save_args[] = { "par", "save" };
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 7U));
+    g_fail_program_after = 0;
+    run_nvm_shell(2, save_args);
+    TEST_ASSERT(nvm_shell_capture_contains("ERR"));
+    host_flash_clear_failpoints();
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED)
+/** @brief Verify a dedicated object write failpoint does not mutate backend bytes. */
+static bool test_object_dedicated_write_fail_preserves_backend_image(void)
+{
+    uint8_t before[HOST_FLASH_SIZE];
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "old"));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_STR));
+    memcpy(before, g_object_flash, sizeof(before));
+
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "new"));
+    g_object_fail_write_after = 0;
+    TEST_ASSERT((par_save(ePAR_TEST_STR) & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    TEST_ASSERT(0 == memcmp(before, g_object_flash, sizeof(before)));
+    host_flash_clear_failpoints();
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
+
 /** @brief Entrypoint for NVM Flash EE host tests. */
 int main(void)
 {
@@ -742,12 +1045,21 @@ int main(void)
         { "nvm_object_updates_do_not_corrupt_scalar_values", test_nvm_object_updates_do_not_corrupt_scalar_values },
         { "nvm_scalar_updates_do_not_corrupt_object_values", test_nvm_scalar_updates_do_not_corrupt_object_values },
         { "flash_ee_failed_program_reload_preserves_last_committed_value", test_flash_ee_failed_program_reload_preserves_last_committed_value },
+        { "flash_ee_program_failpoint_matrix_preserves_last_commit", test_flash_ee_program_failpoint_matrix_preserves_last_commit },
         { "flash_ee_failed_program_graceful_deinit_commits_live_value", test_flash_ee_failed_program_graceful_deinit_commits_live_value },
         { "flash_ee_corruption_rebuilds_default_value", test_flash_ee_corruption_rebuilds_default_value },
+        { "nvm_table_id_mismatch_rebuilds_defaults", test_nvm_table_id_mismatch_rebuilds_defaults },
         { "flash_ee_failed_erase_preserves_existing_bytes", test_flash_ee_failed_erase_preserves_existing_bytes },
         { "flash_ee_many_updates_preserve_last_committed_value", test_flash_ee_many_updates_preserve_last_committed_value },
         { "flash_ee_port_rejects_wrapped_ranges", test_flash_ee_port_rejects_wrapped_ranges },
         { "flash_ee_program_one_to_zero_semantics", test_flash_ee_program_one_to_zero_semantics },
+        { "msh_save_persists_live_scalar_after_restart", test_msh_save_persists_live_scalar_after_restart },
+        { "msh_save_clean_rewrites_live_values", test_msh_save_clean_rewrites_live_values },
+        { "msh_save_reports_backend_error", test_msh_save_reports_backend_error },
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED)
+        { "object_dedicated_write_fail_preserves_backend_image", test_object_dedicated_write_fail_preserves_backend_image },
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
     };
 
     printf("PAR_HOST_NVM_PROFILE %s\n", PAR_HOST_TEST_PROFILE_NAME);

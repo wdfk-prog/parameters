@@ -9,6 +9,11 @@
 
 #include "at24cxx.h"
 
+/** @brief Disable one-shot AT24CXX transfer failpoints. */
+#define AT24_FAIL_DISABLED (0)
+/** @brief Maximum AT24CXX transfer trace entries kept by the host stub. */
+#define AT24_TRACE_MAX (8U)
+
 /** @brief Concrete host AT24CXX stub object. */
 struct autogen_pm_ci_at24_device
 {
@@ -19,6 +24,31 @@ struct autogen_pm_ci_at24_device
 static struct autogen_pm_ci_at24_device g_at24_dev;
 /** @brief AT24CXX device availability switch. */
 static bool g_at24_available;
+/** @brief One-shot read failure switch. */
+static int g_at24_fail_read;
+/** @brief One-shot write failure switch. */
+static int g_at24_fail_write;
+/** @brief Number of traced AT24CXX read operations. */
+static uint8_t g_at24_read_count;
+/** @brief Number of traced AT24CXX write operations. */
+static uint8_t g_at24_write_count;
+/** @brief Absolute addresses used by traced AT24CXX write operations. */
+static uint32_t g_at24_write_addr[AT24_TRACE_MAX];
+/** @brief Sizes used by traced AT24CXX write operations. */
+static uint16_t g_at24_write_size[AT24_TRACE_MAX];
+
+/** @brief Reset the mutable AT24CXX host stub state. */
+static void at24_stub_reset(void)
+{
+    memset(&g_at24_dev, 0xFF, sizeof(g_at24_dev));
+    g_at24_available = false;
+    g_at24_fail_read = AT24_FAIL_DISABLED;
+    g_at24_fail_write = AT24_FAIL_DISABLED;
+    g_at24_read_count = 0U;
+    g_at24_write_count = 0U;
+    memset(g_at24_write_addr, 0, sizeof(g_at24_write_addr));
+    memset(g_at24_write_size, 0, sizeof(g_at24_write_size));
+}
 
 at24cxx_device_t at24cxx_init(const char *i2c_bus_name, uint8_t addr_input)
 {
@@ -44,6 +74,12 @@ int at24cxx_page_read(at24cxx_device_t dev, uint32_t addr, uint8_t *buf, uint16_
     {
         return -1;
     }
+    if (g_at24_fail_read != AT24_FAIL_DISABLED)
+    {
+        g_at24_fail_read = AT24_FAIL_DISABLED;
+        return -1;
+    }
+    g_at24_read_count++;
     memcpy(buf, &dev->mem[addr], size);
     return RT_EOK;
 }
@@ -55,6 +91,17 @@ int at24cxx_page_write(at24cxx_device_t dev, uint32_t addr, const uint8_t *buf, 
     {
         return -1;
     }
+    if (g_at24_fail_write != AT24_FAIL_DISABLED)
+    {
+        g_at24_fail_write = AT24_FAIL_DISABLED;
+        return -1;
+    }
+    if (g_at24_write_count < AT24_TRACE_MAX)
+    {
+        g_at24_write_addr[g_at24_write_count] = addr;
+        g_at24_write_size[g_at24_write_count] = size;
+    }
+    g_at24_write_count++;
     memcpy(&dev->mem[addr], buf, size);
     return RT_EOK;
 }
@@ -66,13 +113,13 @@ static bool test_rtt_at24cxx_adapter_smoke(void)
     uint8_t readback = 0U;
     const uint8_t value = 0x5AU;
 
+    at24_stub_reset();
     TEST_ASSERT_OK(par_store_backend_bind());
     api = par_store_backend_get_api();
     TEST_ASSERT(NULL != api);
     TEST_ASSERT_STATUS(api->init(), ePAR_ERROR_INIT);
 
     g_at24_available = true;
-    memset(&g_at24_dev, 0xFF, sizeof(g_at24_dev));
     TEST_ASSERT_OK(api->init());
     TEST_ASSERT_OK(api->write(0U, 1U, &value));
     TEST_ASSERT_OK(api->read(0U, 1U, &readback));
@@ -85,11 +132,147 @@ static bool test_rtt_at24cxx_adapter_smoke(void)
     return true;
 }
 
+/** @brief Verify writes larger than one page are split at AT24CXX page granularity. */
+static bool test_rtt_at24cxx_page_split_write(void)
+{
+    const par_store_backend_api_t *api;
+    uint8_t payload[AT24CXX_PAGE_BYTE + 3U];
+    uint32_t expected_addr = (uint32_t)PAR_CFG_RTT_AT24_BASE_ADDR;
+    uint32_t remaining = (uint32_t)sizeof(payload);
+    uint8_t expected_count = 0U;
+
+    for (uint8_t i = 0U; i < (uint8_t)sizeof(payload); i++)
+    {
+        payload[i] = (uint8_t)(0x10U + i);
+    }
+
+    at24_stub_reset();
+    g_at24_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->write(0U, (uint32_t)sizeof(payload), payload));
+    while (remaining > 0U)
+    {
+        uint32_t xfer = (uint32_t)AT24CXX_PAGE_BYTE -
+                        (expected_addr % (uint32_t)AT24CXX_PAGE_BYTE);
+
+        if (xfer > remaining)
+        {
+            xfer = remaining;
+        }
+
+        TEST_ASSERT(expected_count < AT24_TRACE_MAX);
+        TEST_ASSERT(g_at24_write_addr[expected_count] == expected_addr);
+        TEST_ASSERT(g_at24_write_size[expected_count] == (uint16_t)xfer);
+        expected_addr += xfer;
+        remaining -= xfer;
+        expected_count++;
+    }
+    TEST_ASSERT(g_at24_write_count == expected_count);
+    TEST_ASSERT(0 == memcmp(&g_at24_dev.mem[PAR_CFG_RTT_AT24_BASE_ADDR], payload, sizeof(payload)));
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
+/** @brief Verify non-page-aligned writes split at the remaining page window. */
+static bool test_rtt_at24cxx_unaligned_page_split_write(void)
+{
+    const par_store_backend_api_t *api;
+    const uint32_t page_size = (uint32_t)AT24CXX_PAGE_BYTE;
+    const uint32_t base_page_offset = (uint32_t)PAR_CFG_RTT_AT24_BASE_ADDR %
+                                      page_size;
+    const uint32_t rel_addr = (page_size - 1U + page_size - base_page_offset) %
+                              page_size;
+    const uint32_t abs_addr = (uint32_t)PAR_CFG_RTT_AT24_BASE_ADDR + rel_addr;
+    const uint32_t first_chunk = page_size - (abs_addr % page_size);
+    uint8_t payload[2U];
+
+    TEST_ASSERT(page_size > 1U);
+    TEST_ASSERT((abs_addr % page_size) != 0U);
+    TEST_ASSERT((uint32_t)PAR_CFG_RTT_AT24_SIZE >=
+                (rel_addr + (uint32_t)sizeof(payload)));
+
+    for (uint8_t i = 0U; i < (uint8_t)sizeof(payload); i++)
+    {
+        payload[i] = (uint8_t)(0x40U + i);
+    }
+
+    at24_stub_reset();
+    g_at24_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->write(rel_addr, (uint32_t)sizeof(payload), payload));
+    TEST_ASSERT(g_at24_write_count == 2U);
+    TEST_ASSERT(g_at24_write_addr[0] == abs_addr);
+    TEST_ASSERT(g_at24_write_size[0] == first_chunk);
+    TEST_ASSERT(g_at24_write_addr[1] == (abs_addr + first_chunk));
+    TEST_ASSERT(g_at24_write_size[1] == ((uint32_t)sizeof(payload) - first_chunk));
+    TEST_ASSERT(0 == memcmp(&g_at24_dev.mem[abs_addr], payload, sizeof(payload)));
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
+/** @brief Verify configured AT24CXX base address is honored. */
+static bool test_rtt_at24cxx_base_addr_offsets_window(void)
+{
+    const par_store_backend_api_t *api;
+    const uint8_t payload[2] = { 0xA5U, 0x5AU };
+    uint8_t readback[sizeof(payload)] = { 0U };
+
+    at24_stub_reset();
+    g_at24_available = true;
+    if (PAR_CFG_RTT_AT24_BASE_ADDR > 0U)
+    {
+        g_at24_dev.mem[PAR_CFG_RTT_AT24_BASE_ADDR - 1U] = 0x33U;
+    }
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->write(0U, (uint32_t)sizeof(payload), payload));
+    TEST_ASSERT_OK(api->read(0U, (uint32_t)sizeof(readback), readback));
+    TEST_ASSERT(0 == memcmp(readback, payload, sizeof(payload)));
+    if (PAR_CFG_RTT_AT24_BASE_ADDR > 0U)
+    {
+        TEST_ASSERT(g_at24_dev.mem[PAR_CFG_RTT_AT24_BASE_ADDR - 1U] == 0x33U);
+    }
+    TEST_ASSERT(0 == memcmp(&g_at24_dev.mem[PAR_CFG_RTT_AT24_BASE_ADDR], payload, sizeof(payload)));
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
+/** @brief Verify AT24CXX read/write driver errors propagate to the backend caller. */
+static bool test_rtt_at24cxx_driver_error_propagates(void)
+{
+    const par_store_backend_api_t *api;
+    const uint8_t payload[4] = { 1U, 2U, 3U, 4U };
+    uint8_t readback[sizeof(payload)] = { 0U };
+
+    at24_stub_reset();
+    g_at24_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    g_at24_fail_write = 1;
+    TEST_ASSERT_STATUS(api->write(0U, (uint32_t)sizeof(payload), payload), ePAR_ERROR_NVM);
+    g_at24_fail_read = 1;
+    TEST_ASSERT_STATUS(api->read(0U, (uint32_t)sizeof(readback), readback), ePAR_ERROR_NVM);
+    g_at24_fail_write = 1;
+    TEST_ASSERT_STATUS(api->erase(0U, (uint32_t)sizeof(payload)), ePAR_ERROR_NVM);
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
 /** @brief Entrypoint for the host AT24CXX backend smoke test. */
 int main(void)
 {
     static const par_host_test_case_t cases[] = {
         { "backend_rtt_at24cxx_adapter_smoke", test_rtt_at24cxx_adapter_smoke },
+        { "backend_rtt_at24cxx_page_split_write", test_rtt_at24cxx_page_split_write },
+        { "backend_rtt_at24cxx_unaligned_page_split_write", test_rtt_at24cxx_unaligned_page_split_write },
+        { "backend_rtt_at24cxx_base_addr_offsets_window", test_rtt_at24cxx_base_addr_offsets_window },
+        { "backend_rtt_at24cxx_driver_error_propagates", test_rtt_at24cxx_driver_error_propagates },
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));
