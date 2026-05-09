@@ -1,0 +1,10 @@
+scalar-fixed-slot-with-size
+scalar-fixed-slot-no-size
+scalar-compact-payload
+scalar-fixed-payload-only
+scalar-grouped-payload-only
+object-shared-after-scalar
+object-shared-fixed
+generated-layout-info
+flash-ee-fal-backend
+rtt-at24cxx-backend

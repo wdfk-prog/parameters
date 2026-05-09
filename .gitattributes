@@ -1,0 +1,4 @@
+*.sh text eol=lf
+.github/ci/cppcheck-suppressions.txt text eol=lf
+.github/ci/profile-list.txt text eol=lf
+.github/ci/rtthread-profile-list.txt text eol=lf
