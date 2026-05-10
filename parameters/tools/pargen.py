@@ -16,7 +16,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 VERSION = "1.0.0"
 
@@ -279,14 +279,19 @@ def validate_and_resolve(rows: List[Row], lock: Dict[str, int], cfg: GeneratorCo
             if locked_id is not None:
                 reserve_id(reserved_ids, locked_id, row, "locked")
 
-    used_ids: Dict[int, Row] = dict(reserved_ids)
+    used_id_values = set(reserved_ids)
+    active_bucket_values = set(reserved_ids)
+    for enum, locked_id in lock.items():
+        if enum not in enums:
+            used_id_values.add(locked_id)
+
     for row in rows:
         if row.id_text.upper() in {"", "AUTO"}:
             locked_id = lock.get(row.enum)
             if locked_id is not None:
                 row.resolved_id = locked_id
             else:
-                row.resolved_id = allocate_id(row, rows, used_ids, cfg)
+                row.resolved_id = allocate_id(row, rows, used_id_values, active_bucket_values, cfg)
         else:
             row.resolved_id = parse_id(row.id_text, row.line)
 
@@ -298,7 +303,8 @@ def validate_and_resolve(rows: List[Row], lock: Dict[str, int], cfg: GeneratorCo
                 f"{other.enum} on line {other.line}"
             )
         ids[row.resolved_id] = row
-        used_ids[row.resolved_id] = row
+        used_id_values.add(row.resolved_id)
+        active_bucket_values.add(row.resolved_id)
 
     validate_values(rows)
     hash_bits = hash_bits_for_rows(rows)
@@ -308,7 +314,7 @@ def validate_and_resolve(rows: List[Row], lock: Dict[str, int], cfg: GeneratorCo
         bucket = hash_id(row.resolved_id, hash_bits)
         if bucket in buckets:
             other = buckets[bucket]
-            suggestion = find_id_suggestion(row, rows, buckets, hash_bits, cfg)
+            suggestion = find_id_suggestion(row, rows, buckets, hash_bits, cfg, used_id_values)
             hint = f"; suggested free ID: {suggestion}" if suggestion is not None else ""
             raise PargenError(
                 f"line {row.line}: hash bucket {bucket} collision: {row.enum} ID {row.resolved_id} "
@@ -372,10 +378,10 @@ def reserve_id(reserved_ids: Dict[int, Row], value: int, row: Row, source: str) 
     reserved_ids[value] = row
 
 
-def allocate_id(row: Row, rows: List[Row], used_ids: Dict[int, Row], cfg: GeneratorConfig) -> int:
+def allocate_id(row: Row, rows: List[Row], used_ids: Set[int], bucket_ids: Set[int], cfg: GeneratorConfig) -> int:
     start, end = cfg.id_ranges.get(row.group, cfg.default_id_range)
     hash_bits = hash_bits_for_rows(rows)
-    used_buckets = {hash_id(value, hash_bits) for value in used_ids}
+    used_buckets = {hash_id(value, hash_bits) for value in bucket_ids}
     for candidate in range(start, end + 1):
         if candidate in used_ids:
             continue
@@ -386,8 +392,11 @@ def allocate_id(row: Row, rows: List[Row], used_ids: Dict[int, Row], cfg: Genera
     raise PargenError(f"line {row.line}: no free AUTO ID in range {start}..{end} for group {row.group!r}")
 
 
-def find_id_suggestion(row: Row, rows: List[Row], buckets: Dict[int, Row], hash_bits: int, cfg: GeneratorConfig) -> Optional[int]:
+def find_id_suggestion(row: Row, rows: List[Row], buckets: Dict[int, Row], hash_bits: int, cfg: GeneratorConfig,
+                       reserved_ids: Optional[Set[int]] = None) -> Optional[int]:
     used_ids = {int(r.resolved_id) for r in rows if r.resolved_id is not None and r is not row}
+    if reserved_ids is not None:
+        used_ids |= reserved_ids
     start, end = cfg.id_ranges.get(row.group, cfg.default_id_range)
     for candidate in range(start, end + 1):
         if candidate in used_ids:

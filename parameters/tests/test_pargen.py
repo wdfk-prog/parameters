@@ -727,6 +727,53 @@ class PargenTests(unittest.TestCase):
             self.assertEqual(pargen.read_lock(wrapper), {"ePAR_SYS_MODE": 7})
             self.assertEqual(pargen.read_lock(legacy), {"ePAR_SYS_TEMP": 8})
 
+    def test_deleted_locked_id_is_not_reused_by_auto_row(self) -> None:
+        """AUTO allocation skips IDs reserved by deleted lock entries."""
+        rows = base_rows()[:2]
+        rows[0]["id"] = "AUTO"
+        rows[1]["id"] = "AUTO"
+        parsed = [pargen.normalize_row(index, row) for index, row in enumerate(rows, start=2)]
+        pargen.validate_and_resolve(
+            parsed,
+            {"ePAR_DELETED_ROW": 0},
+            pargen.GeneratorConfig(id_ranges={"SYSTEM": (0, 10)}, default_id_range=(0, 10)),
+        )
+        self.assertEqual(parsed[0].resolved_id, 1)
+        self.assertEqual(parsed[1].resolved_id, 2)
+
+    def test_id_suggestion_skips_deleted_locked_ids(self) -> None:
+        """Hash-collision ID suggestions skip deleted lock entries."""
+        rows = base_rows()[:2]
+        rows[1]["id"] = "3"
+        parsed = [pargen.normalize_row(index, row) for index, row in enumerate(rows, start=2)]
+        with self.assertRaisesRegex(pargen.PargenError, r"suggested free ID: 2"):
+            pargen.validate_and_resolve(
+                parsed,
+                {"ePAR_DELETED_ROW": 1},
+                pargen.GeneratorConfig(id_ranges={"SYSTEM": (0, 4)}, default_id_range=(0, 4)),
+            )
+
+    def test_condition_with_string_literal_is_emitted_verbatim(self) -> None:
+        """Conditions containing quoted tokens are preserved in generated guards."""
+        rows = base_rows()
+        rows[2]["condition"] = '(defined(PAR_TARGET_NAME) && (PAR_TARGET_NAME[0] == "x"[0]))'
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertIn('#if (defined(PAR_TARGET_NAME) && (PAR_TARGET_NAME[0] == "x"[0]))',
+                      outputs.par_table_def)
+        self.assertIn('#endif /* (defined(PAR_TARGET_NAME) && (PAR_TARGET_NAME[0] == "x"[0])) */',
+                      outputs.par_table_def)
+
+    def test_string_default_backslash_and_control_chars_are_escaped(self) -> None:
+        """String object defaults escape control characters in generated C."""
+        rows = base_rows()
+        rows[2]["default"] = 'line\\one\n"ssid"'
+        rows[2]["max"] = "16"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertIn('(const uint8_t *)"line\\\\one\\n\\\"ssid\\\""', outputs.par_table_def)
+        self.assertEqual(generated_rows[2].obj_default_len, len('line\\one\n"ssid"'.encode("utf-8")))
+
     def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
         """Fixed-seed negative corpus rejects malformed object defaults."""
         cases = [
