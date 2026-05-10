@@ -386,6 +386,31 @@ static bool test_scalar_fast_setters_cover_all_widths_and_bitwise(void)
     return true;
 }
 
+
+/** @brief Verify fast setters clamp range and reject generic wrong-type paths. */
+static bool test_scalar_fast_range_and_wrong_width_policies(void)
+{
+    uint8_t u8 = 0U;
+    par_type_t scalar_value = { 0 };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_STATUS(par_set_u8_fast(ePAR_TEST_MODE, 99U), ePAR_WAR_LIMITED);
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &u8));
+    TEST_ASSERT(u8 == 10U);
+
+    scalar_value.u8 = 7U;
+    TEST_ASSERT_STATUS(par_set_scalar(ePAR_TEST_STR, &scalar_value), ePAR_ERROR_TYPE);
+
+    TEST_ASSERT_OK(par_set_u16(ePAR_TEST_U16, 123U));
+    reset_callback_state();
+    par_register_on_change_cb(ePAR_TEST_U16, on_scalar_change);
+    TEST_ASSERT_OK(par_set_u16(ePAR_TEST_U16, 123U));
+    TEST_ASSERT(g_on_change_hits == 0U);
+    par_register_on_change_cb(ePAR_TEST_U16, NULL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Verify callback unregister, invalid registration, and reentry policies. */
 static bool test_scalar_callback_registration_edge_policies(void)
 {
@@ -517,6 +542,7 @@ int main(void)
         { "core_cfg_table_api_returns_stable_table_and_size", test_core_cfg_table_api_returns_stable_table_and_size },
         { "scalar_defaults_and_set_by_id_public_paths", test_scalar_defaults_and_set_by_id_public_paths },
         { "scalar_fast_setters_cover_all_widths_and_bitwise", test_scalar_fast_setters_cover_all_widths_and_bitwise },
+        { "scalar_fast_range_and_wrong_width_policies", test_scalar_fast_range_and_wrong_width_policies },
         { "scalar_callback_registration_edge_policies", test_scalar_callback_registration_edge_policies },
         { "core_manual_mutex_public_paths", test_core_manual_mutex_public_paths },
         { "scalar_metadata_and_role_policy_helpers", test_scalar_metadata_and_role_policy_helpers },

@@ -349,6 +349,46 @@ static bool test_msh_set_object_row_is_rejected_without_mutation(void)
     return true;
 }
 
+
+/** @brief Verify compact object set syntax is rejected without mutation. */
+static bool test_msh_set_object_compact_syntax_rejected_without_mutation(void)
+{
+    char *set_args[] = { "par", "set", "9,mutate" };
+    char str_buf[9] = { 0 };
+    uint16_t len = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "stable"));
+    run_shell(3, set_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == 6U);
+    TEST_ASSERT(strcmp(str_buf, "stable") == 0);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify shell role gating applies to object reads. */
+static bool test_msh_role_commands_gate_object_access(void)
+{
+    char *role_clear_args[] = { "par", "role", "clear" };
+    char *role_set_public_args[] = { "par", "role", "set", "public" };
+    char *get_args[] = { "par", "get", "9" };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "role"));
+    run_shell(3, role_clear_args);
+    TEST_ASSERT(shell_capture_contains("shell_roles=none"));
+    run_shell(3, get_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(4, role_set_public_args);
+    TEST_ASSERT(shell_capture_contains("shell_roles=public"));
+    run_shell(3, get_args);
+    TEST_ASSERT(shell_capture_contains("role"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Verify object array get commands emit stable decimal elements. */
 static bool test_msh_get_object_array_outputs_are_stable(void)
 {
@@ -422,6 +462,8 @@ int main(void)
         { "msh_def_all_restores_defaults", test_msh_def_all_restores_defaults },
         { "msh_get_object_bytes_hex_output", test_msh_get_object_bytes_hex_output },
         { "msh_set_object_row_is_rejected_without_mutation", test_msh_set_object_row_is_rejected_without_mutation },
+        { "msh_set_object_compact_syntax_rejected_without_mutation", test_msh_set_object_compact_syntax_rejected_without_mutation },
+        { "msh_role_commands_gate_object_access", test_msh_role_commands_gate_object_access },
         { "msh_get_object_array_outputs_are_stable", test_msh_get_object_array_outputs_are_stable },
         { "msh_get_object_alloc_failure_reports_error", test_msh_get_object_alloc_failure_reports_error },
         { "msh_role_rejects_unknown_token_without_role_change", test_msh_role_rejects_unknown_token_without_role_change },

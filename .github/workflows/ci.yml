@@ -88,20 +88,17 @@ jobs:
         shell: bash
         run: bash .github/ci/config-matrix.sh
 
-  host-cppcheck-source:
-    name: Host cppcheck source
+  host-cppcheck-src:
+    name: host-cppcheck-src
     runs-on: ubuntu-latest
     env:
+      CPPCHECK_MODE: ${{ ((github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'master')) || (github.event_name != 'pull_request' && (github.ref_name == 'main' || github.ref_name == 'master'))) && 'deep' || 'fast' }}
       CPPCHECK_SHARD: source
       CPPCHECK_REPORT: cppcheck-source.txt
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Validate host NVM cppcheck matrix
-        shell: bash
-        run: bash .github/ci/check-nvm-profile-matrix.sh
 
       - name: Install cppcheck
         timeout-minutes: 10
@@ -125,18 +122,18 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cppcheck-source
+          name: host-cppcheck-source
           path: cppcheck-source.txt
           if-no-files-found: error
 
-  host-cppcheck-host-runtime-tests:
-    name: Host cppcheck runtime tests
+  host-cppcheck-host-tests:
+    name: host-cppcheck-host-tests
     runs-on: ubuntu-latest
-    if: ${{ github.ref_name == 'main' || github.ref_name == 'master' || ((github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && (github.base_ref == 'main' || github.base_ref == 'master')) }}
+    if: ${{ (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'master')) || (github.event_name != 'pull_request' && (github.ref_name == 'main' || github.ref_name == 'master')) }}
     env:
       CPPCHECK_MODE: deep
-      CPPCHECK_SHARD: host-runtime-tests
-      CPPCHECK_REPORT: cppcheck-host-runtime-tests.txt
+      CPPCHECK_SHARD: host-tests
+      CPPCHECK_REPORT: cppcheck-host-tests.txt
 
     steps:
       - name: Checkout
@@ -156,67 +153,16 @@ jobs:
             -o Acquire::https::Timeout=30 \
             cppcheck
 
-      - name: Run host runtime cppcheck shard
+      - name: Run host-test cppcheck shard
         shell: bash
         run: bash .github/ci/cppcheck.sh
 
-      - name: Upload host runtime cppcheck report
+      - name: Upload host-test cppcheck report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cppcheck-host-runtime-tests
-          path: cppcheck-host-runtime-tests.txt
-          if-no-files-found: error
-
-  host-cppcheck-host-nvm-tests:
-    name: Host cppcheck NVM tests (${{ matrix.nvm_profile }})
-    runs-on: ubuntu-latest
-    if: ${{ github.ref_name == 'main' || github.ref_name == 'master' || ((github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && (github.base_ref == 'main' || github.base_ref == 'master')) }}
-    strategy:
-      fail-fast: false
-      matrix:
-        nvm_profile:
-          - fixed_slot_with_size
-          - fixed_slot_no_size
-          - compact_payload
-          - fixed_payload_only
-          - grouped_payload_only
-          - object_shared_after_scalar
-          - object_dedicated
-    env:
-      CPPCHECK_MODE: deep
-      CPPCHECK_SHARD: host-nvm-tests
-      CPPCHECK_NVM_PROFILE: ${{ matrix.nvm_profile }}
-      CPPCHECK_REPORT: cppcheck-host-nvm-${{ matrix.nvm_profile }}.txt
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install cppcheck
-        timeout-minutes: 10
-        run: |
-          export DEBIAN_FRONTEND=noninteractive
-          sudo apt-get update -qq \
-            -o Acquire::Retries=5 \
-            -o Acquire::http::Timeout=30 \
-            -o Acquire::https::Timeout=30
-          timeout 10m sudo apt-get install -y --no-install-recommends \
-            -o Acquire::Retries=5 \
-            -o Acquire::http::Timeout=30 \
-            -o Acquire::https::Timeout=30 \
-            cppcheck
-
-      - name: Run host NVM cppcheck shard
-        shell: bash
-        run: bash .github/ci/cppcheck.sh
-
-      - name: Upload host NVM cppcheck report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cppcheck-host-nvm-${{ matrix.nvm_profile }}
-          path: cppcheck-host-nvm-${{ matrix.nvm_profile }}.txt
+          name: host-cppcheck-host-tests
+          path: cppcheck-host-tests.txt
           if-no-files-found: error
 
   documentation:

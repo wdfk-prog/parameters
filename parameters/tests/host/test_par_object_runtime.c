@@ -6,9 +6,14 @@
  */
 #include "test_host_common.h"
 #include "par_registration_api.h"
+#include "par_object.h"
 
 /** @brief Object validation acceptance switch. */
 static bool g_obj_validation_accept = true;
+/** @brief Last object payload observed by validation tests. */
+static uint8_t g_obj_validation_seen[8];
+/** @brief Last object payload length observed by validation tests. */
+static uint16_t g_obj_validation_seen_len;
 
 /**
  * @brief Conditionally accept object payload writes for validation tests.
@@ -22,8 +27,11 @@ static bool object_validation(const par_num_t par_num,
                               const uint16_t len)
 {
     (void)par_num;
-    (void)p_data;
-    (void)len;
+    g_obj_validation_seen_len = len;
+    if ((NULL != p_data) && (len <= (uint16_t)sizeof(g_obj_validation_seen)))
+    {
+        memcpy(g_obj_validation_seen, p_data, len);
+    }
     return g_obj_validation_accept;
 }
 
@@ -347,6 +355,30 @@ static bool test_object_scalar_api_cross_type_errors_do_not_mutate(void)
     return true;
 }
 
+/** @brief Verify object pool overlap input is rejected without mutation. */
+static bool test_object_source_overlap_rejected_without_mutation(void)
+{
+    const uint8_t *p_payload = NULL;
+    uint16_t len = 0U;
+    uint16_t capacity = 0U;
+    uint8_t bytes_buf[4] = { 0U };
+    uint16_t out_len = 0U;
+    const uint8_t original[4] = { 9U, 8U, 7U, 6U };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_bytes(ePAR_TEST_BYTES, original, (uint16_t)sizeof(original)));
+    TEST_ASSERT_OK(par_object_get_view(ePAR_TEST_BYTES, &p_payload, &len, &capacity));
+    TEST_ASSERT(NULL != p_payload);
+    TEST_ASSERT(len == (uint16_t)sizeof(original));
+    TEST_ASSERT(capacity == (uint16_t)sizeof(bytes_buf));
+    TEST_ASSERT_STATUS(par_set_bytes(ePAR_TEST_BYTES, p_payload, len), ePAR_ERROR_PARAM);
+    TEST_ASSERT_OK(par_get_bytes(ePAR_TEST_BYTES, bytes_buf, sizeof(bytes_buf), &out_len));
+    TEST_ASSERT(out_len == (uint16_t)sizeof(original));
+    TEST_ASSERT(0 == memcmp(bytes_buf, original, sizeof(original)));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Verify object validation callback and reset-to-default behavior. */
 static bool test_object_validation_and_default_reset(void)
 {
@@ -370,6 +402,59 @@ static bool test_object_validation_and_default_reset(void)
     return true;
 }
 
+
+/** @brief Verify small default-object buffers do not partially overwrite output. */
+static bool test_object_get_default_small_buffer_does_not_partial_overwrite(void)
+{
+    uint16_t arr16_buf[2] = { 0xAAAAU, 0xBBBBU };
+    uint16_t out_count = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_STATUS(par_get_default_arr_u16(ePAR_TEST_ARR_U16, arr16_buf, 1U, &out_count),
+                       ePAR_ERROR_PARAM);
+    TEST_ASSERT(out_count == 2U);
+    TEST_ASSERT(arr16_buf[0] == 0xAAAAU);
+    TEST_ASSERT(arr16_buf[1] == 0xBBBBU);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify NULL output buffer acts as a length query without copying. */
+static bool test_object_get_bytes_null_buffer_reports_len_without_copy(void)
+{
+    uint16_t out_len = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_bytes(ePAR_TEST_BYTES, NULL, 4U, &out_len));
+    TEST_ASSERT(out_len == 2U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify object validation sees candidate bytes and rejection is atomic. */
+static bool test_object_validation_rejects_without_payload_mutation(void)
+{
+    char str_buf[9] = { 0 };
+    uint16_t len = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "old"));
+    memset(g_obj_validation_seen, 0, sizeof(g_obj_validation_seen));
+    g_obj_validation_seen_len = 0U;
+    g_obj_validation_accept = false;
+    par_register_obj_validation(ePAR_TEST_STR, object_validation);
+    TEST_ASSERT_STATUS(par_set_str(ePAR_TEST_STR, "new"), ePAR_ERROR_VALUE);
+    TEST_ASSERT(g_obj_validation_seen_len == 3U);
+    TEST_ASSERT(0 == memcmp(g_obj_validation_seen, "new", 3U));
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == 3U);
+    TEST_ASSERT(strcmp(str_buf, "old") == 0);
+    g_obj_validation_accept = true;
+    par_register_obj_validation(ePAR_TEST_STR, NULL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Entrypoint for object host runtime tests. */
 int main(void)
 {
@@ -385,7 +470,11 @@ int main(void)
         { "object_default_non_id_apis_match_by_id_apis", test_object_default_non_id_apis_match_by_id_apis },
         { "object_null_zero_and_small_buffer_policies", test_object_null_zero_and_small_buffer_policies },
         { "object_scalar_api_cross_type_errors_do_not_mutate", test_object_scalar_api_cross_type_errors_do_not_mutate },
+        { "object_source_overlap_rejected_without_mutation", test_object_source_overlap_rejected_without_mutation },
         { "object_validation_and_default_reset", test_object_validation_and_default_reset },
+        { "object_get_default_small_buffer_does_not_partial_overwrite", test_object_get_default_small_buffer_does_not_partial_overwrite },
+        { "object_get_bytes_null_buffer_reports_len_without_copy", test_object_get_bytes_null_buffer_reports_len_without_copy },
+        { "object_validation_rejects_without_payload_mutation", test_object_validation_rejects_without_payload_mutation },
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));
