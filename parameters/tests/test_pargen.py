@@ -629,6 +629,104 @@ class PargenTests(unittest.TestCase):
                 self.assertEqual(len(profiles), len(set(profiles)))
                 self.assertTrue(set(profiles).issubset(implemented))
 
+
+    def test_auto_id_range_exhaustion_reports_group_range(self) -> None:
+        """AUTO allocation fails clearly when a group ID range is exhausted."""
+        rows = base_rows()[:2]
+        rows[0]["id"] = "AUTO"
+        rows[1]["id"] = "AUTO"
+        parsed = [pargen.normalize_row(index, row) for index, row in enumerate(rows, start=2)]
+        with self.assertRaisesRegex(pargen.PargenError, r"no free AUTO ID in range 0\.\.0.*SYSTEM"):
+            pargen.validate_and_resolve(
+                parsed,
+                {},
+                pargen.GeneratorConfig(id_ranges={"SYSTEM": (0, 0)}, default_id_range=(0, 0)),
+            )
+
+    def test_config_rejects_malformed_id_ranges(self) -> None:
+        """Generator config rejects malformed or reversed ID ranges."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            bad_group = tmpdir / "bad_group.json"
+            bad_group.write_text('{"id_ranges": {"SYSTEM": [1]}}', encoding="utf-8")
+            with self.assertRaisesRegex(pargen.PargenError, "id_ranges.SYSTEM"):
+                pargen.load_config(bad_group)
+
+            bad_default = tmpdir / "bad_default.json"
+            bad_default.write_text('{"default_id_range": [2, 1]}', encoding="utf-8")
+            with self.assertRaisesRegex(pargen.PargenError, "default_id_range"):
+                pargen.load_config(bad_default)
+
+    def test_persistent_accepts_true_false_aliases(self) -> None:
+        """Persistent flag aliases normalize to the expected integer policy."""
+        true_aliases = ["true", "TRUE", "yes", "Y", "1"]
+        false_aliases = ["false", "FALSE", "no", "N", "0"]
+        for alias in true_aliases:
+            with self.subTest(alias=alias):
+                self.assertEqual(pargen.parse_persistent(alias, 2), 1)
+        for alias in false_aliases:
+            with self.subTest(alias=alias):
+                self.assertEqual(pargen.parse_persistent(alias, 2), 0)
+
+    def test_role_mask_union_emits_parenthesized_c_expression(self) -> None:
+        """Role mask unions are normalized to parenthesized C expressions."""
+        rows = base_rows()
+        rows[0]["read_roles"] = "PUBLIC|SERVICE"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertIn("(ePAR_ROLE_PUBLIC | ePAR_ROLE_SERVICE)", outputs.par_table_def)
+
+    def test_access_full_tokens_are_normalized(self) -> None:
+        """Full ePAR_ACCESS_* tokens remain accepted and emitted."""
+        rows = base_rows()
+        rows[0]["access"] = "ePAR_ACCESS_RO"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertIn("ePAR_ACCESS_RO", outputs.par_table_def)
+
+    def test_utf8_string_default_uses_byte_length(self) -> None:
+        """UTF-8 string defaults use encoded byte length, not character count."""
+        rows = base_rows()
+        rows[2]["default"] = "測試"
+        rows[2]["max"] = "8"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertEqual(len(rows[2]["default"]), 2)
+        self.assertEqual(generated_rows[2].obj_default_len, 6)
+        self.assertIn(".len = 6U", outputs.par_table_def)
+
+    def test_raw_c_object_initializer_is_rejected(self) -> None:
+        """Raw C object initializers are rejected before length validation."""
+        rows = base_rows()
+        rows[2]["default"] = "c:{ 0x00 }"
+        with self.assertRaisesRegex(pargen.PargenError, "raw C object initializers"):
+            self.run_generator(rows)
+
+    def test_blank_csv_rows_are_ignored(self) -> None:
+        """Blank CSV rows do not create empty parameters."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            csv_path = tmpdir / "par_table.csv"
+            with csv_path.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=COLUMNS)
+                writer.writeheader()
+                writer.writerow({column: "" for column in COLUMNS})
+                writer.writerows(base_rows())
+            loaded_rows = pargen.read_rows(csv_path)
+            self.assertEqual([row.enum for row in loaded_rows],
+                             ["ePAR_SYS_MODE", "ePAR_SYS_TEMP", "ePAR_WIFI_SSID"])
+
+    def test_lock_file_wrapper_and_legacy_object_are_supported(self) -> None:
+        """Lock files accept both wrapper and legacy plain-object formats."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            wrapper = tmpdir / "wrapper.json"
+            wrapper.write_text('{"ids": {"ePAR_SYS_MODE": 7}}', encoding="utf-8")
+            legacy = tmpdir / "legacy.json"
+            legacy.write_text('{"ePAR_SYS_TEMP": 8}', encoding="utf-8")
+            self.assertEqual(pargen.read_lock(wrapper), {"ePAR_SYS_MODE": 7})
+            self.assertEqual(pargen.read_lock(legacy), {"ePAR_SYS_TEMP": 8})
+
     def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
         """Fixed-seed negative corpus rejects malformed object defaults."""
         cases = [

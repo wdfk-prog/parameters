@@ -31,8 +31,8 @@ const par_cfg_t *par_cfg_get_table(void);
 const par_cfg_t *par_cfg_get(const par_num_t par_num);
 
 /**
- * @brief Return the number of configuration entries.
- * @return Configuration table size.
+ * @brief Return the configuration table size in bytes.
+ * @return Configuration table size in bytes.
  */
 uint32_t par_cfg_get_table_size(void);
 
