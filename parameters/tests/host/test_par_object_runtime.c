@@ -263,6 +263,90 @@ static bool test_object_default_str_and_metadata_by_id_wrappers(void)
     return true;
 }
 
+
+/** @brief Verify non-ID object default APIs match by-ID wrappers and metadata. */
+static bool test_object_default_non_id_apis_match_by_id_apis(void)
+{
+    uint8_t bytes_buf[4] = { 0U };
+    char str_buf[9] = { 0 };
+    uint16_t out_len = 0U;
+    uint16_t capacity = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_default_bytes(ePAR_TEST_BYTES, bytes_buf, sizeof(bytes_buf), &out_len));
+    TEST_ASSERT(out_len == 2U);
+    TEST_ASSERT(bytes_buf[0] == 1U && bytes_buf[1] == 2U);
+    TEST_ASSERT_OK(par_get_default_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &out_len));
+    TEST_ASSERT(out_len == 2U);
+    TEST_ASSERT(strcmp(str_buf, "ap") == 0);
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "length"));
+    TEST_ASSERT_OK(par_get_obj_len(ePAR_TEST_STR, &out_len));
+    TEST_ASSERT(out_len == 6U);
+    TEST_ASSERT_OK(par_get_obj_capacity(ePAR_TEST_STR, &capacity));
+    TEST_ASSERT(capacity == 8U);
+    TEST_ASSERT_STATUS(par_get_obj_len(ePAR_TEST_U16, &out_len), ePAR_ERROR_TYPE);
+    TEST_ASSERT_STATUS(par_get_obj_capacity(ePAR_TEST_U16, &capacity), ePAR_ERROR_TYPE);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify NULL, zero-length, and small-buffer object edge policies. */
+static bool test_object_null_zero_and_small_buffer_policies(void)
+{
+    uint8_t bytes_buf[4] = { 0U };
+    uint16_t arr16_buf[2] = { 0U };
+    uint32_t arr32_buf[2] = { 0U };
+    char str_buf[9] = { 0 };
+    uint16_t out_count = 0U;
+    uint16_t out_len = 0U;
+    const uint8_t bytes_payload[2] = { 0x11U, 0x22U };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, NULL));
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &out_len));
+    TEST_ASSERT(out_len == 0U);
+    TEST_ASSERT(strcmp(str_buf, "") == 0);
+
+    TEST_ASSERT_OK(par_set_bytes(ePAR_TEST_BYTES, NULL, 0U));
+    TEST_ASSERT_OK(par_get_bytes(ePAR_TEST_BYTES, bytes_buf, sizeof(bytes_buf), &out_len));
+    TEST_ASSERT(out_len == 0U);
+    TEST_ASSERT_STATUS(par_set_bytes(ePAR_TEST_BYTES, NULL, 1U), ePAR_ERROR_PARAM);
+    TEST_ASSERT_OK(par_set_bytes(ePAR_TEST_BYTES, bytes_payload, (uint16_t)sizeof(bytes_payload)));
+    TEST_ASSERT_STATUS(par_get_arr_u16(ePAR_TEST_ARR_U16, arr16_buf, 1U, &out_count), ePAR_ERROR_PARAM);
+    TEST_ASSERT(out_count == 2U);
+    out_count = 0xA5A5U;
+    TEST_ASSERT_STATUS(par_get_arr_u32(ePAR_TEST_ARR_U32, arr32_buf, 1U, &out_count), ePAR_ERROR_PARAM);
+    TEST_ASSERT(out_count == 2U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify scalar/object API cross-type errors leave values unchanged. */
+static bool test_object_scalar_api_cross_type_errors_do_not_mutate(void)
+{
+    uint8_t u8 = 0U;
+    char str_buf[9] = { 0 };
+    uint16_t out_len = 0U;
+    par_type_t scalar_value = { 0 };
+    uint8_t payload[1] = { 0x55U };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "stable"));
+    scalar_value.u8 = 6U;
+    TEST_ASSERT_STATUS(par_set_scalar(ePAR_TEST_STR, &scalar_value.u8), ePAR_ERROR_TYPE);
+    TEST_ASSERT_STATUS(par_get_scalar(ePAR_TEST_STR, &scalar_value), ePAR_ERROR_TYPE);
+    TEST_ASSERT_STATUS(par_set_bytes(ePAR_TEST_MODE, payload, (uint16_t)sizeof(payload)), ePAR_ERROR_TYPE);
+    TEST_ASSERT_STATUS(par_get_bytes(ePAR_TEST_MODE, payload, (uint16_t)sizeof(payload), &out_len), ePAR_ERROR_TYPE);
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &u8));
+    TEST_ASSERT(u8 == 5U);
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &out_len));
+    TEST_ASSERT(out_len == 6U);
+    TEST_ASSERT(strcmp(str_buf, "stable") == 0);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Verify object validation callback and reset-to-default behavior. */
 static bool test_object_validation_and_default_reset(void)
 {
@@ -298,6 +382,9 @@ int main(void)
         { "object_by_id_and_capacity", test_object_by_id_and_capacity },
         { "object_bytes_and_arrays_by_id_wrappers", test_object_bytes_and_arrays_by_id_wrappers },
         { "object_default_str_and_metadata_by_id_wrappers", test_object_default_str_and_metadata_by_id_wrappers },
+        { "object_default_non_id_apis_match_by_id_apis", test_object_default_non_id_apis_match_by_id_apis },
+        { "object_null_zero_and_small_buffer_policies", test_object_null_zero_and_small_buffer_policies },
+        { "object_scalar_api_cross_type_errors_do_not_mutate", test_object_scalar_api_cross_type_errors_do_not_mutate },
         { "object_validation_and_default_reset", test_object_validation_and_default_reset },
     };
 

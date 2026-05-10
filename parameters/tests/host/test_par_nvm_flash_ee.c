@@ -14,8 +14,11 @@
 #include "par_nvm_api.h"
 #include "par_store_backend_flash_ee.h"
 #include "par_store_backend.h"
+#include "par_nvm_object_store.h"
+#include "par_nvm_object.h"
 
 #include <stdarg.h>
+#include <stddef.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -27,7 +30,6 @@
 #define HOST_FLASH_PROGRAM_SIZE (4U)
 /** @brief Disable the failpoint counter. */
 #define HOST_FLASH_FAIL_DISABLED (-1)
-
 /** @brief Host fake flash image path buffer length. */
 #define HOST_FLASH_IMAGE_PATH_LEN (128U)
 /** @brief Offset of the serialized scalar NVM table-ID field in host flash. */
@@ -35,7 +37,6 @@
     ((uint32_t)sizeof(uint32_t) + (uint32_t)sizeof(uint16_t))
 /** @brief Size of the serialized scalar NVM table-ID field in host flash. */
 #define HOST_NVM_HEAD_TABLE_ID_SIZE   ((uint32_t)sizeof(uint32_t))
-
 #ifndef PAR_HOST_TEST_PROFILE_NAME
 /** @brief Human-readable host NVM profile name printed by matrix tests. */
 #define PAR_HOST_TEST_PROFILE_NAME "default"
@@ -273,6 +274,150 @@ static void host_flash_xor_byte(const uint32_t addr, const uint8_t mask)
         host_flash_write_image();
     }
 }
+
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && \
+    (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED)
+/**
+ * @brief Flip one byte through the active object-store abstraction.
+ * @param addr Backend byte address accepted by the object-store API.
+ * @param mask XOR corruption mask.
+ * @return true when the object store byte was modified and flushed.
+ */
+static bool host_object_store_xor_byte(const uint32_t addr, const uint8_t mask)
+{
+    const par_store_backend_api_t * const p_store = par_nvm_object_store_get_api();
+    uint8_t value = 0U;
+
+    TEST_ASSERT(NULL != p_store);
+    TEST_ASSERT(NULL != p_store->read);
+    TEST_ASSERT(NULL != p_store->write);
+    TEST_ASSERT(NULL != p_store->sync);
+    TEST_ASSERT_OK(p_store->read(addr, 1U, &value));
+    value ^= mask;
+    TEST_ASSERT_OK(p_store->write(addr, 1U, &value));
+    TEST_ASSERT_OK(p_store->sync());
+    return true;
+}
+
+/**
+ * @brief Host mirror of serialized object persistence record metadata.
+ * @details Production object NVM stores this metadata in native byte order
+ * before the payload. The helper below validates every neighbor field before
+ * returning the address of the serialized length field.
+ */
+typedef struct
+{
+    uint16_t id;        /**< External parameter ID. */
+    uint8_t type;       /**< Serialized par_type_list_t value. */
+    uint8_t flags;      /**< Reserved flags. */
+    uint16_t elem_size; /**< Object element size in bytes. */
+    uint16_t capacity;  /**< Fixed payload capacity in bytes. */
+    uint16_t len;       /**< Valid payload length in bytes. */
+    uint16_t crc;       /**< CRC-16 over metadata and payload bytes. */
+} host_object_store_record_meta_t;
+
+/** @brief Reserved flags value expected in host object NVM records. */
+#define HOST_OBJECT_STORE_RECORD_FLAGS_NONE (0U)
+
+/**
+ * @brief Read and unpack one object record metadata header.
+ * @param record_addr Backend address of the object record metadata header.
+ * @param p_meta Output metadata mirror.
+ * @return true when metadata was read and unpacked.
+ */
+static bool host_object_store_read_record_meta(const uint32_t record_addr,
+                                               host_object_store_record_meta_t * const p_meta)
+{
+    const par_store_backend_api_t * const p_store = par_nvm_object_store_get_api();
+    uint8_t meta_buf[sizeof(host_object_store_record_meta_t)] = { 0U };
+
+    TEST_ASSERT(NULL != p_store);
+    TEST_ASSERT(NULL != p_store->read);
+    TEST_ASSERT(NULL != p_meta);
+    TEST_ASSERT(sizeof(host_object_store_record_meta_t) == 12U);
+    TEST_ASSERT(offsetof(host_object_store_record_meta_t, id) == 0U);
+    TEST_ASSERT(offsetof(host_object_store_record_meta_t, type) == 2U);
+    TEST_ASSERT(offsetof(host_object_store_record_meta_t, flags) == 3U);
+    TEST_ASSERT(offsetof(host_object_store_record_meta_t, elem_size) == 4U);
+    TEST_ASSERT(offsetof(host_object_store_record_meta_t, capacity) == 6U);
+    TEST_ASSERT(offsetof(host_object_store_record_meta_t, len) == 8U);
+    TEST_ASSERT(offsetof(host_object_store_record_meta_t, crc) == 10U);
+    TEST_ASSERT_OK(p_store->read(record_addr,
+                                 (uint32_t)sizeof(meta_buf),
+                                 meta_buf));
+
+    memcpy(&p_meta->id,
+           &meta_buf[offsetof(host_object_store_record_meta_t, id)],
+           sizeof(p_meta->id));
+    memcpy(&p_meta->type,
+           &meta_buf[offsetof(host_object_store_record_meta_t, type)],
+           sizeof(p_meta->type));
+    memcpy(&p_meta->flags,
+           &meta_buf[offsetof(host_object_store_record_meta_t, flags)],
+           sizeof(p_meta->flags));
+    memcpy(&p_meta->elem_size,
+           &meta_buf[offsetof(host_object_store_record_meta_t, elem_size)],
+           sizeof(p_meta->elem_size));
+    memcpy(&p_meta->capacity,
+           &meta_buf[offsetof(host_object_store_record_meta_t, capacity)],
+           sizeof(p_meta->capacity));
+    memcpy(&p_meta->len,
+           &meta_buf[offsetof(host_object_store_record_meta_t, len)],
+           sizeof(p_meta->len));
+    memcpy(&p_meta->crc,
+           &meta_buf[offsetof(host_object_store_record_meta_t, crc)],
+           sizeof(p_meta->crc));
+    return true;
+}
+
+/**
+ * @brief Return the checked serialized length-field address for an object record.
+ * @details The record base is still derived from the production object NVM
+ * address helper. This function reads only the record metadata header and
+ * validates id, type, flags, element size, capacity, and length before
+ * returning the exact length-field address.
+ * @param par_num Persistent object parameter number.
+ * @param expected_len Expected committed payload length.
+ * @param p_len_addr Output address of the serialized length field.
+ * @return true when the metadata header matches the expected object record.
+ */
+static bool host_object_store_get_record_len_addr(const par_num_t par_num,
+                                                  const uint16_t expected_len,
+                                                  uint32_t * const p_len_addr)
+{
+    const par_cfg_t * const p_cfg = par_get_config(par_num);
+    const uint32_t base_addr = PAR_CFG_NVM_OBJECT_FIXED_ADDR;
+    const uint32_t block_size = par_nvm_object_get_block_size();
+    const uint32_t record_addr = par_nvm_object_get_addr(base_addr, par_num);
+    host_object_store_record_meta_t meta = { 0 };
+    uint16_t expected_id = 0U;
+    uint16_t expected_capacity = 0U;
+    uint32_t record_offset = 0U;
+
+    TEST_ASSERT(NULL != p_len_addr);
+    TEST_ASSERT(NULL != p_cfg);
+    TEST_ASSERT_OK(par_get_id_by_num(par_num, &expected_id));
+    TEST_ASSERT_OK(par_get_obj_capacity(par_num, &expected_capacity));
+    TEST_ASSERT(record_addr >= base_addr);
+    record_offset = record_addr - base_addr;
+    TEST_ASSERT(block_size >= record_offset);
+    TEST_ASSERT(((uint32_t)sizeof(host_object_store_record_meta_t)) <=
+                (block_size - record_offset));
+    TEST_ASSERT(host_object_store_read_record_meta(record_addr, &meta));
+    TEST_ASSERT(meta.id == expected_id);
+    TEST_ASSERT(meta.type == (uint8_t)p_cfg->type);
+    TEST_ASSERT(meta.flags == HOST_OBJECT_STORE_RECORD_FLAGS_NONE);
+    TEST_ASSERT(meta.elem_size == p_cfg->value_cfg.object.elem_size);
+    TEST_ASSERT(meta.capacity == expected_capacity);
+    TEST_ASSERT(meta.len == expected_len);
+
+    *p_len_addr = record_addr +
+                  (uint32_t)offsetof(host_object_store_record_meta_t, len);
+    return true;
+}
+
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED) */
 
 /**
  * @brief Check whether a raw fake flash operation fits in the host region.
@@ -1129,6 +1274,136 @@ static bool test_flash_ee_port_read_failpoint_reports_error(void)
     return true;
 }
 
+/** @brief Verify NVM wrapper APIs reject wrong type and before-init usage. */
+static bool test_nvm_wrapper_negative_type_and_init_policies(void)
+{
+    uint16_t scalar_value = 123U;
+    const uint8_t payload[3] = { 'b', 'a', 'd' };
+
+    host_flash_reset_erased();
+    if (par_is_init())
+    {
+        TEST_ASSERT_OK(par_deinit());
+    }
+    TEST_ASSERT_STATUS(par_save(ePAR_TEST_MODE), ePAR_ERROR_INIT);
+    TEST_ASSERT_STATUS(par_save_all(), ePAR_ERROR_INIT);
+    TEST_ASSERT_STATUS(par_save_clean(), ePAR_ERROR_INIT);
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_STATUS(par_set_scalar_n_save(ePAR_TEST_STR, &scalar_value), ePAR_ERROR_TYPE);
+    TEST_ASSERT_STATUS(par_set_obj_n_save(ePAR_TEST_MODE, payload, (uint16_t)sizeof(payload)), ePAR_ERROR_TYPE);
+    TEST_ASSERT_STATUS(par_set_obj_n_save(ePAR_TEST_ARR_U16, payload, 3U), ePAR_ERROR_VALUE);
+    TEST_ASSERT_STATUS(par_set_obj_n_save(ePAR_TEST_ARR_U32, payload, 6U), ePAR_ERROR_VALUE);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify saving a non-persistent row reports unsupported policy without image mutation. */
+static bool test_nvm_save_non_persistent_is_noop_and_preserves_image(void)
+{
+    uint8_t before[HOST_FLASH_SIZE];
+    uint8_t after[HOST_FLASH_SIZE];
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_i8(ePAR_TEST_I8, -5));
+    memcpy(before, g_flash, sizeof(before));
+    TEST_ASSERT_STATUS(par_save(ePAR_TEST_I8), ePAR_ERROR);
+    memcpy(after, g_flash, sizeof(after));
+    TEST_ASSERT(0 == memcmp(before, after, sizeof(before)));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && \
+    (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED)
+/** @brief Corrupt committed object header and keep the scalar commit stable. */
+static bool host_flash_child_corrupt_object_header_after_commit(void)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 6U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "object"));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_STR));
+    TEST_ASSERT(host_object_store_xor_byte(PAR_CFG_NVM_OBJECT_FIXED_ADDR, 0x01U));
+    return true;
+}
+
+/** @brief Verify object header corruption restores object defaults without scalar loss. */
+static bool test_nvm_object_header_corruption_restores_default_without_scalar_loss(void)
+{
+    pid_t child_pid;
+    uint8_t u8 = 0U;
+    char str_buf[9] = { 0 };
+    uint16_t len = 0U;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_corrupt_object_header_after_commit());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &u8));
+    TEST_ASSERT(u8 == 6U);
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == 2U);
+    TEST_ASSERT(strcmp(str_buf, "ap") == 0);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Corrupt the first object record length field after committing values. */
+static bool host_flash_child_corrupt_object_record_len_after_commit(void)
+{
+    static const char committed[] = "object";
+    uint32_t len_addr = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 7U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, committed));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_STR));
+    TEST_ASSERT(host_object_store_get_record_len_addr(ePAR_TEST_STR,
+                                                       (uint16_t)strlen(committed),
+                                                       &len_addr));
+    TEST_ASSERT(host_object_store_xor_byte(len_addr, 0x7FU));
+    return true;
+}
+
+/** @brief Verify invalid object record length rebuilds object defaults only. */
+static bool test_nvm_object_record_len_corruption_restores_default_without_scalar_loss(void)
+{
+    pid_t child_pid;
+    uint8_t u8 = 0U;
+    char str_buf[9] = { 0 };
+    uint16_t len = 0U;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_corrupt_object_record_len_after_commit());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &u8));
+    TEST_ASSERT(u8 == 7U);
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == 2U);
+    TEST_ASSERT(strcmp(str_buf, "ap") == 0);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED) */
+
 #if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
     (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED)
 /**
@@ -1258,6 +1533,14 @@ int main(void)
         { "flash_ee_program_one_to_zero_semantics", test_flash_ee_program_one_to_zero_semantics },
         { "flash_ee_port_read_failpoint_reports_error", test_flash_ee_port_read_failpoint_reports_error },
         { "nvm_save_by_id_save_all_and_n_save_wrappers", test_nvm_save_by_id_save_all_and_n_save_wrappers },
+        { "nvm_wrapper_negative_type_and_init_policies", test_nvm_wrapper_negative_type_and_init_policies },
+        { "nvm_save_non_persistent_is_noop_and_preserves_image", test_nvm_save_non_persistent_is_noop_and_preserves_image },
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && \
+    (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED)
+        { "nvm_object_header_corruption_restores_default_without_scalar_loss", test_nvm_object_header_corruption_restores_default_without_scalar_loss },
+        { "nvm_object_record_len_corruption_restores_default_without_scalar_loss", test_nvm_object_record_len_corruption_restores_default_without_scalar_loss },
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED) */
         { "msh_save_persists_live_scalar_after_restart", test_msh_save_persists_live_scalar_after_restart },
         { "msh_save_clean_rewrites_live_values", test_msh_save_clean_rewrites_live_values },
         { "msh_save_reports_backend_error", test_msh_save_reports_backend_error },

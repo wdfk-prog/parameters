@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Host-test helpers for flash-ee NVM matrix cases.
 
+nvm_profile_script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=.github/ci/host-test-nvm-profiles.sh
+. "$nvm_profile_script_dir/host-test-nvm-profiles.sh"
+
 run_nvm_flash_ee_profile() {
     local profile="$1"
     local record_layout="$2"
@@ -25,46 +29,5 @@ run_nvm_flash_ee_profile() {
 }
 
 run_nvm_flash_ee_matrix() {
-    run_nvm_flash_ee_profile fixed_slot_with_size \
-        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
-        PAR_CFG_NVM_OBJECT_STORE_SHARED \
-        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
-        0xC0U 0x40U \
-        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c
-    run_nvm_flash_ee_profile fixed_slot_no_size \
-        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE \
-        PAR_CFG_NVM_OBJECT_STORE_SHARED \
-        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
-        0xC0U 0x40U \
-        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_no_size.c
-    run_nvm_flash_ee_profile compact_payload \
-        PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD \
-        PAR_CFG_NVM_OBJECT_STORE_SHARED \
-        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
-        0xC0U 0x40U \
-        parameters/src/nvm/scalar/layout/par_nvm_layout_compact_payload.c
-    run_nvm_flash_ee_profile fixed_payload_only \
-        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY \
-        PAR_CFG_NVM_OBJECT_STORE_SHARED \
-        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
-        0xC0U 0x40U \
-        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_payload_only.c
-    run_nvm_flash_ee_profile grouped_payload_only \
-        PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY \
-        PAR_CFG_NVM_OBJECT_STORE_SHARED \
-        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
-        0xC0U 0x40U \
-        parameters/src/nvm/scalar/layout/par_nvm_layout_grouped_payload_only.c
-    run_nvm_flash_ee_profile object_shared_after_scalar \
-        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
-        PAR_CFG_NVM_OBJECT_STORE_SHARED \
-        PAR_CFG_NVM_OBJECT_ADDR_AFTER_SCALAR \
-        0xC0U 0x40U \
-        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c
-    run_nvm_flash_ee_profile object_dedicated \
-        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
-        PAR_CFG_NVM_OBJECT_STORE_DEDICATED \
-        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
-        0x00U 0x40U \
-        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c
+    autogen_pm_ci_for_each_nvm_flash_ee_profile run_nvm_flash_ee_profile
 }

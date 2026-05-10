@@ -16,18 +16,31 @@
 static char g_shell_capture[SHELL_CAPTURE_SIZE];
 /** @brief Number of bytes currently used in g_shell_capture. */
 static size_t g_shell_capture_used;
+/** @brief One-shot shell heap-allocation failure switch. */
+static bool g_shell_malloc_fail_once;
 
 /** @brief Reset shell output capture buffer. */
 static void shell_capture_reset(void)
 {
     g_shell_capture[0] = '\0';
     g_shell_capture_used = 0U;
+    g_shell_malloc_fail_once = false;
 }
 
 /** @brief Return true when captured shell output contains text. */
 static bool shell_capture_contains(const char *needle)
 {
     return (NULL != strstr(g_shell_capture, needle));
+}
+
+/**
+ * @brief Return true when captured shell output exactly matches text.
+ * @param expected Null-terminated text to compare against the capture buffer.
+ * @return true when @p expected exactly matches the capture buffer.
+ */
+static bool shell_capture_equals(const char *expected)
+{
+    return (0 == strcmp(g_shell_capture, expected));
 }
 
 /** @brief Append formatted text to the shell capture buffer. */
@@ -78,6 +91,12 @@ int rt_snprintf(char *buf, rt_size_t size, const char *fmt, ...)
 /** @brief Host stub for RT-Thread heap allocation. */
 void *rt_malloc(rt_size_t size)
 {
+    if (g_shell_malloc_fail_once)
+    {
+        g_shell_malloc_fail_once = false;
+        return NULL;
+    }
+
     return malloc(size);
 }
 
@@ -311,6 +330,82 @@ static bool test_msh_get_object_bytes_hex_output(void)
     return true;
 }
 
+
+/** @brief Verify object set attempts are rejected and do not mutate payloads. */
+static bool test_msh_set_object_row_is_rejected_without_mutation(void)
+{
+    char *set_args[] = { "par", "set", "9", "mutate" };
+    char str_buf[9] = { 0 };
+    uint16_t len = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "stable"));
+    run_shell(4, set_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == 6U);
+    TEST_ASSERT(strcmp(str_buf, "stable") == 0);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify object array get commands emit stable decimal elements. */
+static bool test_msh_get_object_array_outputs_are_stable(void)
+{
+    char *get_arr8_args[] = { "par", "get", "11" };
+    char *get_arr16_args[] = { "par", "get", "12" };
+    char *get_arr32_args[] = { "par", "get", "13" };
+    const uint8_t arr8[3] = { 9U, 8U, 7U };
+    const uint16_t arr16[2] = { 300U, 400U };
+    const uint32_t arr32[2] = { 3000UL, 4000UL };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_arr_u8(ePAR_TEST_ARR_U8, arr8, 3U));
+    run_shell(3, get_arr8_args);
+    TEST_ASSERT(shell_capture_equals("OK,PAR_GET=[9,8,7]\n"));
+    TEST_ASSERT_OK(par_set_arr_u16(ePAR_TEST_ARR_U16, arr16, 2U));
+    run_shell(3, get_arr16_args);
+    TEST_ASSERT(shell_capture_equals("OK,PAR_GET=[300,400]\n"));
+    TEST_ASSERT_OK(par_set_arr_u32(ePAR_TEST_ARR_U32, arr32, 2U));
+    run_shell(3, get_arr32_args);
+    TEST_ASSERT(shell_capture_equals("OK,PAR_GET=[3000,4000]\n"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify object get reports heap allocation failure without crashing. */
+static bool test_msh_get_object_alloc_failure_reports_error(void)
+{
+    char *args[] = { "par", "get", "9" };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "heap"));
+    shell_capture_reset();
+    g_shell_malloc_fail_once = true;
+    par_msh(3, args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify malformed role commands preserve the previous role mask. */
+static bool test_msh_role_rejects_unknown_token_without_role_change(void)
+{
+    char *role_set_args[] = { "par", "role", "set", "public" };
+    char *role_bad_args[] = { "par", "role", "add", "root" };
+    char *role_query_args[] = { "par", "role" };
+
+    TEST_ASSERT(init_module());
+    run_shell(4, role_set_args);
+    TEST_ASSERT(shell_capture_contains("shell_roles=public"));
+    run_shell(4, role_bad_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(2, role_query_args);
+    TEST_ASSERT(shell_capture_contains("shell_roles=public"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Entrypoint for MSH shell host tests. */
 int main(void)
 {
@@ -326,6 +421,10 @@ int main(void)
         { "msh_def_restores_default", test_msh_def_restores_default },
         { "msh_def_all_restores_defaults", test_msh_def_all_restores_defaults },
         { "msh_get_object_bytes_hex_output", test_msh_get_object_bytes_hex_output },
+        { "msh_set_object_row_is_rejected_without_mutation", test_msh_set_object_row_is_rejected_without_mutation },
+        { "msh_get_object_array_outputs_are_stable", test_msh_get_object_array_outputs_are_stable },
+        { "msh_get_object_alloc_failure_reports_error", test_msh_get_object_alloc_failure_reports_error },
+        { "msh_role_rejects_unknown_token_without_role_change", test_msh_role_rejects_unknown_token_without_role_change },
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));
