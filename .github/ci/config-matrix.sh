@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 profile_file="$script_dir/profile-list.txt"
 profiles=()
+AUTOGEN_PM_CI_INVALID_CONFIG_EXPECTED_COUNT=25
 
 while IFS= read -r profile; do
     profile="${profile%$'\r'}"
@@ -273,6 +274,7 @@ RTDBG_STUB
         -I"$stub_dir" \
         -Iport \
         -Iparameters/tests/host/fixtures \
+        -Iparameters/tests/host/fixtures_backend \
         -I. \
         -Ibackend \
         -Iparameters/include \
@@ -309,6 +311,7 @@ RTDBG_STUB
 
     rm -f "$src_file" "$log_file"
     rm -rf "$stub_dir"
+    ((AUTOGEN_PM_CI_INVALID_CONFIG_COUNT += 1))
     echo "CONFIG_INVALID_OK $name"
 }
 
@@ -320,6 +323,7 @@ autogen_pm_ci_cleanup_invalid_config_matrix() {
 }
 
 autogen_pm_ci_verify_invalid_config_matrix() {
+    AUTOGEN_PM_CI_INVALID_CONFIG_COUNT=0
     AUTOGEN_PM_CI_INVALID_TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/autogen-pm-invalid-matrix.XXXXXX")"
     export AUTOGEN_PM_CI_INVALID_TMP_ROOT
     trap 'autogen_pm_ci_cleanup_invalid_config_matrix' RETURN
@@ -410,6 +414,113 @@ autogen_pm_ci_verify_invalid_config_matrix() {
         -DPAR_CFG_NVM_BACKEND_FLASH_EE_LOGICAL_SIZE=130U \
         -DPAR_CFG_NVM_BACKEND_FLASH_EE_LINE_SIZE=16U
 
+    autogen_pm_ci_expect_invalid_config flash-ee-line-size-zero \
+        "flash-ee line size must be greater than 0" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_FLASH_EE_BACKEND \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_LINE_SIZE=0U
+
+    autogen_pm_ci_expect_invalid_config flash-ee-logical-size-zero \
+        "flash-ee logical size must be greater than 0" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_FLASH_EE_BACKEND \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_LOGICAL_SIZE=0U
+
+    autogen_pm_ci_expect_invalid_config flash-ee-cache-size-zero \
+        "flash-ee cache size must be greater than 0" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_FLASH_EE_BACKEND \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_CACHE_SIZE=0U
+
+    autogen_pm_ci_expect_invalid_config flash-ee-cache-size-not-line-multiple \
+        "flash-ee cache size must be an integer multiple of the line size" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_FLASH_EE_BACKEND \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_CACHE_SIZE=130U \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_LINE_SIZE=16U
+
+    autogen_pm_ci_expect_invalid_config flash-ee-program-size-zero \
+        "flash-ee program size must be greater than 0" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_FLASH_EE_BACKEND \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_PROGRAM_SIZE=0U
+
+    autogen_pm_ci_expect_invalid_config flash-ee-program-size-not-header-divisor \
+        "flash-ee program size must divide the 64-byte bank header exactly" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_FLASH_EE_BACKEND \
+        -DPAR_CFG_NVM_BACKEND_FLASH_EE_PROGRAM_SIZE=6U
+
+    autogen_pm_ci_expect_invalid_config at24-window-size-zero \
+        "par_rtt_at24_window_size_nonzero" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_RTT_AT24CXX_BACKEND \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DPAR_CFG_RTT_AT24_BASE_ADDR=0U \
+        -DPAR_STORE_RTT_AT24_ERASE_CHUNK=8U \
+        -DPAR_CFG_RTT_AT24_SIZE=0U \
+        -include backend/par_store_backend_rtt_at24cxx.c
+
+    autogen_pm_ci_expect_invalid_config at24-window-base-out-of-range \
+        "par_rtt_at24_window_base_in_range" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_RTT_AT24CXX_BACKEND \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DPAR_STORE_RTT_AT24_ERASE_CHUNK=8U \
+        -DPAR_CFG_RTT_AT24_BASE_ADDR=AT24CXX_MAX_MEM_ADDRESS \
+        -include backend/par_store_backend_rtt_at24cxx.c
+
+    autogen_pm_ci_expect_invalid_config at24-window-end-out-of-range \
+        "par_rtt_at24_window_end_in_range" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_RTT_AT24CXX_BACKEND \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DPAR_STORE_RTT_AT24_ERASE_CHUNK=8U \
+        -DPAR_CFG_RTT_AT24_BASE_ADDR=250U \
+        -DPAR_CFG_RTT_AT24_SIZE=16U \
+        -include backend/par_store_backend_rtt_at24cxx.c
+
+    autogen_pm_ci_expect_invalid_config at24-window-end-overflow \
+        "par_rtt_at24_window_no_overflow" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_RTT_AT24CXX_BACKEND \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DPAR_STORE_RTT_AT24_ERASE_CHUNK=8U \
+        -DPAR_CFG_RTT_AT24_BASE_ADDR=0xFFFFFFF0UL \
+        -DPAR_CFG_RTT_AT24_SIZE=0x20UL \
+        -include backend/par_store_backend_rtt_at24cxx.c
+
+    autogen_pm_ci_expect_invalid_config at24-page-size-zero \
+        "par_rtt_at24_page_size_nonzero" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_RTT_AT24CXX_BACKEND \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DPAR_CFG_RTT_AT24_BASE_ADDR=0U \
+        -DPAR_STORE_RTT_AT24_ERASE_CHUNK=8U \
+        -DAT24CXX_PAGE_BYTE=0U \
+        -include backend/par_store_backend_rtt_at24cxx.c
+
+    autogen_pm_ci_expect_invalid_config at24-erase-chunk-zero \
+        "par_rtt_at24_erase_chunk_nonzero" \
+        -DAUTOGEN_PM_USING_NVM \
+        -DAUTOGEN_PM_NVM_SCALAR \
+        -DAUTOGEN_PM_USING_RTT_AT24CXX_BACKEND \
+        -DAUTOGEN_PM_ENABLE_ID \
+        -DPAR_CFG_RTT_AT24_BASE_ADDR=0U \
+        -DPAR_STORE_RTT_AT24_ERASE_CHUNK=0U \
+        -include backend/par_store_backend_rtt_at24cxx.c
+
     autogen_pm_ci_cleanup_invalid_config_matrix
     trap - RETURN
 }
@@ -466,4 +577,11 @@ done
 autogen_pm_ci_verify_invalid_config_matrix
 
 printf 'CONFIG_PROFILE_SUMMARY Passed %u/%u\n' "${#profiles[@]}" "${#profiles[@]}"
-printf 'CONFIG_INVALID_SUMMARY Passed %u/%u\n' 13 13
+if [ "$AUTOGEN_PM_CI_INVALID_CONFIG_COUNT" -ne "$AUTOGEN_PM_CI_INVALID_CONFIG_EXPECTED_COUNT" ]; then
+    echo "CONFIG_INVALID_SUMMARY expected $AUTOGEN_PM_CI_INVALID_CONFIG_EXPECTED_COUNT cases, got $AUTOGEN_PM_CI_INVALID_CONFIG_COUNT" >&2
+    exit 1
+fi
+
+printf 'CONFIG_INVALID_SUMMARY Passed %u/%u\n' \
+    "$AUTOGEN_PM_CI_INVALID_CONFIG_COUNT" \
+    "$AUTOGEN_PM_CI_INVALID_CONFIG_EXPECTED_COUNT"

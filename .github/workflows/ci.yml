@@ -51,32 +51,16 @@ jobs:
         run: python3 -m unittest discover -s parameters/tests -p 'test_*.py'
 
   host-runtime-tests:
-    name: Host runtime tests (${{ matrix.target }})
+    name: Host runtime tests
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix:
-        target:
-          - par_core_runtime
-          - par_object_runtime
-          - par_mutex_runtime
-          - par_shell_tool
-          - par_shell_feature_gate
-          - par_nvm_flash_ee
-          - par_nvm_flash_ee_matrix
-          - par_nvm_feature_matrix
-          - par_config_feature_matrix
-          - par_backend_adapter_smoke
-          - par_generated_runtime_consistency
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run host runtime test target
+      - name: Run host runtime tests in parallel
         shell: bash
-        run: bash .github/ci/host-tests.sh "${{ matrix.target }}"
+        run: bash .github/ci/host-tests.sh
 
   config-profile-matrix:
     name: Configuration profile matrix
@@ -223,12 +207,10 @@ jobs:
           path: build/doxygen/html
           if-no-files-found: warn
 
-  prepare-rtthread-source:
-    name: Prepare RT-Thread source
+  rtthread-package-compile:
+    name: RT-Thread package compile profiles
     runs-on: ubuntu-latest
-    outputs:
-      profile-list: ${{ steps.prepare.outputs.profile-list }}
-      rtthread-sha: ${{ steps.prepare.outputs.rtthread-sha }}
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
@@ -271,88 +253,6 @@ jobs:
           path: _ci/rt-thread-source-cache/${{ steps.resolve-rtthread.outputs.rtthread-cache-id }}
           key: ${{ runner.os }}-rtthread-source-${{ steps.resolve-rtthread.outputs.rtthread-cache-id }}-${{ env.RTTHREAD_SOURCE_CACHE_VERSION }}
 
-      - name: Set up Python dependency cache
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-          cache: pip
-          cache-dependency-path: .github/ci/requirements.txt
-
-      - name: Prime RT-Thread Python dependencies
-        run: |
-          python3 -m pip install --user -r .github/ci/requirements.txt
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          python3 - <<'PY'
-          import SCons
-          print("SCons version:", SCons.__version__)
-          assert SCons.__version__ == "4.10.1", SCons.__version__
-          PY
-
-      - name: Prepare reusable RT-Thread source artifact
-        id: prepare
-        shell: bash
-        env:
-          RTTHREAD_SOURCE_CACHE_DIR: _ci/rt-thread-source-cache/${{ steps.resolve-rtthread.outputs.rtthread-cache-id }}
-        run: bash .github/ci/prepare-rtthread-source.sh
-
-      - name: Upload RT-Thread source artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: rtthread-source-${{ steps.prepare.outputs.rtthread-sha }}
-          path: |
-            _ci/rt-thread-source/rt-thread-source.tar
-            _ci/rt-thread-source/rt-thread-source.sha
-            _ci/rt-thread-source/prepare-rtthread-source.log
-          if-no-files-found: error
-
-  prepare-arm-gcc:
-    name: Prepare ARM GCC cache
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Prepare toolchain cache directory
-        run: |
-          sudo mkdir -p "$ARM_GCC_DIR"
-          sudo chown -R "$USER:$(id -gn)" "$ARM_GCC_DIR"
-
-      - name: Restore ARM GCC cache
-        id: cache-arm-gcc
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.ARM_GCC_DIR }}
-          key: ${{ runner.os }}-arm-gcc-${{ env.ARM_GCC_VERSION }}-${{ env.ARM_GCC_CACHE_VERSION }}
-
-      - name: Install ARM GCC on cache miss
-        if: steps.cache-arm-gcc.outputs.cache-hit != 'true'
-        timeout-minutes: 25
-        shell: bash
-        run: bash .github/ci/install-arm-gcc.sh
-
-      - name: Verify ARM GCC
-        run: |
-          test -x "$ARM_GCC_DIR/bin/arm-none-eabi-gcc"
-          "$ARM_GCC_DIR/bin/arm-none-eabi-gcc" --version
-
-  rtthread-package-compile:
-    name: RT-Thread package compile (${{ matrix.profile }})
-    runs-on: ubuntu-latest
-    needs:
-      - prepare-rtthread-source
-      - prepare-arm-gcc
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      max-parallel: 8
-      matrix:
-        profile: ${{ fromJSON(needs.prepare-rtthread-source.outputs.profile-list) }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -369,6 +269,13 @@ jobs:
           print("SCons version:", SCons.__version__)
           assert SCons.__version__ == "4.10.1", SCons.__version__
           PY
+
+      - name: Prepare reusable RT-Thread source tree
+        id: prepare-rtthread
+        shell: bash
+        env:
+          RTTHREAD_SOURCE_CACHE_DIR: _ci/rt-thread-source-cache/${{ steps.resolve-rtthread.outputs.rtthread-cache-id }}
+        run: bash .github/ci/prepare-rtthread-source.sh
 
       - name: Prepare toolchain cache directory
         run: |
@@ -394,26 +301,23 @@ jobs:
           echo "RTT_EXEC_PATH=$ARM_GCC_DIR/bin" >> "$GITHUB_ENV"
           "$ARM_GCC_DIR/bin/arm-none-eabi-gcc" --version
 
-      - name: Download RT-Thread source artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: rtthread-source-${{ needs.prepare-rtthread-source.outputs.rtthread-sha }}
-          path: _ci/rt-thread-source
-
-      - name: Build package profile in RT-Thread BSP
+      - name: Build package profiles in parallel
         shell: bash
         env:
-          AUTOGEN_PM_CI_PROFILE: ${{ matrix.profile }}
-          AUTOGEN_PM_CI_IMPORT_EXTERNAL_PACKAGES: ${{ matrix.profile == 'rtt-at24cxx-backend' && '1' || '0' }}
           AUTOGEN_PM_CI_AT24CXX_REPO: https://github.com/XiaojieFan/at24cxx.git
+          AUTOGEN_PM_CI_PROFILE_PARALLEL: '2'
+          AUTOGEN_PM_CI_SCONS_JOBS: '2'
           RTTHREAD_SOURCE_TAR: _ci/rt-thread-source/rt-thread-source.tar
           RTTHREAD_SOURCE_SHA_FILE: _ci/rt-thread-source/rt-thread-source.sha
-        run: bash .github/ci/rtthread-package-compile.sh
+        run: bash .github/ci/rtthread-package-compile-all.sh
 
-      - name: Upload RT-Thread compile log
+      - name: Upload RT-Thread compile logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rtthread-package-compile-${{ matrix.profile }}
-          path: _ci/logs/rtthread-package-compile-${{ matrix.profile }}.log
+          name: rtthread-package-compile-logs
+          path: |
+            _ci/logs/rtthread-package-compile-*.log
+            _ci/logs/rtthread-package-compile-*.console.log
+            _ci/rt-thread-source/prepare-rtthread-source.log
           if-no-files-found: warn

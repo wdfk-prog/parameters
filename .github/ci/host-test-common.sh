@@ -90,6 +90,19 @@ compile_and_run_nvm() {
     "$output"
 }
 
+compile_and_run_nvm_with_fixture() {
+    local name="$1"
+    local fixture_dir="$2"
+    shift 2
+    local output="$build_dir/$name"
+
+    echo "[host-tests] build $name"
+    rm -f "$output"
+    gcc -I"$fixture_dir" -Iparameters/tests/host/fixtures_nvm "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
+    echo "[host-tests] run $name"
+    "$output"
+}
+
 compile_only() {
     local name="$1"
     shift

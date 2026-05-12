@@ -1801,6 +1801,10 @@ static par_status_t par_store_flash_ee_erase(const uint32_t addr, const uint32_t
  * backend performs a checkpoint into the inactive bank. After capacity is
  * guaranteed, each dirty cache line is appended as one new record.
  *
+ * On success, the in-memory read cache is invalidated so that later
+ * verification reads reconstruct state from persisted flash instead of
+ * reusing cached content.
+ *
  * @return ePAR_OK on success, otherwise an error code.
  */
 static par_status_t par_store_flash_ee_sync(void)
@@ -1826,6 +1830,12 @@ static par_status_t par_store_flash_ee_sync(void)
         {
             status = par_store_flash_ee_flush_cache();
         }
+    }
+
+    if (ePAR_OK == status)
+    {
+        /* Force later verification reads to reconstruct from persisted flash. */
+        g_par_store_flash_ee_ctx.cache_valid = false;
     }
 
     return par_store_flash_ee_complete_status(status);

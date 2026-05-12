@@ -174,6 +174,10 @@ static int g_fail_program_after = HOST_FLASH_FAIL_DISABLED;
 static int g_fail_read_after = HOST_FLASH_FAIL_DISABLED;
 /** @brief Erase failpoint countdown; negative disables it. */
 static int g_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
+/** @brief Program corruption countdown; negative disables it. */
+static int g_corrupt_program_after = HOST_FLASH_FAIL_DISABLED;
+/** @brief Readback corruption countdown; negative disables it. */
+static int g_corrupt_read_after = HOST_FLASH_FAIL_DISABLED;
 /** @brief Dedicated object-store fake flash bytes. */
 static uint8_t g_object_flash[HOST_FLASH_SIZE];
 /** @brief Dedicated object-store initialization flag. */
@@ -186,6 +190,10 @@ static int g_object_fail_read_after = HOST_FLASH_FAIL_DISABLED;
 static int g_object_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
 /** @brief Dedicated object-store sync failpoint countdown; negative disables it. */
 static int g_object_fail_sync_after = HOST_FLASH_FAIL_DISABLED;
+/** @brief Dedicated object-store write corruption countdown; negative disables it. */
+static int g_object_corrupt_write_after = HOST_FLASH_FAIL_DISABLED;
+/** @brief Dedicated object-store readback corruption countdown; negative disables it. */
+static int g_object_corrupt_read_after = HOST_FLASH_FAIL_DISABLED;
 
 /**
  * @brief Return the process-unique fake flash image path.
@@ -282,10 +290,14 @@ static void host_flash_reset_erased(void)
     g_fail_program_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_read_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
+    g_corrupt_program_after = HOST_FLASH_FAIL_DISABLED;
+    g_corrupt_read_after = HOST_FLASH_FAIL_DISABLED;
     g_object_fail_write_after = HOST_FLASH_FAIL_DISABLED;
     g_object_fail_read_after = HOST_FLASH_FAIL_DISABLED;
     g_object_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
     g_object_fail_sync_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_corrupt_write_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_corrupt_read_after = HOST_FLASH_FAIL_DISABLED;
 }
 
 /** @brief Clear transient fake flash failpoints without erasing contents. */
@@ -294,10 +306,14 @@ static void host_flash_clear_failpoints(void)
     g_fail_program_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_read_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
+    g_corrupt_program_after = HOST_FLASH_FAIL_DISABLED;
+    g_corrupt_read_after = HOST_FLASH_FAIL_DISABLED;
     g_object_fail_write_after = HOST_FLASH_FAIL_DISABLED;
     g_object_fail_read_after = HOST_FLASH_FAIL_DISABLED;
     g_object_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
     g_object_fail_sync_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_corrupt_write_after = HOST_FLASH_FAIL_DISABLED;
+    g_object_corrupt_read_after = HOST_FLASH_FAIL_DISABLED;
 }
 
 /** @brief Flip one byte in fake flash to emulate physical corruption. */
@@ -709,6 +725,9 @@ static bool host_object_store_xor_byte(const uint32_t addr, const uint8_t mask)
     return true;
 }
 
+/** @brief Initialize the module with a preserved fake flash image. */
+static bool init_module(void);
+
 /**
  * @brief Host mirror of serialized object persistence record metadata.
  * @details Production object NVM stores this metadata in native byte order
@@ -984,6 +1003,94 @@ static bool host_object_store_get_record_field_addr(const par_num_t par_num,
     return true;
 }
 
+
+/** @brief Verify BYTES payload CRC corruption restores the default payload. */
+static bool test_nvm_object_bytes_payload_crc_corruption_restores_default(void)
+{
+    uint8_t bytes[4] = { 0U };
+    uint16_t len = 0U;
+    uint32_t crc_addr = 0U;
+    const uint8_t payload[4] = { 4U, 3U, 2U, 1U };
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_bytes(ePAR_TEST_BYTES, payload, (uint16_t)sizeof(payload)));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_BYTES));
+    TEST_ASSERT(host_object_store_get_record_field_addr(ePAR_TEST_BYTES,
+                                                        (uint16_t)sizeof(payload),
+                                                        (uint32_t)offsetof(host_object_store_record_meta_t, crc),
+                                                        &crc_addr));
+    TEST_ASSERT(host_object_store_xor_byte(crc_addr, 0x01U));
+    TEST_ASSERT_OK(par_deinit());
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_bytes(ePAR_TEST_BYTES, bytes, sizeof(bytes), &len));
+    TEST_ASSERT(len == 2U);
+    TEST_ASSERT(bytes[0] == 0x01U);
+    TEST_ASSERT(bytes[1] == 0x02U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+
+#if defined(PAR_HOST_TEST_OBJECT_ARRAY_NVM)
+/** @brief Verify ARR_U16 element-size corruption restores the default payload. */
+static bool test_nvm_object_arr_u16_elem_size_corruption_restores_default(void)
+{
+    uint16_t arr[2] = { 0U };
+    uint16_t count = 0U;
+    uint32_t elem_size_addr = 0U;
+    const uint16_t payload[2] = { 300U, 400U };
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_arr_u16(ePAR_TEST_ARR_U16, payload, 2U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_ARR_U16));
+    TEST_ASSERT(host_object_store_get_record_field_addr(ePAR_TEST_ARR_U16,
+                                                        (uint16_t)(2U * sizeof(uint16_t)),
+                                                        (uint32_t)offsetof(host_object_store_record_meta_t, elem_size),
+                                                        &elem_size_addr));
+    TEST_ASSERT(host_object_store_xor_byte(elem_size_addr, 0x01U));
+    TEST_ASSERT_OK(par_deinit());
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_arr_u16(ePAR_TEST_ARR_U16, arr, 2U, &count));
+    TEST_ASSERT(count == 2U);
+    TEST_ASSERT(arr[0] == 100U);
+    TEST_ASSERT(arr[1] == 200U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify ARR_U32 capacity corruption restores the default payload. */
+static bool test_nvm_object_arr_u32_capacity_corruption_restores_default(void)
+{
+    uint32_t arr[2] = { 0UL };
+    uint16_t count = 0U;
+    uint32_t capacity_addr = 0U;
+    const uint32_t payload[2] = { 3000UL, 4000UL };
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_arr_u32(ePAR_TEST_ARR_U32, payload, 2U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_ARR_U32));
+    TEST_ASSERT(host_object_store_get_record_field_addr(ePAR_TEST_ARR_U32,
+                                                        (uint16_t)(2U * sizeof(uint32_t)),
+                                                        (uint32_t)offsetof(host_object_store_record_meta_t, capacity),
+                                                        &capacity_addr));
+    TEST_ASSERT(host_object_store_xor_byte(capacity_addr, 0x01U));
+    TEST_ASSERT_OK(par_deinit());
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_arr_u32(ePAR_TEST_ARR_U32, arr, 2U, &count));
+    TEST_ASSERT(count == 2U);
+    TEST_ASSERT(arr[0] == 1000UL);
+    TEST_ASSERT(arr[1] == 2000UL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_OBJECT_ARRAY_NVM) */
+
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED) */
 
 /**
@@ -1205,6 +1312,14 @@ par_status_t par_store_flash_ee_native_port_read(uint32_t addr, uint32_t size, u
     }
 
     memcpy(p_buf, &g_flash[addr], size);
+    if ((size > 0U) && (0 == g_corrupt_read_after))
+    {
+        p_buf[0] ^= 0x01U;
+    }
+    if (g_corrupt_read_after > 0)
+    {
+        g_corrupt_read_after--;
+    }
     return ePAR_OK;
 }
 
@@ -1234,6 +1349,15 @@ par_status_t par_store_flash_ee_native_port_program(uint32_t addr, uint32_t size
     for (uint32_t i = 0U; i < size; i++)
     {
         g_flash[addr + i] &= p_buf[i];
+    }
+
+    if ((size > 0U) && (0 == g_corrupt_program_after))
+    {
+        g_flash[addr] ^= 0x01U;
+    }
+    if (g_corrupt_program_after > 0)
+    {
+        g_corrupt_program_after--;
     }
 
     host_flash_write_image();
@@ -1330,6 +1454,14 @@ static par_status_t host_object_backend_read(const uint32_t addr,
     }
 
     memcpy(p_buf, &g_object_flash[addr], size);
+    if ((size > 0U) && (0 == g_object_corrupt_read_after))
+    {
+        p_buf[0] ^= 0x01U;
+    }
+    if (g_object_corrupt_read_after > 0)
+    {
+        g_object_corrupt_read_after--;
+    }
     return ePAR_OK;
 }
 
@@ -1354,6 +1486,14 @@ static par_status_t host_object_backend_write(const uint32_t addr,
     }
 
     memcpy(&g_object_flash[addr], p_buf, size);
+    if ((size > 0U) && (0 == g_object_corrupt_write_after))
+    {
+        g_object_flash[addr] ^= 0x01U;
+    }
+    if (g_object_corrupt_write_after > 0)
+    {
+        g_object_corrupt_write_after--;
+    }
     return ePAR_OK;
 }
 
@@ -2110,6 +2250,36 @@ static bool test_flash_ee_program_failpoint_matrix_preserves_last_commit(void)
     return true;
 }
 
+#if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)
+/** @brief Save a committed scalar, then corrupt the physical verify-readback candidate. */
+static bool host_flash_child_write_verify_corrupt_scalar_save(void)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
+    g_corrupt_program_after = 0;
+    TEST_ASSERT((par_save(ePAR_TEST_MODE) & ePAR_ERROR_NVM) != 0U);
+    return true;
+}
+
+/** @brief Verify scalar write verification rejects physical readback mismatch. */
+static bool test_nvm_scalar_write_verify_detects_readback_mismatch(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_write_verify_corrupt_scalar_save());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+#endif /* (1 == PAR_CFG_NVM_WRITE_VERIFY_EN) */
+
 /** @brief Verify table-ID/header incompatibility rebuilds defaults instead of loading stale values. */
 static bool test_nvm_table_id_mismatch_rebuilds_defaults(void)
 {
@@ -2390,6 +2560,100 @@ static bool test_nvm_object_region_profile_bounds(void)
     return true;
 }
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) */
+
+#if defined(PAR_HOST_TEST_OBJECT_ONLY) || \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED)
+/** @brief Reinitialize the module and verify an object string value. */
+static bool host_verify_reloaded_object_str_value(const char * const expected)
+{
+    char str_buf[9] = { 0 };
+    uint16_t len = 0U;
+
+    TEST_ASSERT(NULL != expected);
+    if (par_is_init())
+    {
+        TEST_ASSERT_OK(par_deinit());
+    }
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == (uint16_t)strlen(expected));
+    TEST_ASSERT(0 == strcmp(str_buf, expected));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+#endif /* defined(PAR_HOST_TEST_OBJECT_ONLY) || (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
+
+#if defined(PAR_HOST_TEST_OBJECT_ONLY)
+/** @brief Verify object-only persistence saves and reloads object rows. */
+static bool test_nvm_object_only_save_reload_preserves_object(void)
+{
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"obj", 3U));
+    TEST_ASSERT_OK(par_deinit());
+    TEST_ASSERT(host_verify_reloaded_object_str_value("obj"));
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_OBJECT_ONLY) */
+
+#if defined(PAR_HOST_TEST_FIXED_OBJECT_INVALID)
+/** @brief Verify invalid fixed object placement rejects NVM initialization. */
+static bool test_nvm_fixed_object_invalid_rejects_init(void)
+{
+    par_status_t status;
+
+    host_flash_reset_erased();
+    status = par_init();
+    TEST_ASSERT((status & ePAR_ERROR_NVM) != 0U);
+    if (par_is_init())
+    {
+        (void)par_deinit();
+    }
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_FIXED_OBJECT_INVALID) */
+
+#if (1 == PAR_CFG_NVM_OBJECT_WRITE_VERIFY_EN) && \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED)
+/**
+ * @brief Save one object, then corrupt the physical writeback candidate.
+ * @details Dedicated object writes update the backend before write-verify
+ * reports the mismatch. The failed save therefore leaves a corrupt persisted
+ * record, and reload must reject it and restore the table default
+ * instead of the previously saved value.
+ */
+static bool host_flash_child_write_verify_corrupt_object_save(void)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"old", 3U));
+#if (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED)
+    g_object_corrupt_write_after = 0;
+#else
+    g_corrupt_program_after = 0;
+#endif /* (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
+    TEST_ASSERT((par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"new", 3U) & ePAR_ERROR_NVM) != 0U);
+    host_flash_clear_failpoints();
+    TEST_ASSERT(host_verify_reloaded_object_str_value("ap"));
+    return true;
+}
+
+/** @brief Verify object write verification rejects physical readback mismatch. */
+static bool test_nvm_object_write_verify_detects_payload_mismatch(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_write_verify_corrupt_object_save());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+#endif /* (1 == PAR_CFG_NVM_OBJECT_WRITE_VERIFY_EN) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
 
 /** @brief Verify unchanged object n-save calls do not mutate the flash image. */
 static bool test_nvm_obj_n_save_unchanged_skips_backend_write(void)
@@ -3103,6 +3367,28 @@ static bool test_object_dedicated_erase_fail_aborts_save_all(void)
 }
 
 
+#if (PAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR > 0U)
+/** @brief Verify dedicated object persistence honors a non-zero backend base address. */
+static bool test_object_dedicated_nonzero_base_save_reload_and_prefix_stable(void)
+{
+    uint8_t prefix[PAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR];
+
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"base", 4U));
+    memcpy(prefix, g_object_flash, sizeof(prefix));
+    for (uint32_t idx = 0U; idx < (uint32_t)sizeof(prefix); idx++)
+    {
+        TEST_ASSERT(prefix[idx] == 0xFFU);
+    }
+    TEST_ASSERT(0xFFU != g_object_flash[PAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR]);
+    TEST_ASSERT(verify_reloaded_object_str("base"));
+    TEST_ASSERT(0 == memcmp(prefix, g_object_flash, sizeof(prefix)));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* (PAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR > 0U) */
+
 /** @brief Verify object n-save write failures keep the persisted object stable. */
 static bool test_object_dedicated_n_save_write_fail_preserves_persisted_object(void)
 {
@@ -3148,6 +3434,20 @@ static bool test_object_dedicated_save_all_object_write_fail_scalar_new_object_d
 int main(void)
 {
     int result;
+#if defined(PAR_HOST_TEST_FIXED_OBJECT_INVALID)
+    static const par_host_test_case_t cases[] = {
+        { "nvm_fixed_object_invalid_rejects_init", test_nvm_fixed_object_invalid_rejects_init },
+    };
+#elif defined(PAR_HOST_TEST_OBJECT_ONLY)
+    static const par_host_test_case_t cases[] = {
+        { "nvm_object_only_save_reload_preserves_object", test_nvm_object_only_save_reload_preserves_object },
+    };
+#elif defined(PAR_HOST_TEST_OBJECT_ARRAY_NVM)
+    static const par_host_test_case_t cases[] = {
+        { "nvm_object_arr_u16_elem_size_corruption_restores_default", test_nvm_object_arr_u16_elem_size_corruption_restores_default },
+        { "nvm_object_arr_u32_capacity_corruption_restores_default", test_nvm_object_arr_u32_capacity_corruption_restores_default },
+    };
+#else
     static const par_host_test_case_t cases[] = {
         { "nvm_first_boot_formats_and_restores_defaults", test_nvm_first_boot_formats_and_restores_defaults },
         { "nvm_save_reload_preserves_last_committed_scalar_values", test_nvm_save_reload_preserves_last_committed_scalar_values },
@@ -3156,6 +3456,9 @@ int main(void)
         { "nvm_scalar_updates_do_not_corrupt_object_values", test_nvm_scalar_updates_do_not_corrupt_object_values },
         { "flash_ee_failed_program_reload_preserves_last_committed_value", test_flash_ee_failed_program_reload_preserves_last_committed_value },
         { "flash_ee_program_failpoint_matrix_preserves_last_commit", test_flash_ee_program_failpoint_matrix_preserves_last_commit },
+#if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)
+        { "nvm_scalar_write_verify_detects_readback_mismatch", test_nvm_scalar_write_verify_detects_readback_mismatch },
+#endif /* (1 == PAR_CFG_NVM_WRITE_VERIFY_EN) */
         { "flash_ee_save_all_failpoint_preserves_last_committed_scalar", test_flash_ee_save_all_failpoint_preserves_last_committed_scalar },
         { "flash_ee_failed_program_graceful_deinit_commits_live_value", test_flash_ee_failed_program_graceful_deinit_commits_live_value },
         { "flash_ee_corruption_rebuilds_default_value", test_flash_ee_corruption_rebuilds_default_value },
@@ -3198,6 +3501,7 @@ int main(void)
         { "nvm_object_record_flags_mismatch_restores_default_without_scalar_loss", test_nvm_object_record_flags_mismatch_restores_default_without_scalar_loss },
         { "nvm_object_record_elem_size_mismatch_restores_default_without_scalar_loss", test_nvm_object_record_elem_size_mismatch_restores_default_without_scalar_loss },
         { "nvm_object_record_capacity_mismatch_restores_default_without_scalar_loss", test_nvm_object_record_capacity_mismatch_restores_default_without_scalar_loss },
+        { "nvm_object_bytes_payload_crc_corruption_restores_default", test_nvm_object_bytes_payload_crc_corruption_restores_default },
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED) */
         { "msh_save_persists_live_scalar_after_restart", test_msh_save_persists_live_scalar_after_restart },
         { "msh_save_clean_rewrites_live_values", test_msh_save_clean_rewrites_live_values },
@@ -3207,11 +3511,18 @@ int main(void)
         { "object_dedicated_write_fail_preserves_backend_image", test_object_dedicated_write_fail_preserves_backend_image },
         { "object_dedicated_read_fail_reports_error_and_recovers_object", test_object_dedicated_read_fail_reports_error_and_recovers_object },
         { "object_dedicated_sync_fail_reports_error_and_recovers_object", test_object_dedicated_sync_fail_reports_error_and_recovers_object },
+#if (1 == PAR_CFG_NVM_OBJECT_WRITE_VERIFY_EN)
+        { "nvm_object_write_verify_detects_payload_mismatch", test_nvm_object_write_verify_detects_payload_mismatch },
+#endif /* (1 == PAR_CFG_NVM_OBJECT_WRITE_VERIFY_EN) */
+#if (PAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR > 0U)
+        { "object_dedicated_nonzero_base_save_reload_and_prefix_stable", test_object_dedicated_nonzero_base_save_reload_and_prefix_stable },
+#endif /* (PAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR > 0U) */
         { "object_dedicated_erase_fail_aborts_save_all", test_object_dedicated_erase_fail_aborts_save_all },
         { "object_dedicated_n_save_write_fail_preserves_persisted_object", test_object_dedicated_n_save_write_fail_preserves_persisted_object },
         { "object_dedicated_save_all_object_write_fail_scalar_new_object_default", test_object_dedicated_save_all_object_write_fail_scalar_new_object_default },
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
     };
+#endif /* defined(PAR_HOST_TEST_FIXED_OBJECT_INVALID) */
 
     printf("PAR_HOST_NVM_PROFILE %s\n", PAR_HOST_TEST_PROFILE_NAME);
     result = par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));
