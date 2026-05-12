@@ -8,6 +8,7 @@ AUTOGEN_PM_CI_NVM_FLASH_EE_PROFILES=(
     'fixed_payload_only|PAR_CFG_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY|PAR_CFG_NVM_OBJECT_STORE_SHARED|PAR_CFG_NVM_OBJECT_ADDR_FIXED|0xC0U|0x40U|parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_payload_only.c'
     'grouped_payload_only|PAR_CFG_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY|PAR_CFG_NVM_OBJECT_STORE_SHARED|PAR_CFG_NVM_OBJECT_ADDR_FIXED|0xC0U|0x40U|parameters/src/nvm/scalar/layout/par_nvm_layout_grouped_payload_only.c'
     'object_shared_after_scalar|PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE|PAR_CFG_NVM_OBJECT_STORE_SHARED|PAR_CFG_NVM_OBJECT_ADDR_AFTER_SCALAR|0xC0U|0x40U|parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c'
+    'object_shared_fixed_exact_fit|PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE|PAR_CFG_NVM_OBJECT_STORE_SHARED|PAR_CFG_NVM_OBJECT_ADDR_FIXED|0xC0U|54U|parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c'
     'object_dedicated|PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE|PAR_CFG_NVM_OBJECT_STORE_DEDICATED|PAR_CFG_NVM_OBJECT_ADDR_FIXED|0x00U|0x40U|parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c'
 )
 

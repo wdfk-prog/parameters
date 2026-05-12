@@ -242,6 +242,40 @@ static bool test_rtt_at24cxx_base_addr_offsets_window(void)
     return true;
 }
 
+/** @brief Verify AT24CXX exact-end and zero-length access boundaries. */
+static bool test_rtt_at24cxx_exact_end_and_zero_len_boundaries(void)
+{
+    const par_store_backend_api_t *api;
+    const uint32_t end_addr = (uint32_t)PAR_CFG_RTT_AT24_SIZE;
+    const uint8_t payload[2] = { 0x12U, 0x34U };
+    uint8_t readback[sizeof(payload)] = { 0U };
+    uint8_t zero = 0U;
+
+    TEST_ASSERT(end_addr >= sizeof(payload));
+    at24_stub_reset();
+    g_at24_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->write(end_addr - (uint32_t)sizeof(payload),
+                              (uint32_t)sizeof(payload),
+                              payload));
+    TEST_ASSERT_OK(api->read(end_addr - (uint32_t)sizeof(readback),
+                             (uint32_t)sizeof(readback),
+                             readback));
+    TEST_ASSERT(0 == memcmp(readback, payload, sizeof(payload)));
+    TEST_ASSERT_STATUS(api->write(end_addr - 1U, (uint32_t)sizeof(payload), payload),
+                       ePAR_ERROR_NVM);
+    TEST_ASSERT_STATUS(api->read(end_addr - 1U, (uint32_t)sizeof(readback), readback),
+                       ePAR_ERROR_NVM);
+    TEST_ASSERT_STATUS(api->erase(end_addr - 1U, (uint32_t)sizeof(payload)), ePAR_ERROR_NVM);
+    TEST_ASSERT_STATUS(api->read(end_addr, 0U, &zero), ePAR_ERROR_NVM);
+    TEST_ASSERT_STATUS(api->write(end_addr, 0U, &zero), ePAR_ERROR_NVM);
+    TEST_ASSERT_STATUS(api->erase(end_addr, 0U), ePAR_ERROR_NVM);
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
 /** @brief Verify AT24CXX read/write driver errors propagate to the backend caller. */
 static bool test_rtt_at24cxx_driver_error_propagates(void)
 {
@@ -272,6 +306,7 @@ int main(void)
         { "backend_rtt_at24cxx_page_split_write", test_rtt_at24cxx_page_split_write },
         { "backend_rtt_at24cxx_unaligned_page_split_write", test_rtt_at24cxx_unaligned_page_split_write },
         { "backend_rtt_at24cxx_base_addr_offsets_window", test_rtt_at24cxx_base_addr_offsets_window },
+        { "backend_rtt_at24cxx_exact_end_and_zero_len_boundaries", test_rtt_at24cxx_exact_end_and_zero_len_boundaries },
         { "backend_rtt_at24cxx_driver_error_propagates", test_rtt_at24cxx_driver_error_propagates },
     };
 

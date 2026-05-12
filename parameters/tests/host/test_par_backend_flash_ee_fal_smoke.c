@@ -242,6 +242,37 @@ static bool test_flash_ee_fal_partition_offset_semantics(void)
     return true;
 }
 
+/** @brief Verify FAL exact-end and zero-length access boundaries. */
+static bool test_flash_ee_fal_exact_end_and_zero_len_boundaries(void)
+{
+    const par_store_backend_api_t *api;
+    const uint8_t payload[2] = { 0x35U, 0x53U };
+    uint8_t readback[sizeof(payload)] = { 0U };
+    const uint32_t logical_size = PAR_CFG_NVM_BACKEND_FLASH_EE_LOGICAL_SIZE;
+    uint8_t zero = 0U;
+
+    TEST_ASSERT(logical_size >= (uint32_t)sizeof(payload));
+    fal_stub_reset();
+    TEST_ASSERT_OK(par_store_backend_bind());
+    g_fal_partition_available = true;
+    g_fal_part.offset = 128;
+    g_fal_part.len = FAL_SMOKE_SIZE - g_fal_part.offset;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->write(logical_size - (uint32_t)sizeof(payload), (uint32_t)sizeof(payload), payload));
+    TEST_ASSERT_OK(api->read(logical_size - (uint32_t)sizeof(readback), (uint32_t)sizeof(readback), readback));
+    TEST_ASSERT(0 == memcmp(readback, payload, sizeof(payload)));
+    TEST_ASSERT_STATUS(api->write(logical_size - 1U, (uint32_t)sizeof(payload), payload), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->read(logical_size - 1U, (uint32_t)sizeof(readback), readback), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->erase(logical_size - 1U, (uint32_t)sizeof(payload)), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->read(logical_size, 0U, &zero), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->write(logical_size, 0U, &zero), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->erase(logical_size, 0U), ePAR_ERROR_PARAM);
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
 /** @brief Verify short FAL format I/O returns propagate as initialization errors. */
 static bool test_flash_ee_fal_short_io_propagates_error(void)
 {
@@ -292,6 +323,7 @@ int main(void)
     static const par_host_test_case_t cases[] = {
         { "backend_flash_ee_fal_adapter_smoke", test_flash_ee_fal_adapter_smoke },
         { "backend_flash_ee_fal_partition_offset_semantics", test_flash_ee_fal_partition_offset_semantics },
+        { "backend_flash_ee_fal_exact_end_and_zero_len_boundaries", test_flash_ee_fal_exact_end_and_zero_len_boundaries },
         { "backend_flash_ee_fal_short_io_propagates_error", test_flash_ee_fal_short_io_propagates_error },
         { "backend_flash_ee_fal_missing_flash_device_fails_init", test_flash_ee_fal_missing_flash_device_fails_init },
     };
