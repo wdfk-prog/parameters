@@ -62,8 +62,10 @@ jobs:
           - par_object_runtime
           - par_mutex_runtime
           - par_shell_tool
+          - par_shell_feature_gate
           - par_nvm_flash_ee
           - par_nvm_flash_ee_matrix
+          - par_nvm_feature_matrix
           - par_config_feature_matrix
           - par_backend_adapter_smoke
           - par_generated_runtime_consistency

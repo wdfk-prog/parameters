@@ -72,7 +72,8 @@ compile_and_run() {
     local output="$build_dir/$name"
 
     echo "[host-tests] build $name"
-    gcc "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output"
+    rm -f "$output"
+    gcc "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
     echo "[host-tests] run $name"
     "$output"
 }
@@ -83,7 +84,8 @@ compile_and_run_nvm() {
     local output="$build_dir/$name"
 
     echo "[host-tests] build $name"
-    gcc -Iparameters/tests/host/fixtures_nvm "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output"
+    rm -f "$output"
+    gcc -Iparameters/tests/host/fixtures_nvm "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
     echo "[host-tests] run $name"
     "$output"
 }

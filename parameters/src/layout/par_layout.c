@@ -56,11 +56,21 @@ static const uint32_t *gsp_active_obj_pool_offset = gs_runtime_obj_pool_offset;
 #ifndef PAR_LAYOUT_STATIC_OFFSET_TABLE
 #error "PAR_LAYOUT_STATIC_OFFSET_TABLE must be provided by static layout include!"
 #endif /* !defined(PAR_LAYOUT_STATIC_OFFSET_TABLE) */
-#if (PAR_LAYOUT_COMPILE_COUNTOBJ > 0u)
+/*
+ * Object pool offset table selection follows PAR_STORAGE_COUNTOBJ because this
+ * is the configured storage count consumed by the runtime layout. When no
+ * object storage is present, PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_TABLE falls
+ * back to the empty runtime object-pool offset table.
+ */
+#if (PAR_STORAGE_COUNTOBJ > 0u)
 #ifndef PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_TABLE
 #error "PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_TABLE must be provided when object rows are present!"
 #endif /* !defined(PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_TABLE) */
-#endif /* (PAR_LAYOUT_COMPILE_COUNTOBJ > 0u) */
+#else
+#ifndef PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_TABLE
+#define PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_TABLE (gs_runtime_obj_pool_offset)
+#endif /* !defined(PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_TABLE) */
+#endif /* (PAR_STORAGE_COUNTOBJ > 0u) */
 #endif /* (PAR_CFG_LAYOUT_SOURCE == PAR_CFG_LAYOUT_SCRIPT) */
 /**
  * @brief Function declarations and definitions.

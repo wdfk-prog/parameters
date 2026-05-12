@@ -205,21 +205,16 @@ PAR_STATIC_ASSERT(par_layout_static_signature_matches_table,
 PAR_STATIC_ASSERT(par_layout_static_count8_matches_table, (PAR_STORAGE_COUNT8 == PAR_LAYOUT_COMPILE_COUNT8));
 PAR_STATIC_ASSERT(par_layout_static_count16_matches_table, (PAR_STORAGE_COUNT16 == PAR_LAYOUT_COMPILE_COUNT16));
 PAR_STATIC_ASSERT(par_layout_static_count32_matches_table, (PAR_STORAGE_COUNT32 == PAR_LAYOUT_COMPILE_COUNT32));
-#if (PAR_LAYOUT_COMPILE_COUNTOBJ > 0u)
 #ifndef PAR_LAYOUT_STATIC_COUNTOBJ
-#error "PAR_LAYOUT_STATIC_COUNTOBJ must be provided by static layout include when object rows are present!"
+#define PAR_LAYOUT_STATIC_COUNTOBJ (0u)
 #endif /* !defined(PAR_LAYOUT_STATIC_COUNTOBJ) */
 #ifndef PAR_LAYOUT_STATIC_OBJ_POOL_BYTES
-#error "PAR_LAYOUT_STATIC_OBJ_POOL_BYTES must be provided by static layout include when object rows are present!"
+#define PAR_LAYOUT_STATIC_OBJ_POOL_BYTES (0u)
 #endif /* !defined(PAR_LAYOUT_STATIC_OBJ_POOL_BYTES) */
 #define PAR_STORAGE_COUNTOBJ       (PAR_LAYOUT_STATIC_COUNTOBJ)
 #define PAR_STORAGE_OBJ_POOL_BYTES (PAR_LAYOUT_STATIC_OBJ_POOL_BYTES)
 PAR_STATIC_ASSERT(par_layout_static_count_obj_matches_table, (PAR_STORAGE_COUNTOBJ == PAR_LAYOUT_COMPILE_COUNTOBJ));
 PAR_STATIC_ASSERT(par_layout_static_obj_pool_bytes_matches_table, (PAR_STORAGE_OBJ_POOL_BYTES == PAR_LAYOUT_COMPILE_OBJ_POOL_BYTES));
-#else
-#define PAR_STORAGE_COUNTOBJ       (0u)
-#define PAR_STORAGE_OBJ_POOL_BYTES (0u)
-#endif /* (PAR_LAYOUT_COMPILE_COUNTOBJ > 0u) */
 #else
 #error "Unsupported PAR_CFG_LAYOUT_SOURCE value!"
 #endif /* (PAR_CFG_LAYOUT_SOURCE == PAR_CFG_LAYOUT_COMPILE_SCAN) */
