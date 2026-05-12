@@ -733,6 +733,53 @@ class PargenTests(unittest.TestCase):
                 with self.assertRaises((pargen.PargenError, ValueError)):
                     self.run_generator(rows)
 
+
+    def test_conditional_disabled_rows_keep_layout_guards_and_info_counts(self) -> None:
+        """Conditional object rows keep generated layout guards and metadata expressions."""
+        rows = base_rows()
+        rows[2]["condition"] = "(0 == PAR_CFG_ENABLE_TYPE_STR)"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertIn("#if (0 == PAR_CFG_ENABLE_TYPE_STR)", outputs.layout_h)
+        self.assertIn("PAR_LAYOUT_STATIC_COUNTOBJ", outputs.layout_h)
+        self.assertIn("PAR_LAYOUT_STATIC_OBJ_POOL_BYTES", outputs.layout_h)
+        self.assertIn(".count_obj =", outputs.info_c)
+        self.assertEqual(generated_stats["param_count"], 3)
+
+    def test_auto_id_exhaustion_with_deleted_and_conditional_rows(self) -> None:
+        """AUTO allocation reports exhaustion even with deleted locks and conditions."""
+        rows = base_rows()[:2]
+        rows[0]["id"] = "AUTO"
+        rows[1]["id"] = "AUTO"
+        rows[1]["condition"] = "(1 == PAR_CFG_ENABLE_TYPE_F32)"
+        loaded = [pargen.normalize_row(index, row) for index, row in enumerate(rows, start=2)]
+        with self.assertRaisesRegex(pargen.PargenError, "no free AUTO ID"):
+            pargen.validate_and_resolve(
+                loaded,
+                {"ePAR_DELETED": 0},
+                pargen.GeneratorConfig(id_ranges={"SYSTEM": (0, 1)}, default_id_range=(0, 1)),
+            )
+
+    def test_object_default_len_matches_capacity_for_all_object_types(self) -> None:
+        """Object defaults resolve byte lengths that stay within capacity."""
+        cases = [
+            ("BYTES", "0", "4", "0x01,0x02,0x03", 3),
+            ("ARR_U8", "3", "3", "1,2,3", 3),
+            ("ARR_U16", "2", "2", "10,20", 4),
+            ("ARR_U32", "2", "2", "10,20", 8),
+        ]
+        for type_name, min_text, max_text, default_text, expected_len in cases:
+            rows = base_rows()
+            rows[2].update({
+                "type": type_name,
+                "min": min_text,
+                "max": max_text,
+                "default": default_text,
+            })
+            with self.subTest(type=type_name):
+                generated_rows, _ = self.run_generator(rows)
+                self.assertEqual(generated_rows[2].obj_default_len, expected_len)
+
     def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
         """Fixed-seed negative corpus rejects malformed object defaults."""
         cases = [

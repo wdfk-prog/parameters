@@ -36,7 +36,9 @@ typedef struct par_test_at24_device *at24cxx_device_t;
 /** @brief Stub EEPROM memory size. */
 #define AT24CXX_MAX_MEM_ADDRESS (256U)
 /** @brief Stub EEPROM page size. */
+#ifndef AT24CXX_PAGE_BYTE
 #define AT24CXX_PAGE_BYTE (8U)
+#endif /* !defined(AT24CXX_PAGE_BYTE) */
 
 #define rt_memset memset
 

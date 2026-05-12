@@ -455,10 +455,85 @@ static bool test_object_validation_rejects_without_payload_mutation(void)
     return true;
 }
 
+
+/** @brief Verify object APIs reject use before initialization without mutating outputs. */
+static bool test_object_api_use_before_init_returns_init_error(void)
+{
+    char str_buf[9] = { 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', '\0' };
+    uint8_t bytes_buf[4] = { 0xAAU, 0xBBU, 0xCCU, 0xDDU };
+    uint16_t arr16_buf[2] = { 0xAAAAU, 0xBBBBU };
+    uint16_t out_len = 0x5A5AU;
+
+    if (par_is_init())
+    {
+        TEST_ASSERT_OK(par_deinit());
+    }
+
+    TEST_ASSERT_STATUS(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &out_len),
+                       ePAR_ERROR_INIT);
+    TEST_ASSERT(0 == memcmp(str_buf, "xxxxxxxx", 8U));
+    TEST_ASSERT(out_len == 0x5A5AU);
+    TEST_ASSERT_STATUS(par_set_str(ePAR_TEST_STR, "late"), ePAR_ERROR_INIT);
+    TEST_ASSERT_STATUS(par_get_bytes(ePAR_TEST_BYTES, bytes_buf, sizeof(bytes_buf), &out_len),
+                       ePAR_ERROR_INIT);
+    TEST_ASSERT(bytes_buf[0] == 0xAAU);
+    TEST_ASSERT_STATUS(par_set_bytes(ePAR_TEST_BYTES, bytes_buf, 2U), ePAR_ERROR_INIT);
+    TEST_ASSERT_STATUS(par_get_arr_u16(ePAR_TEST_ARR_U16, arr16_buf, 2U, &out_len),
+                       ePAR_ERROR_INIT);
+    TEST_ASSERT(arr16_buf[0] == 0xAAAAU);
+    TEST_ASSERT_STATUS(par_set_arr_u16(ePAR_TEST_ARR_U16, arr16_buf, 2U),
+                       ePAR_ERROR_INIT);
+    TEST_ASSERT_STATUS(par_get_obj_len(ePAR_TEST_STR, &out_len), ePAR_ERROR_INIT);
+    return true;
+}
+
+/** @brief Verify object APIs reject use after deinitialization. */
+static bool test_object_api_after_deinit_returns_init_error(void)
+{
+    char str_buf[9] = { 0 };
+    uint16_t out_len = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "live"));
+    TEST_ASSERT_OK(par_deinit());
+    TEST_ASSERT_STATUS(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &out_len),
+                       ePAR_ERROR_INIT);
+    TEST_ASSERT_STATUS(par_set_str(ePAR_TEST_STR, "after"), ePAR_ERROR_INIT);
+    return true;
+}
+
+/** @brief Verify default object metadata APIs remain available before init. */
+static bool test_object_default_api_use_before_init_reports_metadata(void)
+{
+    char str_buf[9] = { 0 };
+    uint16_t arr16_buf[2] = { 0U };
+    uint16_t out_len = 0U;
+    uint16_t capacity = 0U;
+
+    if (par_is_init())
+    {
+        TEST_ASSERT_OK(par_deinit());
+    }
+
+    TEST_ASSERT_OK(par_get_default_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &out_len));
+    TEST_ASSERT(out_len == 2U);
+    TEST_ASSERT(0 == strcmp(str_buf, "ap"));
+    TEST_ASSERT_OK(par_get_default_arr_u16(ePAR_TEST_ARR_U16, arr16_buf, 2U, &out_len));
+    TEST_ASSERT(out_len == 2U);
+    TEST_ASSERT(arr16_buf[0] == 100U);
+    TEST_ASSERT(arr16_buf[1] == 200U);
+    TEST_ASSERT_OK(par_get_obj_capacity(ePAR_TEST_STR, &capacity));
+    TEST_ASSERT(capacity == 8U);
+    return true;
+}
+
 /** @brief Entrypoint for object host runtime tests. */
 int main(void)
 {
     static const par_host_test_case_t cases[] = {
+        { "object_api_use_before_init_returns_init_error", test_object_api_use_before_init_returns_init_error },
+        { "object_api_after_deinit_returns_init_error", test_object_api_after_deinit_returns_init_error },
+        { "object_default_api_use_before_init_reports_metadata", test_object_default_api_use_before_init_reports_metadata },
         { "object_str_boundaries", test_object_str_boundaries },
         { "object_bytes_boundaries", test_object_bytes_boundaries },
         { "object_arr_u8_roundtrip", test_object_arr_u8_roundtrip },

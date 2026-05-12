@@ -117,6 +117,44 @@ static void run_shell(int argc, char **argv)
     par_msh(argc, argv);
 }
 
+
+#if defined(PAR_HOST_TEST_SHELL_NO_GET)
+/** @brief Verify disabling GET removes the command from help and dispatch. */
+static bool test_msh_feature_gate_get_disabled_reports_unknown(void)
+{
+    char *help_args[] = { "par" };
+    char *get_args[] = { "par", "get", "1" };
+
+    TEST_ASSERT(init_module());
+    run_shell(1, help_args);
+    TEST_ASSERT(shell_capture_contains("Usage:"));
+    TEST_ASSERT(!shell_capture_contains("get <id>"));
+    run_shell(3, get_args);
+    TEST_ASSERT(shell_capture_contains("ERR, unknown subcmd"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#elif (0 == PAR_CFG_ENABLE_ID)
+/** @brief Verify ID-disabled builds omit ID-based shell commands. */
+static bool test_msh_feature_gate_id_disabled_omits_id_commands(void)
+{
+    char *help_args[] = { "par" };
+    char *get_args[] = { "par", "get", "1" };
+    char *set_args[] = { "par", "set", "1", "8" };
+
+    TEST_ASSERT(init_module());
+    run_shell(1, help_args);
+    TEST_ASSERT(shell_capture_contains("Usage:"));
+    TEST_ASSERT(!shell_capture_contains("get <id>"));
+    TEST_ASSERT(!shell_capture_contains("set <id>"));
+    run_shell(3, get_args);
+    TEST_ASSERT(shell_capture_contains("ERR, unknown subcmd"));
+    run_shell(4, set_args);
+    TEST_ASSERT(shell_capture_contains("ERR, unknown subcmd"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#else
 /** @brief Verify help only lists commands compiled into this feature profile. */
 static bool test_msh_feature_gate_help_lists_only_compiled_commands(void)
 {
@@ -176,14 +214,22 @@ static bool test_msh_feature_gate_object_get_requires_heap_command(void)
     return true;
 }
 
+#endif /* defined(PAR_HOST_TEST_SHELL_NO_GET) */
+
 /** @brief Entrypoint for shell feature-gate host tests. */
 int main(void)
 {
     static const par_host_test_case_t cases[] = {
+#if defined(PAR_HOST_TEST_SHELL_NO_GET)
+        { "msh_feature_gate_get_disabled_reports_unknown", test_msh_feature_gate_get_disabled_reports_unknown },
+#elif (0 == PAR_CFG_ENABLE_ID)
+        { "msh_feature_gate_id_disabled_omits_id_commands", test_msh_feature_gate_id_disabled_omits_id_commands },
+#else
         { "msh_feature_gate_help_lists_only_compiled_commands", test_msh_feature_gate_help_lists_only_compiled_commands },
         { "msh_feature_gate_disabled_commands_are_unknown", test_msh_feature_gate_disabled_commands_are_unknown },
         { "msh_feature_gate_get_scalar_still_works", test_msh_feature_gate_get_scalar_still_works },
         { "msh_feature_gate_object_get_requires_heap_command", test_msh_feature_gate_object_get_requires_heap_command },
+#endif /* defined(PAR_HOST_TEST_SHELL_NO_GET) */
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));

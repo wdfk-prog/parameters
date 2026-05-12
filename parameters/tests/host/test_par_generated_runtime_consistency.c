@@ -15,12 +15,18 @@ static bool test_generated_runtime_scalar_rows(void)
     uint16_t rate = 0U;
     uint32_t flags = 0UL;
 
+#if defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY)
+    TEST_ASSERT(g_par_generated_info.param_count == 3U);
+    TEST_ASSERT(g_par_generated_info.count_obj == 0U);
+    TEST_ASSERT(g_par_generated_info.obj_pool_bytes == 0UL);
+#else
     TEST_ASSERT(g_par_generated_info.param_count == 6U);
+    TEST_ASSERT(g_par_generated_info.count_obj == 3U);
+    TEST_ASSERT(g_par_generated_info.obj_pool_bytes == 16UL);
+#endif /* defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) */
     TEST_ASSERT(g_par_generated_info.count8 == 1U);
     TEST_ASSERT(g_par_generated_info.count16 == 1U);
     TEST_ASSERT(g_par_generated_info.count32 == 1U);
-    TEST_ASSERT(g_par_generated_info.count_obj == 3U);
-    TEST_ASSERT(g_par_generated_info.obj_pool_bytes == 16UL);
     TEST_ASSERT(g_par_generated_info.param_count == (uint16_t)ePAR_NUM_OF);
     TEST_ASSERT(g_par_generated_info.count8 == (uint16_t)PAR_LAYOUT_STATIC_COUNT8);
     TEST_ASSERT(g_par_generated_info.count16 == (uint16_t)PAR_LAYOUT_STATIC_COUNT16);
@@ -47,6 +53,7 @@ static bool test_generated_runtime_scalar_rows(void)
     return true;
 }
 
+#if !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY)
 /** @brief Verify generated object rows round-trip through the runtime object APIs. */
 static bool test_generated_runtime_object_rows_roundtrip(void)
 {
@@ -94,13 +101,16 @@ static bool test_generated_runtime_object_rows_roundtrip(void)
     TEST_ASSERT_OK(par_deinit());
     return true;
 }
+#endif /* !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) */
 
 /** @brief Entrypoint for generated-output/runtime consistency tests. */
 int main(void)
 {
     static const par_host_test_case_t cases[] = {
         { "generated_runtime_scalar_rows", test_generated_runtime_scalar_rows },
+#if !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY)
         { "generated_runtime_object_rows_roundtrip", test_generated_runtime_object_rows_roundtrip },
+#endif /* !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) */
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));
