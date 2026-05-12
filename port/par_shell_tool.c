@@ -394,6 +394,7 @@ static bool par_shell_can_read(const par_num_t par_num)
     return par_can_read(par_num, par_shell_get_roles());
 }
 
+#if defined(AUTOGEN_PM_MSH_CMD_SET) && (1 == PAR_CFG_ENABLE_ID)
 /**
  * @brief Check whether the current shell roles can write one parameter.
  * @param par_num Parameter number.
@@ -403,6 +404,7 @@ static bool par_shell_can_write(const par_num_t par_num)
 {
     return par_can_write(par_num, par_shell_get_roles());
 }
+#endif /* defined(AUTOGEN_PM_MSH_CMD_SET) && (1 == PAR_CFG_ENABLE_ID) */
 #endif /* (1 == PAR_CFG_ENABLE_ROLE_POLICY) */
 
 /**

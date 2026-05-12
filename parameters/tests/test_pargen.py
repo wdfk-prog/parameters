@@ -4,8 +4,6 @@
 from __future__ import annotations
 
 import csv
-import re
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -110,33 +108,6 @@ def base_rows() -> list[dict[str, str]]:
     ]
 
 
-def collect_ci_workflow_host_targets() -> list[str]:
-    """Return host runtime target names from the GitHub Actions matrix."""
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    match = re.search(
-        r"  host-runtime-tests:.*?\n"
-        r"(?:.*?\n)*?"
-        r"        target:\n"
-        r"(?P<body>(?:          - [A-Za-z0-9_]+\n)+)",
-        workflow,
-    )
-    if match is None:
-        raise AssertionError("host-runtime-tests matrix target list not found")
-    return [line.split("-", 1)[1].strip() for line in match.group("body").splitlines()]
-
-
-def collect_host_test_dispatch_targets() -> list[str]:
-    """Return target names accepted by the host-test dispatcher."""
-    dispatcher = (ROOT / ".github" / "ci" / "host-test-targets.sh").read_text(encoding="utf-8")
-    match = re.search(r"host_targets=\(\n(?P<body>.*?)\n\)", dispatcher, re.S)
-    if match is None:
-        raise AssertionError("host_targets array not found")
-    return [
-        line.strip()
-        for line in match.group("body").splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
-
 
 class PargenTests(unittest.TestCase):
     """Validate pargen schema checks and generated outputs."""
@@ -186,13 +157,6 @@ class PargenTests(unittest.TestCase):
         stats = pargen.validate_and_resolve(rows, lock, cfg)
         outputs = pargen.generate_outputs(rows, stats)
         pargen.verify_outputs(args, outputs)
-
-    def test_ci_host_target_matrix_matches_dispatcher(self) -> None:
-        """CI host target matrix must stay synchronized with the dispatcher."""
-        workflow_targets = collect_ci_workflow_host_targets()
-        dispatch_targets = collect_host_test_dispatch_targets()
-        self.assertEqual(workflow_targets, dispatch_targets)
-        self.assertEqual(len(workflow_targets), len(set(workflow_targets)))
 
     def test_all_conditional_rows_generate_layout_header(self) -> None:
         """Layout generation works when every schema row is conditionally compiled."""
@@ -605,31 +569,6 @@ class PargenTests(unittest.TestCase):
                       outputs.par_table_def)
         self.assertIn("PAR_LAYOUT_ROW_ENABLED_ePAR_WIFI_SSID", outputs.layout_h)
 
-    def test_ci_shell_scripts_have_valid_bash_syntax(self) -> None:
-        """CI shell entrypoints remain parseable by bash after workflow edits."""
-        scripts = sorted((ROOT / ".github" / "ci").glob("*.sh"))
-        self.assertGreater(len(scripts), 0)
-        for script in scripts:
-            with self.subTest(script=script.name):
-                subprocess.run(["bash", "-n", str(script)], check=True)
-
-    def test_ci_profile_lists_do_not_contain_unknown_profiles(self) -> None:
-        """Profile list files must only name profiles implemented by the CI profile script."""
-        profile_script = (ROOT / ".github" / "ci" / "autogen-pm-ci-profile.sh").read_text(encoding="utf-8")
-        implemented: set[str] = set()
-        for match in re.findall(r"^        ([a-z0-9-|]+)\)", profile_script, re.M):
-            implemented.update(match.split("|"))
-        for list_name in ["profile-list.txt", "rtthread-profile-list.txt"]:
-            with self.subTest(list=list_name):
-                profiles = [
-                    line.strip()
-                    for line in (ROOT / ".github" / "ci" / list_name).read_text(encoding="utf-8").splitlines()
-                    if line.strip() and not line.lstrip().startswith("#")
-                ]
-                self.assertEqual(len(profiles), len(set(profiles)))
-                self.assertTrue(set(profiles).issubset(implemented))
-
-
     def test_auto_id_range_exhaustion_reports_group_range(self) -> None:
         """AUTO allocation fails clearly when a group ID range is exhausted."""
         rows = base_rows()[:2]
@@ -773,6 +712,26 @@ class PargenTests(unittest.TestCase):
         outputs = pargen.generate_outputs(generated_rows, generated_stats)
         self.assertIn('(const uint8_t *)"line\\\\one\\n\\\"ssid\\\""', outputs.par_table_def)
         self.assertEqual(generated_rows[2].obj_default_len, len('line\\one\n"ssid"'.encode("utf-8")))
+
+    # Keep generated negative-corpus tests focused on pargen behavior. CI
+    # harness wrapper, workflow, and log-checker self-tests are out of scope.
+    def test_fixed_seed_mutations_reject_invalid_scalars_and_metadata(self) -> None:
+        """Fixed-seed negative corpus rejects malformed scalar and metadata fields."""
+        cases = [
+            (0, "id", "0x"),
+            (0, "persistent", "maybe"),
+            (0, "min", "11"),
+            (0, "default", "99"),
+            (1, "default", "nan"),
+            (1, "access", "WO"),
+            (1, "write_roles", "ROOT"),
+        ]
+        for row_index, field, value in cases:
+            rows = base_rows()
+            rows[row_index][field] = value
+            with self.subTest(row=row_index, field=field, value=value):
+                with self.assertRaises((pargen.PargenError, ValueError)):
+                    self.run_generator(rows)
 
     def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
         """Fixed-seed negative corpus rejects malformed object defaults."""

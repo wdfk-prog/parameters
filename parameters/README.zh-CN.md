@@ -40,6 +40,7 @@
 | CSV 生成器 | [docs/csv-generator.md](./docs/csv-generator.md) | [docs/csv-generator.zh-CN.md](./docs/csv-generator.zh-CN.md) |
 | 对象参数 | [docs/object-parameters.md](./docs/object-parameters.md) | [docs/object-parameters.zh-CN.md](./docs/object-parameters.zh-CN.md) |
 | Flash-ee 后端 | [docs/flash-ee-backend-design.md](./docs/flash-ee-backend-design.md) | [docs/flash-ee-backend-design.zh-CN.md](./docs/flash-ee-backend-design.zh-CN.md) |
+| 测试范围 | [docs/test-scope.md](./docs/test-scope.md) | [docs/test-scope.zh-CN.md](./docs/test-scope.zh-CN.md) |
 | 上游关系 | [docs/upstream.md](./docs/upstream.md) | [docs/upstream.zh-CN.md](./docs/upstream.zh-CN.md) |
 
 ## 快速集成

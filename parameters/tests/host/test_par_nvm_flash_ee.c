@@ -2025,6 +2025,49 @@ static bool test_flash_ee_erase_partial_line_preserves_outside_range(void)
 }
 
 
+/** @brief Verify raw fake-flash failpoint countdowns across read, program, and erase. */
+static bool test_flash_ee_port_failpoint_countdown_matrix(void)
+{
+    const uint8_t payload[HOST_FLASH_PROGRAM_SIZE] = { 0x11U, 0x22U, 0x33U, 0x44U };
+    const uint8_t second_payload[HOST_FLASH_PROGRAM_SIZE] = { 0x01U, 0x02U, 0x03U, 0x04U };
+    uint8_t readback[HOST_FLASH_PROGRAM_SIZE] = { 0U };
+
+    host_flash_reset_erased();
+    TEST_ASSERT_OK(par_store_flash_ee_native_port_init());
+    g_fail_program_after = 1;
+    TEST_ASSERT_OK(par_store_flash_ee_native_port_program(0U,
+                                                          (uint32_t)sizeof(payload),
+                                                          payload));
+    TEST_ASSERT_STATUS(par_store_flash_ee_native_port_program(HOST_FLASH_PROGRAM_SIZE,
+                                                              (uint32_t)sizeof(second_payload),
+                                                              second_payload),
+                       ePAR_ERROR);
+    host_flash_clear_failpoints();
+    TEST_ASSERT_OK(par_store_flash_ee_native_port_read(0U,
+                                                       (uint32_t)sizeof(readback),
+                                                       readback));
+    TEST_ASSERT(0 == memcmp(readback, payload, sizeof(readback)));
+
+    g_fail_read_after = 1;
+    TEST_ASSERT_OK(par_store_flash_ee_native_port_read(0U,
+                                                       (uint32_t)sizeof(readback),
+                                                       readback));
+    TEST_ASSERT_STATUS(par_store_flash_ee_native_port_read(0U,
+                                                           (uint32_t)sizeof(readback),
+                                                           readback),
+                       ePAR_ERROR);
+    host_flash_clear_failpoints();
+
+    g_fail_erase_after = 1;
+    TEST_ASSERT_OK(par_store_flash_ee_native_port_erase(0U, HOST_FLASH_ERASE_SIZE));
+    TEST_ASSERT_STATUS(par_store_flash_ee_native_port_erase(HOST_FLASH_ERASE_SIZE,
+                                                            HOST_FLASH_ERASE_SIZE),
+                       ePAR_ERROR);
+    host_flash_clear_failpoints();
+    TEST_ASSERT_OK(par_store_flash_ee_native_port_deinit());
+    return true;
+}
+
 /** @brief Save a committed value, then fail a later save without graceful deinit. */
 static bool host_flash_child_fail_save_after_commit(const int program_fail_after)
 {
@@ -2333,6 +2376,20 @@ static const uint8_t *host_object_active_image(void)
     return g_flash;
 #endif /* (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
 }
+
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED)
+/** @brief Verify object NVM block size stays within the active profile region. */
+static bool test_nvm_object_region_profile_bounds(void)
+{
+    const uint32_t block_size = par_nvm_object_get_block_size();
+
+    TEST_ASSERT(block_size > 0U);
+#if (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) &&     (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED)
+    TEST_ASSERT(block_size <= PAR_CFG_NVM_OBJECT_REGION_SIZE);
+#endif /* (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && (PAR_CFG_NVM_OBJECT_ADDR_MODE == PAR_CFG_NVM_OBJECT_ADDR_FIXED) */
+    return true;
+}
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) */
 
 /** @brief Verify unchanged object n-save calls do not mutate the flash image. */
 static bool test_nvm_obj_n_save_unchanged_skips_backend_write(void)
@@ -3115,6 +3172,7 @@ int main(void)
         { "flash_ee_partial_line_write_preserves_neighbor_bytes", test_flash_ee_partial_line_write_preserves_neighbor_bytes },
         { "flash_ee_cross_cache_window_write_reload_roundtrip", test_flash_ee_cross_cache_window_write_reload_roundtrip },
         { "flash_ee_erase_partial_line_preserves_outside_range", test_flash_ee_erase_partial_line_preserves_outside_range },
+        { "flash_ee_port_failpoint_countdown_matrix", test_flash_ee_port_failpoint_countdown_matrix },
         { "flash_ee_port_read_failpoint_reports_error", test_flash_ee_port_read_failpoint_reports_error },
         { "flash_ee_init_rejects_invalid_geometry_and_recovers", test_flash_ee_init_rejects_invalid_geometry_and_recovers },
         { "nvm_save_by_id_save_all_and_n_save_wrappers", test_nvm_save_by_id_save_all_and_n_save_wrappers },
@@ -3123,6 +3181,9 @@ int main(void)
         { "nvm_obj_n_save_unchanged_skips_backend_write", test_nvm_obj_n_save_unchanged_skips_backend_write },
         { "nvm_str_embedded_nul_n_save_rejected_without_mutation", test_nvm_str_embedded_nul_n_save_rejected_without_mutation },
         { "nvm_wrapper_negative_type_and_init_policies", test_nvm_wrapper_negative_type_and_init_policies },
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED)
+        { "nvm_object_region_profile_bounds", test_nvm_object_region_profile_bounds },
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) */
         { "nvm_save_non_persistent_is_noop_and_preserves_image", test_nvm_save_non_persistent_is_noop_and_preserves_image },
 #if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
     (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) && \
