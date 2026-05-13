@@ -38,6 +38,46 @@ run_nvm_flash_ee_matrix() {
     autogen_pm_ci_for_each_nvm_flash_ee_profile run_nvm_flash_ee_profile
 }
 
+run_nvm_flash_ee_schema_evolution_profile() {
+    local image_file="$build_dir/par_nvm_flash_ee_schema_rebuild.image"
+
+    rm -f "$image_file"
+    (
+        trap 'rm -f "$image_file"' EXIT
+
+        PAR_HOST_FLASH_IMAGE_PATH="$image_file" \
+            compile_and_run_nvm "par_nvm_flash_ee_schema_rebuild_write" \
+                -DPAR_HOST_TEST_NVM \
+                -DPAR_HOST_TEST_SCHEMA_EVOLUTION_WRITE \
+                -DPAR_HOST_TEST_PROFILE_NAME='"schema_rebuild_write"' \
+                -DPAR_CFG_NVM_RECORD_LAYOUT=PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
+                -DPAR_CFG_NVM_OBJECT_STORE_MODE=PAR_CFG_NVM_OBJECT_STORE_SHARED \
+                -DPAR_CFG_NVM_OBJECT_ADDR_MODE=PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+                -DPAR_CFG_NVM_OBJECT_FIXED_ADDR=0xC0U \
+                -DPAR_CFG_NVM_OBJECT_REGION_SIZE=0x40U \
+                -Wno-unused-function \
+                parameters/tests/host/test_par_nvm_flash_ee.c \
+                "${base_sources[@]}" \
+                parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c \
+                "${nvm_sources[@]}"
+        PAR_HOST_FLASH_IMAGE_PATH="$image_file" \
+            compile_and_run_nvm_with_fixture "par_nvm_flash_ee_schema_rebuild_read" \
+                parameters/tests/host/fixtures_schema_type_changed \
+                -DPAR_HOST_TEST_NVM \
+                -DPAR_HOST_TEST_SCHEMA_EVOLUTION_READ \
+                -DPAR_HOST_TEST_PROFILE_NAME='"schema_rebuild_read"' \
+                -DPAR_CFG_NVM_RECORD_LAYOUT=PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
+                -DPAR_CFG_NVM_OBJECT_STORE_MODE=PAR_CFG_NVM_OBJECT_STORE_SHARED \
+                -DPAR_CFG_NVM_OBJECT_ADDR_MODE=PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+                -DPAR_CFG_NVM_OBJECT_FIXED_ADDR=0xC0U \
+                -DPAR_CFG_NVM_OBJECT_REGION_SIZE=0x40U \
+                -Wno-unused-function \
+                parameters/tests/host/test_par_nvm_flash_ee.c \
+                "${base_sources[@]}" \
+                parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c \
+                "${nvm_sources[@]}"
+    )
+}
 
 run_nvm_flash_ee_write_verify_profile() {
     compile_and_run_nvm "par_nvm_flash_ee_write_verify" \

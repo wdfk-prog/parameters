@@ -317,6 +317,67 @@ static bool test_flash_ee_fal_missing_flash_device_fails_init(void)
     return true;
 }
 
+
+/** @brief Verify repeated FAL adapter init/deinit cycles leave a clean state. */
+static bool test_flash_ee_fal_repeated_init_deinit_is_idempotent(void)
+{
+    const par_store_backend_api_t *api;
+    bool is_init = false;
+
+    fal_stub_reset();
+    TEST_ASSERT_OK(par_store_backend_bind());
+    g_fal_partition_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->init());
+    api->is_init(&is_init);
+    TEST_ASSERT(is_init);
+    TEST_ASSERT_OK(api->deinit());
+    TEST_ASSERT_OK(api->deinit());
+    api->is_init(&is_init);
+    TEST_ASSERT(!is_init);
+    return true;
+}
+
+/** @brief Verify FAL adapter I/O calls reject access after deinitialization. */
+static bool test_flash_ee_fal_after_deinit_rejects_io(void)
+{
+    const par_store_backend_api_t *api;
+    const uint8_t payload[4] = { 0x71U, 0x72U, 0x73U, 0x74U };
+    uint8_t readback[sizeof(payload)] = { 0U };
+
+    fal_stub_reset();
+    TEST_ASSERT_OK(par_store_backend_bind());
+    g_fal_partition_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->deinit());
+    TEST_ASSERT_STATUS(api->read(0U, (uint32_t)sizeof(readback), readback), ePAR_ERROR_INIT);
+    TEST_ASSERT_STATUS(api->write(0U, (uint32_t)sizeof(payload), payload), ePAR_ERROR_INIT);
+    TEST_ASSERT_STATUS(api->erase(0U, (uint32_t)sizeof(payload)), ePAR_ERROR_INIT);
+    return true;
+}
+
+/** @brief Verify too-small FAL partitions fail during Flash-EE initialization. */
+static bool test_flash_ee_fal_partition_smaller_than_geometry_fails_init(void)
+{
+    const par_store_backend_api_t *api;
+    bool is_init = true;
+
+    fal_stub_reset();
+    TEST_ASSERT_OK(par_store_backend_bind());
+    g_fal_partition_available = true;
+    g_fal_part.len = (long)(PAR_CFG_NVM_BACKEND_FLASH_EE_LOGICAL_SIZE / 2U);
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT((api->init() & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    api->is_init(&is_init);
+    TEST_ASSERT(!is_init);
+    return true;
+}
+
 /** @brief Entrypoint for the host FAL adapter smoke test. */
 int main(void)
 {
@@ -326,6 +387,9 @@ int main(void)
         { "backend_flash_ee_fal_exact_end_and_zero_len_boundaries", test_flash_ee_fal_exact_end_and_zero_len_boundaries },
         { "backend_flash_ee_fal_short_io_propagates_error", test_flash_ee_fal_short_io_propagates_error },
         { "backend_flash_ee_fal_missing_flash_device_fails_init", test_flash_ee_fal_missing_flash_device_fails_init },
+        { "backend_flash_ee_fal_repeated_init_deinit_is_idempotent", test_flash_ee_fal_repeated_init_deinit_is_idempotent },
+        { "backend_flash_ee_fal_after_deinit_rejects_io", test_flash_ee_fal_after_deinit_rejects_io },
+        { "backend_flash_ee_fal_partition_smaller_than_geometry_fails_init", test_flash_ee_fal_partition_smaller_than_geometry_fails_init },
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));

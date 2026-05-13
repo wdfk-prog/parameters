@@ -13,8 +13,10 @@ host_targets=(
     par_shell_feature_gate
     par_shell_feature_gate_no_get
     par_shell_feature_gate_no_id
+    par_shell_feature_gate_no_save_json
     par_nvm_flash_ee
     par_nvm_flash_ee_write_verify
+    par_nvm_flash_ee_schema_evolution
     par_nvm_flash_ee_object_write_verify
     par_nvm_flash_ee_object_only
     par_nvm_flash_ee_object_array_nvm
@@ -152,6 +154,15 @@ run_host_target() {
                 parameters/tests/host/test_par_shell_feature_gate.c \
                 "${base_sources[@]}"
             ;;
+        par_shell_feature_gate_no_save_json)
+            compile_and_run par_shell_feature_gate_no_save_json \
+                -DPAR_HOST_TEST_SHELL_NO_SAVE_JSON \
+                -UAUTOGEN_PM_MSH_CMD_SAVE \
+                -UAUTOGEN_PM_MSH_CMD_SAVE_CLEAN \
+                -UAUTOGEN_PM_MSH_CMD_JSON \
+                parameters/tests/host/test_par_shell_feature_gate.c \
+                "${base_sources[@]}"
+            ;;
         par_nvm_flash_ee)
             run_nvm_flash_ee_profile default \
                 PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
@@ -162,6 +173,9 @@ run_host_target() {
             ;;
         par_nvm_flash_ee_write_verify)
             run_nvm_flash_ee_write_verify_profile
+            ;;
+        par_nvm_flash_ee_schema_evolution)
+            run_nvm_flash_ee_schema_evolution_profile
             ;;
         par_nvm_flash_ee_object_write_verify)
             run_nvm_flash_ee_object_write_verify_profile
@@ -229,11 +243,27 @@ PYGEN
                 --out-def "$build_dir/generated-runtime/par_table.def" \
                 --out-dir "$build_dir/generated-runtime/out" \
                 --manifest "$build_dir/generated-runtime/par_manifest.json"
+            manifest_defines_file="$build_dir/generated-runtime/manifest-defines.txt"
+            python3 - "$build_dir/generated-runtime/par_manifest.json" > "$manifest_defines_file" <<'PYMANIFEST'
+import json
+import sys
+
+manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+layout = manifest["layout_max"]
+print(f"-DPAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX={manifest['param_count_max']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_COUNT8={layout['count8']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_COUNT16={layout['count16']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_COUNT32={layout['count32']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_COUNTOBJ={layout['count_obj']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_OBJ_POOL_BYTES={layout['obj_pool_bytes']}UL")
+PYMANIFEST
+            mapfile -t manifest_defines < "$manifest_defines_file"
             echo "[host-tests] build par_generated_runtime_consistency"
             gcc -I"$build_dir/generated-runtime" \
                 -I"$build_dir/generated-runtime/out" \
                 "${common_cflags[@]}" \
                 "${autogen_pm_ci_defines[@]}" \
+                "${manifest_defines[@]}" \
                 -DPAR_CFG_LAYOUT_SOURCE=PAR_CFG_LAYOUT_SCRIPT \
                 parameters/tests/host/test_par_generated_runtime_consistency.c \
                 "$build_dir/generated-runtime/out/par_layout_static.c" \
@@ -276,11 +306,27 @@ PYGEN_SCALAR
                 --out-def "$build_dir/generated-runtime-scalar-only/par_table.def" \
                 --out-dir "$build_dir/generated-runtime-scalar-only/out" \
                 --manifest "$build_dir/generated-runtime-scalar-only/par_manifest.json"
+            manifest_defines_file="$build_dir/generated-runtime-scalar-only/manifest-defines.txt"
+            python3 - "$build_dir/generated-runtime-scalar-only/par_manifest.json" > "$manifest_defines_file" <<'PYMANIFEST_SCALAR'
+import json
+import sys
+
+manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+layout = manifest["layout_max"]
+print(f"-DPAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX={manifest['param_count_max']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_COUNT8={layout['count8']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_COUNT16={layout['count16']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_COUNT32={layout['count32']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_COUNTOBJ={layout['count_obj']}U")
+print(f"-DPAR_HOST_TEST_MANIFEST_OBJ_POOL_BYTES={layout['obj_pool_bytes']}UL")
+PYMANIFEST_SCALAR
+            mapfile -t manifest_defines < "$manifest_defines_file"
             echo "[host-tests] build par_generated_runtime_scalar_only"
             gcc -I"$build_dir/generated-runtime-scalar-only" \
                 -I"$build_dir/generated-runtime-scalar-only/out" \
                 "${common_cflags[@]}" \
                 "${autogen_pm_ci_defines[@]}" \
+                "${manifest_defines[@]}" \
                 -DPAR_HOST_TEST_GENERATED_SCALAR_ONLY \
                 -DPAR_CFG_OBJECT_TYPES_ENABLED=0 \
                 -DPAR_CFG_ENABLE_TYPE_STR=0 \

@@ -2,7 +2,9 @@
 set -euo pipefail
 
 workspace="${GITHUB_WORKSPACE:-$(pwd)}"
-rtthread_ref="${RTTHREAD_REF:-master}"
+rtthread_ref="${RTTHREAD_REF:-default}"
+rtthread_remote="${RTTHREAD_REMOTE:-https://github.com/RT-Thread/rt-thread.git}"
+rtthread_resolved_ref="${RTTHREAD_RESOLVED_REF:-}"
 rtthread_resolved_sha="${RTTHREAD_RESOLVED_SHA:-}"
 ci_root="$workspace/_ci"
 out_dir="$ci_root/rt-thread-source"
@@ -29,6 +31,30 @@ json_escape_string() {
     value="${value//\\/\\\\}"
     value="${value//\"/\\\"}"
     printf '%s' "$value"
+}
+
+resolve_rtthread_source_ref() {
+    local resolved_ref
+
+    if [ -n "$rtthread_resolved_ref" ]; then
+        printf '%s\n' "$rtthread_resolved_ref"
+        return 0
+    fi
+
+    case "$rtthread_ref" in
+        ""|default|HEAD)
+            resolved_ref="$(git ls-remote --symref "$rtthread_remote" HEAD | \
+                awk '$1 == "ref:" { sub("refs/heads/", "", $2); print $2; exit }')"
+            if [ -z "$resolved_ref" ]; then
+                echo "Unable to resolve RT-Thread default branch from $rtthread_remote" | tee -a "$log_file" >&2
+                exit 1
+            fi
+            printf '%s\n' "$resolved_ref"
+            ;;
+        *)
+            printf '%s\n' "$rtthread_ref"
+            ;;
+    esac
 }
 
 configure_cache_paths() {
@@ -60,7 +86,7 @@ cache_is_valid() {
 restore_from_cache() {
     cp "$cache_tar_file" "$tar_file"
     cp "$cache_sha_file" "$sha_file"
-    echo "RTTHREAD_SOURCE_CACHE_HIT ref=$rtthread_ref sha=$(cat "$sha_file")" | tee -a "$log_file"
+    echo "RTTHREAD_SOURCE_CACHE_HIT ref=$rtthread_ref resolved_ref=${rtthread_resolved_ref:-unknown} sha=$(cat "$sha_file")" | tee -a "$log_file"
 }
 
 store_to_cache() {
@@ -70,23 +96,27 @@ store_to_cache() {
 
     cp "$tar_file" "$cache_tar_file"
     cp "$sha_file" "$cache_sha_file"
-    echo "RTTHREAD_SOURCE_CACHE_STORE ref=$rtthread_ref sha=$(cat "$sha_file") dir=$cache_dir" | tee -a "$log_file"
+    echo "RTTHREAD_SOURCE_CACHE_STORE ref=$rtthread_ref resolved_ref=${rtthread_resolved_ref:-unknown} sha=$(cat "$sha_file") dir=$cache_dir" | tee -a "$log_file"
 }
 
 retry_clone_rtthread() {
     local attempt=1
     local max_attempts=3
+    local clone_ref
+
+    clone_ref="$(resolve_rtthread_source_ref)"
+    rtthread_resolved_ref="$clone_ref"
 
     while [ "$attempt" -le "$max_attempts" ]; do
-        if run_logged git clone --depth 1 --branch "$rtthread_ref" \
-            https://github.com/RT-Thread/rt-thread.git "$source_dir"; then
+        if run_logged git clone --depth 1 --branch "$clone_ref" \
+            "$rtthread_remote" "$source_dir"; then
             return 0
         fi
 
         rm -rf "$source_dir"
         if run_logged git init "$source_dir" && \
-            run_logged git -C "$source_dir" remote add origin https://github.com/RT-Thread/rt-thread.git && \
-            run_logged git -C "$source_dir" fetch --depth 1 origin "$rtthread_ref" && \
+            run_logged git -C "$source_dir" remote add origin "$rtthread_remote" && \
+            run_logged git -C "$source_dir" fetch --depth 1 origin "$clone_ref" && \
             run_logged git -C "$source_dir" checkout --detach FETCH_HEAD; then
             return 0
         fi
@@ -166,4 +196,4 @@ fi
 emit_rtthread_output
 emit_profile_output
 
-echo "RTTHREAD_SOURCE_READY ref=$rtthread_ref sha=$(cat "$sha_file") tar=$tar_file" | tee -a "$log_file"
+echo "RTTHREAD_SOURCE_READY ref=$rtthread_ref resolved_ref=${rtthread_resolved_ref:-unknown} sha=$(cat "$sha_file") tar=$tar_file" | tee -a "$log_file"
