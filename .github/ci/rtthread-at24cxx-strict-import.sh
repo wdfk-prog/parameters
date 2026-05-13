@@ -9,23 +9,25 @@ at24cxx_strict_import_enabled() {
 resolve_at24cxx_package_ref() {
     local resolved_ref
 
-    if [ -n "$at24cxx_ref" ]; then
-        printf '%s\n' "$at24cxx_ref"
-        return 0
-    fi
-
-    resolved_ref="$(git ls-remote --symref "$at24cxx_repo" HEAD | \
-        awk '$1 == "ref:" { sub("refs/heads/", "", $2); print $2; exit }')"
-    if [ -z "$resolved_ref" ]; then
-        echo "Unable to resolve AT24CXX default branch from $at24cxx_repo" | tee -a "$log_file" >&2
-        exit 1
-    fi
-
-    printf '%s\n' "$resolved_ref"
+    case "$at24cxx_ref" in
+        ""|default|HEAD)
+            resolved_ref="$(git ls-remote --symref "$at24cxx_repo" HEAD | \
+                awk '$1 == "ref:" { sub("refs/heads/", "", $2); print $2; exit }')"
+            if [ -z "$resolved_ref" ]; then
+                echo "Unable to resolve AT24CXX default branch from $at24cxx_repo" | tee -a "$log_file" >&2
+                exit 1
+            fi
+            printf '%s\n' "$resolved_ref"
+            ;;
+        *)
+            printf '%s\n' "$at24cxx_ref"
+            ;;
+    esac
 }
 
 download_at24cxx_package() {
     local resolved_ref
+    local resolved_sha
 
     if ! at24cxx_strict_import_enabled; then
         return 0
@@ -35,6 +37,7 @@ download_at24cxx_package() {
     rm -rf "$at24cxx_package_dir"
     run_logged git clone --depth 1 --branch "$resolved_ref" \
         "$at24cxx_repo" "$at24cxx_package_dir"
+    resolved_sha="$(git -C "$at24cxx_package_dir" rev-parse HEAD)"
 
     test -f "$at24cxx_package_dir/at24cxx.h" || {
         echo "Downloaded AT24CXX package did not provide at24cxx.h: $at24cxx_package_dir" | tee -a "$log_file" >&2
@@ -49,7 +52,7 @@ download_at24cxx_package() {
         exit 1
     }
 
-    echo "AT24CXX_PACKAGE_DOWNLOAD_OK repo=$at24cxx_repo ref=$resolved_ref dir=$at24cxx_package_dir" | tee -a "$log_file"
+    echo "AT24CXX_PACKAGE_DOWNLOAD_OK repo=$at24cxx_repo ref=$at24cxx_ref resolved_ref=$resolved_ref sha=$resolved_sha dir=$at24cxx_package_dir" | tee -a "$log_file"
 }
 
 inject_at24cxx_package_sconstruct() {

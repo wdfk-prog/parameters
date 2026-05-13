@@ -780,6 +780,44 @@ class PargenTests(unittest.TestCase):
                 generated_rows, _ = self.run_generator(rows)
                 self.assertEqual(generated_rows[2].obj_default_len, expected_len)
 
+
+    def test_csv_bom_and_crlf_are_handled_consistently(self) -> None:
+        """CSV files with UTF-8 BOM and CRLF line endings are accepted."""
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = Path(tmp) / "par_table.bom.csv"
+            rows = base_rows()
+            with csv_path.open("w", encoding="utf-8", newline="") as stream:
+                stream.write("\ufeff" + ",".join(COLUMNS) + "\r\n")
+                writer = csv.DictWriter(stream, fieldnames=COLUMNS, lineterminator="\r\n")
+                writer.writerows(rows)
+            loaded_rows = pargen.read_rows(csv_path)
+            self.assertEqual(len(loaded_rows), len(rows))
+            self.assertEqual(loaded_rows[0].enum, "ePAR_SYS_MODE")
+
+    def test_condition_with_commas_and_nested_parentheses_is_emitted_verbatim(self) -> None:
+        """Complex preprocessor expressions remain intact in generated guards."""
+        rows = base_rows()
+        rows[2]["condition"] = "(defined(PAR_HAS_ANY) && PAR_HAS_ANY(FOO, BAR))"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertIn("#if (defined(PAR_HAS_ANY) && PAR_HAS_ANY(FOO, BAR))", outputs.layout_h)
+        self.assertIn("#endif /* (defined(PAR_HAS_ANY) && PAR_HAS_ANY(FOO, BAR)) */", outputs.layout_h)
+
+    def test_lock_file_deleted_reserved_auto_id_interleaving_is_stable(self) -> None:
+        """AUTO allocation skips IDs held by deleted lock entries and active rows."""
+        rows = base_rows()[:2]
+        rows[0]["id"] = "AUTO"
+        rows[1]["id"] = "AUTO"
+        parsed = [pargen.normalize_row(index, row) for index, row in enumerate(rows, start=2)]
+        stats = pargen.validate_and_resolve(
+            parsed,
+            {"ePAR_DELETED_LOW": 0, "ePAR_DELETED_NEXT": 1},
+            pargen.GeneratorConfig(id_ranges={"SYSTEM": (0, 5)}, default_id_range=(0, 5)),
+        )
+        self.assertEqual(parsed[0].resolved_id, 2)
+        self.assertEqual(parsed[1].resolved_id, 3)
+        self.assertEqual(stats["param_count"], 2)
+
     def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
         """Fixed-seed negative corpus rejects malformed object defaults."""
         cases = [

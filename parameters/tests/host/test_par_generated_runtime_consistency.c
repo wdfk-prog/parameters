@@ -53,6 +53,21 @@ static bool test_generated_runtime_scalar_rows(void)
     return true;
 }
 
+
+#if defined(PAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX)
+/** @brief Verify manifest-derived count macros match generated runtime metadata. */
+static bool test_generated_manifest_counts_match_runtime_info(void)
+{
+    TEST_ASSERT(PAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX == g_par_generated_info.param_count);
+    TEST_ASSERT(PAR_HOST_TEST_MANIFEST_COUNT8 == g_par_generated_info.count8);
+    TEST_ASSERT(PAR_HOST_TEST_MANIFEST_COUNT16 == g_par_generated_info.count16);
+    TEST_ASSERT(PAR_HOST_TEST_MANIFEST_COUNT32 == g_par_generated_info.count32);
+    TEST_ASSERT(PAR_HOST_TEST_MANIFEST_COUNTOBJ == g_par_generated_info.count_obj);
+    TEST_ASSERT(PAR_HOST_TEST_MANIFEST_OBJ_POOL_BYTES == g_par_generated_info.obj_pool_bytes);
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX) */
+
 #if !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY)
 /** @brief Verify generated object rows round-trip through the runtime object APIs. */
 static bool test_generated_runtime_object_rows_roundtrip(void)
@@ -108,6 +123,9 @@ int main(void)
 {
     static const par_host_test_case_t cases[] = {
         { "generated_runtime_scalar_rows", test_generated_runtime_scalar_rows },
+#if defined(PAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX)
+        { "generated_manifest_counts_match_runtime_info", test_generated_manifest_counts_match_runtime_info },
+#endif /* defined(PAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX) */
 #if !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY)
         { "generated_runtime_object_rows_roundtrip", test_generated_runtime_object_rows_roundtrip },
 #endif /* !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) */

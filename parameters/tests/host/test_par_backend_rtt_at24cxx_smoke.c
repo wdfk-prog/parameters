@@ -9,7 +9,7 @@
 
 #include "at24cxx.h"
 
-/** @brief Disable one-shot AT24CXX transfer failpoints. */
+/** @brief Disable countdown AT24CXX transfer failpoints. */
 #define AT24_FAIL_DISABLED (0)
 /** @brief Maximum AT24CXX transfer trace entries kept by the host stub. */
 #define AT24_TRACE_MAX (8U)
@@ -24,9 +24,9 @@ struct autogen_pm_ci_at24_device
 static struct autogen_pm_ci_at24_device g_at24_dev;
 /** @brief AT24CXX device availability switch. */
 static bool g_at24_available;
-/** @brief One-shot read failure switch. */
+/** @brief Read failure countdown; zero disables it. */
 static int g_at24_fail_read;
-/** @brief One-shot write failure switch. */
+/** @brief Write failure countdown; zero disables it. */
 static int g_at24_fail_write;
 /** @brief Number of traced AT24CXX read operations. */
 static uint8_t g_at24_read_count;
@@ -74,10 +74,13 @@ int at24cxx_page_read(at24cxx_device_t dev, uint32_t addr, uint8_t *buf, uint16_
     {
         return -1;
     }
-    if (g_at24_fail_read != AT24_FAIL_DISABLED)
+    if (g_at24_fail_read > AT24_FAIL_DISABLED)
     {
-        g_at24_fail_read = AT24_FAIL_DISABLED;
-        return -1;
+        g_at24_fail_read--;
+        if (AT24_FAIL_DISABLED == g_at24_fail_read)
+        {
+            return -1;
+        }
     }
     g_at24_read_count++;
     memcpy(buf, &dev->mem[addr], size);
@@ -91,10 +94,13 @@ int at24cxx_page_write(at24cxx_device_t dev, uint32_t addr, const uint8_t *buf, 
     {
         return -1;
     }
-    if (g_at24_fail_write != AT24_FAIL_DISABLED)
+    if (g_at24_fail_write > AT24_FAIL_DISABLED)
     {
-        g_at24_fail_write = AT24_FAIL_DISABLED;
-        return -1;
+        g_at24_fail_write--;
+        if (AT24_FAIL_DISABLED == g_at24_fail_write)
+        {
+            return -1;
+        }
     }
     if (g_at24_write_count < AT24_TRACE_MAX)
     {
@@ -298,6 +304,54 @@ static bool test_rtt_at24cxx_driver_error_propagates(void)
     return true;
 }
 
+
+/** @brief Verify a failure after the first AT24 page write preserves untouched tail bytes. */
+static bool test_rtt_at24cxx_second_page_write_fail_reports_partial_progress_policy(void)
+{
+    const par_store_backend_api_t *api;
+    const uint32_t first_chunk = (uint32_t)AT24CXX_PAGE_BYTE -
+                                 ((uint32_t)PAR_CFG_RTT_AT24_BASE_ADDR % (uint32_t)AT24CXX_PAGE_BYTE);
+    uint8_t payload[AT24CXX_PAGE_BYTE + 2U];
+
+    TEST_ASSERT(first_chunk > 0U);
+    for (uint8_t i = 0U; i < (uint8_t)sizeof(payload); i++)
+    {
+        payload[i] = (uint8_t)(0x60U + i);
+    }
+
+    at24_stub_reset();
+    g_at24_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    g_at24_fail_write = 2;
+    TEST_ASSERT_STATUS(api->write(0U, (uint32_t)sizeof(payload), payload), ePAR_ERROR_NVM);
+    TEST_ASSERT(g_at24_write_count == 1U);
+    TEST_ASSERT(0 == memcmp(&g_at24_dev.mem[PAR_CFG_RTT_AT24_BASE_ADDR], payload, first_chunk));
+    TEST_ASSERT(g_at24_dev.mem[PAR_CFG_RTT_AT24_BASE_ADDR + first_chunk] == 0xFFU);
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
+/** @brief Verify AT24CXX backend calls reject access after deinitialization. */
+static bool test_rtt_at24cxx_after_deinit_rejects_io(void)
+{
+    const par_store_backend_api_t *api;
+    uint8_t value = 0x5AU;
+    uint8_t readback = 0U;
+
+    at24_stub_reset();
+    g_at24_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->deinit());
+    TEST_ASSERT_STATUS(api->read(0U, 1U, &readback), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->write(0U, 1U, &value), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->erase(0U, 1U), ePAR_ERROR_PARAM);
+    return true;
+}
+
 /** @brief Entrypoint for the host AT24CXX backend smoke test. */
 int main(void)
 {
@@ -308,6 +362,8 @@ int main(void)
         { "backend_rtt_at24cxx_base_addr_offsets_window", test_rtt_at24cxx_base_addr_offsets_window },
         { "backend_rtt_at24cxx_exact_end_and_zero_len_boundaries", test_rtt_at24cxx_exact_end_and_zero_len_boundaries },
         { "backend_rtt_at24cxx_driver_error_propagates", test_rtt_at24cxx_driver_error_propagates },
+        { "backend_rtt_at24cxx_second_page_write_fail_reports_partial_progress_policy", test_rtt_at24cxx_second_page_write_fail_reports_partial_progress_policy },
+        { "backend_rtt_at24cxx_after_deinit_rejects_io", test_rtt_at24cxx_after_deinit_rejects_io },
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));

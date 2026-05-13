@@ -61,12 +61,25 @@ prepare_rtthread() {
             source_sha="$(cat "$rtthread_source_sha_file")"
         fi
     else
-        run_logged git clone --depth 1 --branch "$rtthread_ref" \
-            https://github.com/RT-Thread/rt-thread.git "$rtt_root"
+        local rtthread_remote="${RTTHREAD_REMOTE:-https://github.com/RT-Thread/rt-thread.git}"
+        local clone_ref="$rtthread_ref"
+
+        case "$clone_ref" in
+            ""|default|HEAD)
+                clone_ref="$(git ls-remote --symref "$rtthread_remote" HEAD | \
+                    awk '$1 == "ref:" { sub("refs/heads/", "", $2); print $2; exit }')"
+                if [ -z "$clone_ref" ]; then
+                    echo "Unable to resolve RT-Thread default branch from $rtthread_remote" | tee -a "$log_file" >&2
+                    exit 1
+                fi
+                ;;
+        esac
+        run_logged git clone --depth 1 --branch "$clone_ref" \
+            "$rtthread_remote" "$rtt_root"
         source_sha="$(git -C "$rtt_root" rev-parse HEAD)"
     fi
 
-    echo "RTTHREAD_SOURCE ref=$rtthread_ref sha=${source_sha:-unknown}" | tee -a "$log_file"
+    echo "RTTHREAD_SOURCE ref=$rtthread_ref resolved_ref=${clone_ref:-tarball} sha=${source_sha:-unknown}" | tee -a "$log_file"
 }
 
 configure_toolchain() {

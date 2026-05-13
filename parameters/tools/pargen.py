@@ -195,7 +195,7 @@ def read_rows(path: Path) -> List[Row]:
     if not path.exists():
         raise PargenError(f"CSV schema not found: {path}")
 
-    with path.open("r", encoding="utf-8", newline="") as f:
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         if reader.fieldnames is None:
             raise PargenError(f"{path}: missing CSV header")

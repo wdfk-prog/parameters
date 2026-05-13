@@ -134,6 +134,30 @@ static bool test_msh_feature_gate_get_disabled_reports_unknown(void)
     TEST_ASSERT_OK(par_deinit());
     return true;
 }
+#elif defined(PAR_HOST_TEST_SHELL_NO_SAVE_JSON)
+/** @brief Verify save and JSON commands can be removed while GET still works. */
+static bool test_msh_feature_gate_save_json_disabled_get_still_works(void)
+{
+    char *help_args[] = { "par" };
+    char *get_args[] = { "par", "get", "1" };
+    char *save_args[] = { "par", "save" };
+    char *json_args[] = { "par", "json" };
+
+    TEST_ASSERT(init_module());
+    run_shell(1, help_args);
+    TEST_ASSERT(shell_capture_contains("Usage:"));
+    TEST_ASSERT(shell_capture_contains("get <id>"));
+    TEST_ASSERT(!shell_capture_contains("save"));
+    TEST_ASSERT(!shell_capture_contains("json"));
+    run_shell(3, get_args);
+    TEST_ASSERT(0 == strcmp(g_shell_capture, "OK,PAR_GET=1\n"));
+    run_shell(2, save_args);
+    TEST_ASSERT(shell_capture_contains("ERR, unknown subcmd"));
+    run_shell(2, json_args);
+    TEST_ASSERT(shell_capture_contains("ERR, unknown subcmd"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
 #elif (0 == PAR_CFG_ENABLE_ID)
 /** @brief Verify ID-disabled builds omit ID-based shell commands. */
 static bool test_msh_feature_gate_id_disabled_omits_id_commands(void)
@@ -222,6 +246,8 @@ int main(void)
     static const par_host_test_case_t cases[] = {
 #if defined(PAR_HOST_TEST_SHELL_NO_GET)
         { "msh_feature_gate_get_disabled_reports_unknown", test_msh_feature_gate_get_disabled_reports_unknown },
+#elif defined(PAR_HOST_TEST_SHELL_NO_SAVE_JSON)
+        { "msh_feature_gate_save_json_disabled_get_still_works", test_msh_feature_gate_save_json_disabled_get_still_works },
 #elif (0 == PAR_CFG_ENABLE_ID)
         { "msh_feature_gate_id_disabled_omits_id_commands", test_msh_feature_gate_id_disabled_omits_id_commands },
 #else

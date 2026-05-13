@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       rtthread_ref:
-        description: RT-Thread git ref used by the package integration build
+        description: RT-Thread git ref used by the package integration build; use default for remote HEAD
         required: false
-        default: master
+        default: default
       bsp_path:
         description: RT-Thread BSP path used as the integration build host
         required: false
@@ -23,7 +23,7 @@ concurrency:
 
 env:
   PACKAGE_NAME: autogen_parameter_manager
-  RTTHREAD_REF: ${{ github.event.inputs.rtthread_ref || 'master' }}
+  RTTHREAD_REF: ${{ github.event.inputs.rtthread_ref || 'default' }}
   BSP_PATH: ${{ github.event.inputs.bsp_path || 'bsp/qemu-vexpress-a9' }}
   RTTHREAD_SOURCE_CACHE_VERSION: v1
   ARM_GCC_DIR: /opt/gcc-arm-none-eabi
@@ -222,15 +222,24 @@ jobs:
         run: |
           set -euo pipefail
           remote_url="https://github.com/RT-Thread/rt-thread.git"
-          sha="$(git ls-remote "$remote_url" "refs/heads/$RTTHREAD_REF" | awk 'NR == 1 { print $1 }')"
+          resolved_ref="$RTTHREAD_REF"
+          if [ -z "$resolved_ref" ] || [ "$resolved_ref" = "default" ] || [ "$resolved_ref" = "HEAD" ]; then
+            resolved_ref="$(git ls-remote --symref "$remote_url" HEAD | \
+              awk '$1 == "ref:" { sub("refs/heads/", "", $2); print $2; exit }')"
+            if [ -z "$resolved_ref" ]; then
+              echo "Unable to resolve RT-Thread default branch from $remote_url" >&2
+              exit 1
+            fi
+          fi
+          sha="$(git ls-remote "$remote_url" "refs/heads/$resolved_ref" | awk 'NR == 1 { print $1 }')"
           if [ -z "$sha" ]; then
-            sha="$(git ls-remote "$remote_url" "refs/tags/$RTTHREAD_REF^{}" | awk 'NR == 1 { print $1 }')"
+            sha="$(git ls-remote "$remote_url" "refs/tags/$resolved_ref^{}" | awk 'NR == 1 { print $1 }')"
           fi
           if [ -z "$sha" ]; then
-            sha="$(git ls-remote "$remote_url" "refs/tags/$RTTHREAD_REF" | awk 'NR == 1 { print $1 }')"
+            sha="$(git ls-remote "$remote_url" "refs/tags/$resolved_ref" | awk 'NR == 1 { print $1 }')"
           fi
           if [ -z "$sha" ]; then
-            sha="$RTTHREAD_REF"
+            sha="$resolved_ref"
           fi
           case "$sha" in
             [0-9a-fA-F][0-9a-fA-F]*) ;;
@@ -243,8 +252,10 @@ jobs:
             echo "Resolved RTTHREAD_REF is too short for a safe cache key: $sha" >&2
             exit 1
           fi
-          echo "rtthread-cache-id=$sha" >> "$GITHUB_OUTPUT"
+          echo "RTTHREAD_RESOLVED_REF=$resolved_ref" >> "$GITHUB_ENV"
           echo "RTTHREAD_RESOLVED_SHA=$sha" >> "$GITHUB_ENV"
+          echo "rtthread-cache-id=$sha" >> "$GITHUB_OUTPUT"
+          echo "RTTHREAD_SOURCE_REVISION ref=$RTTHREAD_REF resolved_ref=$resolved_ref sha=$sha"
 
       - name: Restore RT-Thread source cache
         id: cache-rtthread-source
