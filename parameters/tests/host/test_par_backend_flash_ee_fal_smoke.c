@@ -29,11 +29,11 @@ static struct fal_partition g_fal_part = {
 static bool g_fal_partition_available;
 /** @brief FAL flash-device availability switch. */
 static bool g_fal_flash_available = true;
-/** @brief Return one byte short from the next FAL read when non-zero. */
+/** @brief Countdown for returning one byte short from FAL reads. */
 static int g_fal_short_read;
-/** @brief Return one byte short from the next FAL write when non-zero. */
+/** @brief Countdown for returning one byte short from FAL writes. */
 static int g_fal_short_write;
-/** @brief Return one byte short from the next FAL erase when non-zero. */
+/** @brief Countdown for returning one byte short from FAL erases. */
 static int g_fal_short_erase;
 
 /** @brief Reset mutable host FAL stub state to the default partition geometry. */
@@ -107,9 +107,9 @@ int fal_partition_read(const struct fal_partition *part,
     {
         return -1;
     }
-    if (g_fal_short_read != FAL_SHORT_IO_DISABLED)
+    if (g_fal_short_read > FAL_SHORT_IO_DISABLED)
     {
-        g_fal_short_read = FAL_SHORT_IO_DISABLED;
+        g_fal_short_read--;
         return (size > 0U) ? (int)(size - 1U) : 0;
     }
     memcpy(buf, &g_fal_flash[abs_addr], size);
@@ -135,9 +135,9 @@ int fal_partition_write(const struct fal_partition *part,
     {
         return -1;
     }
-    if (g_fal_short_write != FAL_SHORT_IO_DISABLED)
+    if (g_fal_short_write > FAL_SHORT_IO_DISABLED)
     {
-        g_fal_short_write = FAL_SHORT_IO_DISABLED;
+        g_fal_short_write--;
         return (size > 0U) ? (int)(size - 1U) : 0;
     }
     memcpy(&g_fal_flash[abs_addr], buf, size);
@@ -161,9 +161,9 @@ int fal_partition_erase(const struct fal_partition *part,
     {
         return -1;
     }
-    if (g_fal_short_erase != FAL_SHORT_IO_DISABLED)
+    if (g_fal_short_erase > FAL_SHORT_IO_DISABLED)
     {
-        g_fal_short_erase = FAL_SHORT_IO_DISABLED;
+        g_fal_short_erase--;
         return (size > 0U) ? (int)(size - 1U) : 0;
     }
     memset(&g_fal_flash[abs_addr], 0xFF, size);
@@ -378,6 +378,83 @@ static bool test_flash_ee_fal_partition_smaller_than_geometry_fails_init(void)
     return true;
 }
 
+
+
+/** @brief Verify short FAL read/write errors do not corrupt destination or flash tail. */
+static bool test_flash_ee_fal_short_read_write_preserves_buffers(void)
+{
+    const uint8_t payload[4] = { 0x21U, 0x22U, 0x23U, 0x24U };
+    uint8_t readback[sizeof(payload)] = { 0xA5U, 0xA5U, 0xA5U, 0xA5U };
+
+    fal_stub_reset();
+    g_fal_partition_available = true;
+    g_fal_short_write = 1;
+    TEST_ASSERT(fal_partition_write(&g_fal_part, 0U, payload, sizeof(payload)) ==
+                ((int)sizeof(payload) - 1));
+    for (uint32_t idx = 0U; idx < (uint32_t)sizeof(payload); idx++)
+    {
+        TEST_ASSERT(g_fal_flash[idx] == 0xCCU);
+    }
+    g_fal_short_read = 1;
+    TEST_ASSERT(fal_partition_read(&g_fal_part, 0U, readback, sizeof(readback)) ==
+                ((int)sizeof(readback) - 1));
+    TEST_ASSERT(readback[0] == 0xA5U);
+    TEST_ASSERT(readback[sizeof(readback) - 1U] == 0xA5U);
+    return true;
+}
+
+/** @brief Verify partition offsets remain protected when FAL I/O fails short. */
+static bool test_flash_ee_fal_partition_offset_failed_io_preserves_neighbors(void)
+{
+    const uint8_t payload[4] = { 0x91U, 0x92U, 0x93U, 0x94U };
+    uint8_t readback[sizeof(payload)] = { 0U };
+
+    fal_stub_reset();
+    g_fal_partition_available = true;
+    g_fal_part.offset = 128;
+    g_fal_part.len = FAL_SMOKE_SIZE - g_fal_part.offset;
+    g_fal_flash[g_fal_part.offset - 1] = 0x5AU;
+    g_fal_short_write = 1;
+    TEST_ASSERT(fal_partition_write(&g_fal_part, 0U, payload, sizeof(payload)) ==
+                ((int)sizeof(payload) - 1));
+    TEST_ASSERT(g_fal_flash[g_fal_part.offset - 1] == 0x5AU);
+    TEST_ASSERT(g_fal_flash[g_fal_part.offset] == 0xCCU);
+    TEST_ASSERT(fal_partition_write(&g_fal_part, 0U, payload, sizeof(payload)) == (int)sizeof(payload));
+    g_fal_short_read = 1;
+    TEST_ASSERT(fal_partition_read(&g_fal_part, 0U, readback, sizeof(readback)) ==
+                ((int)sizeof(readback) - 1));
+    TEST_ASSERT(g_fal_flash[g_fal_part.offset - 1] == 0x5AU);
+    return true;
+}
+
+/** @brief Verify initialized FAL backend API reports runtime short I/O errors. */
+static bool test_flash_ee_fal_runtime_short_io_reports_backend_errors(void)
+{
+    const par_store_backend_api_t *api;
+    const uint8_t payload[4] = { 0x31U, 0x32U, 0x33U, 0x34U };
+    const uint8_t next_payload[4] = { 0x41U, 0x42U, 0x43U, 0x44U };
+    uint8_t readback[sizeof(payload)] = { 0xA5U, 0xA5U, 0xA5U, 0xA5U };
+
+    fal_stub_reset();
+    TEST_ASSERT_OK(par_store_backend_bind());
+    g_fal_partition_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_OK(api->write(0U, (uint32_t)sizeof(payload), payload));
+
+    g_fal_short_read = 1;
+    TEST_ASSERT_STATUS(api->read(0U, (uint32_t)sizeof(readback), readback), ePAR_ERROR_NVM);
+    TEST_ASSERT(readback[0] == 0xA5U);
+    TEST_ASSERT(readback[sizeof(readback) - 1U] == 0xA5U);
+
+    g_fal_short_write = 2;
+    TEST_ASSERT_STATUS(api->write(0U, (uint32_t)sizeof(next_payload), next_payload), ePAR_ERROR_NVM);
+    TEST_ASSERT_OK(api->sync());
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
 /** @brief Entrypoint for the host FAL adapter smoke test. */
 int main(void)
 {
@@ -390,6 +467,9 @@ int main(void)
         { "backend_flash_ee_fal_repeated_init_deinit_is_idempotent", test_flash_ee_fal_repeated_init_deinit_is_idempotent },
         { "backend_flash_ee_fal_after_deinit_rejects_io", test_flash_ee_fal_after_deinit_rejects_io },
         { "backend_flash_ee_fal_partition_smaller_than_geometry_fails_init", test_flash_ee_fal_partition_smaller_than_geometry_fails_init },
+        { "backend_flash_ee_fal_short_read_write_preserves_buffers", test_flash_ee_fal_short_read_write_preserves_buffers },
+        { "backend_flash_ee_fal_partition_offset_failed_io_preserves_neighbors", test_flash_ee_fal_partition_offset_failed_io_preserves_neighbors },
+        { "backend_flash_ee_fal_runtime_short_io_reports_backend_errors", test_flash_ee_fal_runtime_short_io_reports_backend_errors },
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));

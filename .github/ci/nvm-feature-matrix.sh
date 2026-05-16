@@ -135,4 +135,15 @@ run_compile_fail object_persistence_without_id \
     -DPAR_CFG_NVM_OBJECT_EN=1 \
     -DPAR_CFG_ENABLE_ID=0
 
-printf 'NVM_FEATURE_SUMMARY Passed %u/%u\n' 7 7
+run_compile_fail object_types_enabled_without_type_switch \
+    "par_cfg_object_types_enabled_matches_type_switches" \
+    -DPAR_HOST_TEST_NVM \
+    -DPAR_CFG_NVM_OBJECT_EN=0 \
+    -DPAR_CFG_OBJECT_TYPES_ENABLED=1 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
+
+printf 'NVM_FEATURE_SUMMARY Passed %u/%u\n' 8 8

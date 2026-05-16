@@ -14,6 +14,11 @@
         "scalar_count": 12,
         "object_count": 0
     },
+    "layout_signature_max": {
+        "signature_a": 35691,
+        "signature_b": 17045,
+        "signature": 2339062421
+    },
     "id_hash_validation": {
         "bits": 8,
         "size": 256,

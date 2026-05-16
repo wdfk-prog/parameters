@@ -55,7 +55,7 @@ inject_ci_flash_ee_native_stub
 inject_ci_backend_adapter_stubs
 inject_package_kconfig
 cd "$bsp_dir"
-run_shell_logged scons --pyconfig-silent
+run_rtthread_pyconfig_logged scons --pyconfig-silent
 inject_package_sconstruct
 verify_backend_adapter_stub_placement
 apply_ci_config

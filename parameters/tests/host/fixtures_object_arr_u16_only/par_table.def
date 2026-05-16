@@ -1,0 +1,5 @@
+/* Minimal scalar rows plus one object type for feature matrix tests. */
+PAR_ITEM_U8 (ePAR_TEST_MODE, 1U, "Mode", 0U, 10U, 1U, NULL, ePAR_ACCESS_RW, ePAR_ROLE_ALL, ePAR_ROLE_ALL, 0, "U8 test value")
+PAR_ITEM_U16(ePAR_TEST_U16 , 100U, "U16" , 0U, 1000U, 100U, NULL, ePAR_ACCESS_RW, ePAR_ROLE_ALL, ePAR_ROLE_ALL, 0, "U16 test value")
+PAR_ITEM_U32(ePAR_TEST_U32 , 1000U, "U32" , 0UL, 100000UL, 1000UL, NULL, ePAR_ACCESS_RW, ePAR_ROLE_ALL, ePAR_ROLE_ALL, 0, "U32 test value")
+PAR_ITEM_ARR_U16(ePAR_TEST_ARR_U16, 4U, "Array U16", 2U, 2U, ((par_obj_init_t){ .p_data = (const uint8_t *)(const uint16_t[]){ 100U, 200U }, .len = (uint16_t)(2U * sizeof(uint16_t)) }), NULL, ePAR_ACCESS_RW, ePAR_ROLE_ALL, ePAR_ROLE_ALL, 0, "U16 array object")
