@@ -217,7 +217,8 @@ static par_status_t par_store_rtt_at24_read(const uint32_t addr, const uint32_t 
 
     while (remaining > 0u)
     {
-        uint16_t xfer = (remaining > (uint32_t)AT24CXX_PAGE_BYTE) ? (uint16_t)AT24CXX_PAGE_BYTE : (uint16_t)remaining;
+        uint16_t xfer = par_store_rtt_at24_page_limited_xfer(
+            abs_addr, remaining, (uint32_t)AT24CXX_PAGE_BYTE);
 
         if (RT_EOK != at24cxx_page_read(gp_at24_dev, abs_addr, p_dst, xfer))
         {

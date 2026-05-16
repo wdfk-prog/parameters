@@ -2357,7 +2357,7 @@ static bool host_flash_child_write_verify_read_error_scalar_save(void)
     return true;
 }
 
-/** @brief Verify scalar write verification reports readback transport errors. */
+/** @brief Verify scalar write verification reports readback transport errors but persists the completed write. */
 static bool test_nvm_scalar_write_verify_read_error_is_reported(void)
 {
     pid_t child_pid;
@@ -2368,6 +2368,14 @@ static bool test_nvm_scalar_write_verify_read_error_is_reported(void)
     if (0 == child_pid)
     {
         host_child_exit_from_result(host_flash_child_write_verify_read_error_scalar_save());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(5U));
     }
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
@@ -2432,6 +2440,97 @@ static bool test_nvm_schema_type_change_triggers_table_rebuild_defaults(void)
     return true;
 }
 #endif /* defined(PAR_HOST_TEST_SCHEMA_EVOLUTION_READ) */
+
+#if defined(PAR_HOST_TEST_SCHEMA_SLOT_REORDER_READ)
+/** @brief Verify persistent slot reorder rebuilds defaults instead of cross-loading old values. */
+static bool test_nvm_schema_slot_reorder_triggers_table_rebuild_defaults(void)
+{
+    uint8_t mode = 0U;
+    uint16_t u16 = 0U;
+
+    host_flash_clear_failpoints();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &mode));
+    TEST_ASSERT_OK(par_get_u16(ePAR_TEST_U16, &u16));
+    TEST_ASSERT(mode == 1U);
+    TEST_ASSERT(u16 == 100U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_SCHEMA_SLOT_REORDER_READ) */
+
+#if defined(PAR_HOST_TEST_SCHEMA_PERSISTENT_REMOVED_READ)
+/** @brief Verify removing one persistent scalar slot rebuilds remaining defaults. */
+static bool test_nvm_schema_persistent_removed_rebuilds_remaining_defaults(void)
+{
+    uint8_t mode = 0U;
+    uint16_t u16 = 0U;
+    uint32_t u32 = 0UL;
+
+    host_flash_clear_failpoints();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &mode));
+    TEST_ASSERT_OK(par_get_u16(ePAR_TEST_U16, &u16));
+    TEST_ASSERT_OK(par_get_u32(ePAR_TEST_U32, &u32));
+    TEST_ASSERT(mode == 1U);
+    TEST_ASSERT(u16 == 100U);
+    TEST_ASSERT(u32 == 1000UL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_SCHEMA_PERSISTENT_REMOVED_READ) */
+
+#if defined(PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ)
+/** @brief Verify scalar-to-object schema drift is rejected by the current policy. */
+static bool test_nvm_schema_scalar_to_object_rejects_stale_image_current_policy(void)
+{
+    par_status_t status;
+
+    host_flash_clear_failpoints();
+    status = par_init();
+    TEST_ASSERT((status & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    if (par_is_init())
+    {
+        (void)par_deinit();
+    }
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ) */
+
+#if defined(PAR_HOST_TEST_SCHEMA_OBJECT_TO_SCALAR_READ)
+/** @brief Verify object-to-scalar schema drift rebuilds the scalar default. */
+static bool test_nvm_schema_object_to_scalar_rebuilds_scalar_default(void)
+{
+    uint8_t value = 0U;
+
+    host_flash_clear_failpoints();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_STR, &value));
+    TEST_ASSERT(value == 3U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_SCHEMA_OBJECT_TO_SCALAR_READ) */
+
+#if defined(PAR_HOST_TEST_SCHEMA_OBJECT_CAPACITY_SHRINK_READ)
+/** @brief Verify object capacity shrink rebuilds the shrunk object default. */
+static bool test_nvm_schema_object_capacity_shrink_rebuilds_object_default(void)
+{
+    char str_buf[2] = { 0 };
+    uint16_t len = 0U;
+    uint8_t mode = 0U;
+
+    host_flash_clear_failpoints();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &mode));
+    TEST_ASSERT(mode == 9U);
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == 1U);
+    TEST_ASSERT(0 == strcmp(str_buf, "x"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_SCHEMA_OBJECT_CAPACITY_SHRINK_READ) */
 
 /** @brief Verify shell save persists live values across a restart. */
 static bool test_msh_save_persists_live_scalar_after_restart(void)
@@ -2814,8 +2913,17 @@ static bool test_nvm_object_write_verify_read_error_is_reported(void)
 
 #if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
     (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED)
-/** @brief Save mixed dirty scalar/object values and fail the next backend program. */
-static bool host_flash_child_shared_save_all_fail_mixed_values(void)
+/**
+ * @brief Verify a reloaded scalar/object pair matches expected committed values.
+ * @param expected_mode Expected scalar mode value.
+ * @param expected_str Expected string object value.
+ * @return true when the reloaded values match.
+ */
+static bool host_flash_verify_mode_and_str_value(const uint8_t expected_mode,
+                                                 const char * const expected_str);
+
+/** @brief Save mixed dirty scalar/object values and fail a selected backend program. */
+static bool host_flash_child_shared_save_all_fail_mixed_values(const int program_fail_after)
 {
     TEST_ASSERT(init_module());
     TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
@@ -2823,7 +2931,7 @@ static bool host_flash_child_shared_save_all_fail_mixed_values(void)
     TEST_ASSERT_OK(par_save_all());
     TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
     TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "new"));
-    g_fail_program_after = 0;
+    g_fail_program_after = program_fail_after;
     TEST_ASSERT((par_save_all() & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
     return true;
 }
@@ -2831,27 +2939,147 @@ static bool host_flash_child_shared_save_all_fail_mixed_values(void)
 /** @brief Verify failed shared save-all does not load corrupt mixed values. */
 static bool test_nvm_shared_save_all_failpoint_preserves_last_committed_values(void)
 {
-    pid_t child_pid;
+    static const int fail_after_cases[] = { 0, 1 };
+
+    for (size_t i = 0U; i < (sizeof(fail_after_cases) / sizeof(fail_after_cases[0])); i++)
+    {
+        pid_t child_pid;
+
+        host_flash_reset_erased();
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(
+                host_flash_child_shared_save_all_fail_mixed_values(fail_after_cases[i]));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(host_flash_verify_mode_and_str_value(4U, "old"));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+    }
+
+    return true;
+}
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) */
+
+
+
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED)
+/** @brief Verify a reloaded scalar/object pair matches expected committed values. */
+static bool host_flash_verify_mode_and_str_value(const uint8_t expected_mode,
+                                                 const char *const expected_str)
+{
     uint8_t mode = 0U;
     char str_buf[9] = { 0 };
     uint16_t len = 0U;
 
+    host_flash_clear_failpoints();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &mode));
+    TEST_ASSERT(mode == expected_mode);
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == (uint16_t)strlen(expected_str));
+    TEST_ASSERT(0 == strcmp(str_buf, expected_str));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Save a shared object with a configurable program failpoint. */
+static bool host_flash_child_shared_obj_n_save_fail_after_commit(const int program_fail_after)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "old"));
+    TEST_ASSERT_OK(par_save_all());
+    g_fail_program_after = program_fail_after;
+    TEST_ASSERT((par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"new", 3U) &
+                 ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    return true;
+}
+
+/** @brief Verify shared object n-save program failpoints preserve last commit. */
+static bool test_nvm_shared_obj_n_save_program_failpoint_matrix_preserves_last_commit(void)
+{
+    static const int fail_after_cases[] = { 0, 1 };
+
+    for (size_t i = 0U; i < (sizeof(fail_after_cases) / sizeof(fail_after_cases[0])); i++)
+    {
+        pid_t child_pid;
+
+        host_flash_reset_erased();
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(
+                host_flash_child_shared_obj_n_save_fail_after_commit(fail_after_cases[i]));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(host_flash_verify_mode_and_str_value(4U, "old"));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+    }
+
+    return true;
+}
+
+/** @brief Save mixed values, fail twice, and keep the last complete mixed commit. */
+static bool test_nvm_shared_repeated_mixed_failures_converge_to_last_commit(void)
+{
+    pid_t child_pid;
+
     host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "old"));
+    TEST_ASSERT_OK(par_save_all());
+    TEST_ASSERT_OK(par_deinit());
+
     child_pid = fork();
     TEST_ASSERT(child_pid >= 0);
     if (0 == child_pid)
     {
-        host_child_exit_from_result(host_flash_child_shared_save_all_fail_mixed_values());
+        TEST_ASSERT(init_module());
+        TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
+        TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "new"));
+        g_fail_program_after = 0;
+        TEST_ASSERT((par_save_all() & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+        host_child_exit_from_result(true);
     }
     TEST_ASSERT(host_child_exit_is_success(child_pid));
 
-    TEST_ASSERT(init_module());
-    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &mode));
-    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
-    TEST_ASSERT(mode == 4U);
-    TEST_ASSERT(len == 3U);
-    TEST_ASSERT(0 == strcmp(str_buf, "old"));
-    TEST_ASSERT_OK(par_deinit());
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        TEST_ASSERT(init_module());
+        TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 6U));
+        TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "bad"));
+        g_fail_program_after = 1;
+        TEST_ASSERT((par_save_all() & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+        host_child_exit_from_result(true);
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_verify_mode_and_str_value(4U, "old"));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) */
@@ -2958,6 +3186,113 @@ static bool test_flash_ee_save_all_failpoint_preserves_last_committed_scalar(voi
         TEST_ASSERT(host_child_exit_is_success(child_pid));
     }
 
+    return true;
+}
+
+
+
+/** @brief Save a committed scalar, then fail save-clean with a dirty live value. */
+static bool host_flash_child_fail_save_clean_after_commit(const int erase_fail_after,
+                                                          const int program_fail_after)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_save_all());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
+    g_fail_erase_after = erase_fail_after;
+    g_fail_program_after = program_fail_after;
+    TEST_ASSERT((par_save_clean() & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    return true;
+}
+
+/** @brief Verify failed save-clean rewrites converge to the last full commit. */
+static bool test_flash_ee_save_clean_failpoint_matrix_preserves_last_commit(void)
+{
+    static const struct
+    {
+        int erase_after;   /**< Erase failpoint countdown. */
+        int program_after; /**< Program failpoint countdown. */
+    } cases[] = {
+        { HOST_FLASH_FAIL_DISABLED, 0 },
+        { HOST_FLASH_FAIL_DISABLED, 1 },
+    };
+
+    for (size_t i = 0U; i < (sizeof(cases) / sizeof(cases[0])); i++)
+    {
+        pid_t child_pid;
+
+        host_flash_reset_erased();
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(host_flash_child_fail_save_clean_after_commit(
+                cases[i].erase_after, cases[i].program_after));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(host_flash_child_verify_mode_value(4U));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+    }
+
+    return true;
+}
+
+/** @brief Fill the active bank, then fail a save-clean checkpoint erase. */
+static bool host_flash_child_fail_save_clean_checkpoint_erase_after_commit(void)
+{
+    uint32_t bank_base = 0U;
+    uint32_t next_offset = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+
+    for (uint16_t attempt = 0U; attempt < 300U; attempt++)
+    {
+        TEST_ASSERT(host_flash_ee_find_active_bank(&bank_base, &next_offset));
+        if ((next_offset + HOST_FLASH_EE_RECORD_SIZE) > HOST_FLASH_EE_BANK_SIZE)
+        {
+            break;
+        }
+        TEST_ASSERT_OK(par_set_u16(ePAR_TEST_U16, (uint16_t)(attempt % 1000U)));
+        TEST_ASSERT_OK(par_save(ePAR_TEST_U16));
+    }
+
+    TEST_ASSERT(host_flash_ee_find_active_bank(&bank_base, &next_offset));
+    TEST_ASSERT((next_offset + HOST_FLASH_EE_RECORD_SIZE) > HOST_FLASH_EE_BANK_SIZE);
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
+    g_fail_erase_after = 0;
+    TEST_ASSERT((par_save_clean() & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    return true;
+}
+
+/** @brief Verify save-clean checkpoint erase failure keeps the last commit. */
+static bool test_flash_ee_save_clean_checkpoint_erase_failure_preserves_last_commit(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_fail_save_clean_checkpoint_erase_after_commit());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(4U));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
 
@@ -3629,6 +3964,30 @@ static bool test_object_dedicated_save_all_object_write_fail_scalar_new_object_d
     TEST_ASSERT_OK(par_deinit());
     return true;
 }
+
+
+/** @brief Verify repeated dedicated object write failures converge to last object. */
+static bool test_object_dedicated_repeated_write_failures_converge_to_last_object(void)
+{
+    host_flash_reset_erased();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"old", 3U));
+    g_object_fail_write_after = 0;
+    TEST_ASSERT((par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"new", 3U) &
+                 ePAR_ERROR_NVM) != 0U);
+    host_flash_clear_failpoints();
+    TEST_ASSERT(verify_reloaded_object_str("old"));
+    g_object_fail_write_after = 0;
+    TEST_ASSERT((par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"bad", 3U) &
+                 ePAR_ERROR_NVM) != 0U);
+    host_flash_clear_failpoints();
+    TEST_ASSERT(verify_reloaded_object_str("old"));
+    TEST_ASSERT_OK(par_set_obj_n_save(ePAR_TEST_STR, (const uint8_t *)"mid", 3U));
+    TEST_ASSERT(verify_reloaded_object_str("mid"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
 
 /** @brief Entrypoint for NVM Flash EE host tests. */
@@ -3642,6 +4001,26 @@ int main(void)
 #elif defined(PAR_HOST_TEST_SCHEMA_EVOLUTION_READ)
     static const par_host_test_case_t cases[] = {
         { "nvm_schema_type_change_triggers_table_rebuild_defaults", test_nvm_schema_type_change_triggers_table_rebuild_defaults },
+    };
+#elif defined(PAR_HOST_TEST_SCHEMA_SLOT_REORDER_READ)
+    static const par_host_test_case_t cases[] = {
+        { "nvm_schema_slot_reorder_triggers_table_rebuild_defaults", test_nvm_schema_slot_reorder_triggers_table_rebuild_defaults },
+    };
+#elif defined(PAR_HOST_TEST_SCHEMA_PERSISTENT_REMOVED_READ)
+    static const par_host_test_case_t cases[] = {
+        { "nvm_schema_persistent_removed_rebuilds_remaining_defaults", test_nvm_schema_persistent_removed_rebuilds_remaining_defaults },
+    };
+#elif defined(PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ)
+    static const par_host_test_case_t cases[] = {
+        { "nvm_schema_scalar_to_object_rejects_stale_image_current_policy", test_nvm_schema_scalar_to_object_rejects_stale_image_current_policy },
+    };
+#elif defined(PAR_HOST_TEST_SCHEMA_OBJECT_TO_SCALAR_READ)
+    static const par_host_test_case_t cases[] = {
+        { "nvm_schema_object_to_scalar_rebuilds_scalar_default", test_nvm_schema_object_to_scalar_rebuilds_scalar_default },
+    };
+#elif defined(PAR_HOST_TEST_SCHEMA_OBJECT_CAPACITY_SHRINK_READ)
+    static const par_host_test_case_t cases[] = {
+        { "nvm_schema_object_capacity_shrink_rebuilds_object_default", test_nvm_schema_object_capacity_shrink_rebuilds_object_default },
     };
 #elif defined(PAR_HOST_TEST_FIXED_OBJECT_INVALID)
     static const par_host_test_case_t cases[] = {
@@ -3671,6 +4050,8 @@ int main(void)
         { "nvm_scalar_write_verify_read_error_is_reported", test_nvm_scalar_write_verify_read_error_is_reported },
 #endif /* (1 == PAR_CFG_NVM_WRITE_VERIFY_EN) */
         { "flash_ee_save_all_failpoint_preserves_last_committed_scalar", test_flash_ee_save_all_failpoint_preserves_last_committed_scalar },
+        { "flash_ee_save_clean_failpoint_matrix_preserves_last_commit", test_flash_ee_save_clean_failpoint_matrix_preserves_last_commit },
+        { "flash_ee_save_clean_checkpoint_erase_failure_preserves_last_commit", test_flash_ee_save_clean_checkpoint_erase_failure_preserves_last_commit },
         { "flash_ee_failed_program_graceful_deinit_commits_live_value", test_flash_ee_failed_program_graceful_deinit_commits_live_value },
         { "flash_ee_corruption_rebuilds_default_value", test_flash_ee_corruption_rebuilds_default_value },
         { "nvm_table_id_mismatch_rebuilds_defaults", test_nvm_table_id_mismatch_rebuilds_defaults },
@@ -3717,6 +4098,8 @@ int main(void)
 #if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
     (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED)
         { "nvm_shared_save_all_failpoint_preserves_last_committed_values", test_nvm_shared_save_all_failpoint_preserves_last_committed_values },
+        { "nvm_shared_obj_n_save_program_failpoint_matrix_preserves_last_commit", test_nvm_shared_obj_n_save_program_failpoint_matrix_preserves_last_commit },
+        { "nvm_shared_repeated_mixed_failures_converge_to_last_commit", test_nvm_shared_repeated_mixed_failures_converge_to_last_commit },
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) */
         { "msh_save_persists_live_scalar_after_restart", test_msh_save_persists_live_scalar_after_restart },
         { "msh_save_clean_rewrites_live_values", test_msh_save_clean_rewrites_live_values },
@@ -3736,6 +4119,7 @@ int main(void)
         { "object_dedicated_erase_fail_aborts_save_all", test_object_dedicated_erase_fail_aborts_save_all },
         { "object_dedicated_n_save_write_fail_preserves_persisted_object", test_object_dedicated_n_save_write_fail_preserves_persisted_object },
         { "object_dedicated_save_all_object_write_fail_scalar_new_object_default", test_object_dedicated_save_all_object_write_fail_scalar_new_object_default },
+        { "object_dedicated_repeated_write_failures_converge_to_last_object", test_object_dedicated_repeated_write_failures_converge_to_last_object },
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
     };
 #endif /* defined(PAR_HOST_TEST_SCHEMA_EVOLUTION_WRITE) */

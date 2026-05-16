@@ -17,6 +17,7 @@ const par_generated_info_t g_par_generated_info = {
     .count32 = (uint16_t)PAR_LAYOUT_STATIC_COUNT32,
     .count_obj = (uint16_t)PAR_LAYOUT_STATIC_COUNTOBJ,
     .obj_pool_bytes = (uint32_t)PAR_LAYOUT_STATIC_OBJ_POOL_BYTES,
+    .layout_signature = (uint32_t)PAR_LAYOUT_STATIC_SIGNATURE,
 #if (1 == PAR_CFG_ENABLE_ID)
     .id_hash_bits = (uint32_t)PAR_ID_HASH_BITS,
     .id_hash_size = (uint32_t)PAR_ID_HASH_SIZE,

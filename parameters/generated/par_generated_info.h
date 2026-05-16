@@ -27,9 +27,10 @@ typedef struct
     uint16_t count16;          /**< Number of 16-bit storage entries. */
     uint16_t count32;          /**< Number of 32-bit storage entries. */
     uint16_t count_obj;        /**< Number of object storage entries. */
-    uint32_t obj_pool_bytes;   /**< Total object-pool capacity in bytes. */
-    uint32_t id_hash_bits;     /**< Static ID hash bit count. */
-    uint32_t id_hash_size;     /**< Static ID hash bucket count. */
+    uint32_t obj_pool_bytes;      /**< Total object-pool capacity in bytes. */
+    uint32_t layout_signature;    /**< Compiled static layout signature. */
+    uint32_t id_hash_bits;        /**< Static ID hash bit count. */
+    uint32_t id_hash_size;        /**< Static ID hash bucket count. */
 } par_generated_info_t;
 
 /**

@@ -4,9 +4,7 @@ set -euo pipefail
 build_dir="${BUILD_DIR:-build/host-tests}/config-feature-matrix"
 mkdir -p "$build_dir"
 
-common_includes=(
-    -Iparameters/tests/host/fixtures_scalar_min
-    -Iparameters/tests/host/fixtures
+base_includes=(
     -I.
     -Ibackend
     -Iport
@@ -35,7 +33,7 @@ common_cflags=(
     -Wno-unused-parameter
     -fsanitize=address,undefined
     -fno-omit-frame-pointer
-    "${common_includes[@]}"
+    "${base_includes[@]}"
 )
 
 sources=(
@@ -54,9 +52,10 @@ run_case() {
     local name="$1"
     shift
     local output="$build_dir/$name"
+    local fixture_dir="${AUTOGEN_PM_CONFIG_FIXTURE_DIR:-parameters/tests/host/fixtures_scalar_min}"
 
     echo "[config-feature-matrix] build $name"
-    gcc "${common_cflags[@]}" "$@" "${sources[@]}" -o "$output"
+    gcc -I"$fixture_dir" -Iparameters/tests/host/fixtures "${common_cflags[@]}" "$@" "${sources[@]}" -o "$output"
     echo "[config-feature-matrix] run $name"
     "$output"
     echo "CONFIG_FEATURE_CASE_PASS $name"
@@ -119,4 +118,83 @@ run_case scalar_no_validation_callback \
     -DPAR_CFG_ENABLE_CHANGE_CALLBACK=0 \
     -DPAR_CFG_ENABLE_RESET_ALL_RAW=0
 
-printf 'CONFIG_FEATURE_SUMMARY Passed %u/%u\n' 5 5
+AUTOGEN_PM_CONFIG_FIXTURE_DIR=parameters/tests/host/fixtures_object_str_only \
+run_case object_type_str_only_runtime_smoke \
+    -DPAR_HOST_TEST_CONFIG_OBJECT_TYPE_SMOKE \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=1 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
+
+AUTOGEN_PM_CONFIG_FIXTURE_DIR=parameters/tests/host/fixtures_object_bytes_only \
+run_case object_type_bytes_only_runtime_smoke \
+    -DPAR_HOST_TEST_CONFIG_OBJECT_TYPE_SMOKE \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=1 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
+
+AUTOGEN_PM_CONFIG_FIXTURE_DIR=parameters/tests/host/fixtures_object_arr_u8_only \
+run_case object_type_arr_u8_only_runtime_smoke \
+    -DPAR_HOST_TEST_CONFIG_OBJECT_TYPE_SMOKE \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=1 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
+
+AUTOGEN_PM_CONFIG_FIXTURE_DIR=parameters/tests/host/fixtures_object_arr_u16_only \
+run_case object_type_arr_u16_only_runtime_smoke \
+    -DPAR_HOST_TEST_CONFIG_OBJECT_TYPE_SMOKE \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=1 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
+
+AUTOGEN_PM_CONFIG_FIXTURE_DIR=parameters/tests/host/fixtures_object_arr_u32_only \
+run_case object_type_arr_u32_only_runtime_smoke \
+    -DPAR_HOST_TEST_CONFIG_OBJECT_TYPE_SMOKE \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=1
+
+run_case mutex_disabled_runtime_smoke \
+    -DPAR_CFG_MUTEX_EN=0 \
+    -DPAR_CFG_OBJECT_TYPES_ENABLED=0 \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
+
+run_case reset_all_raw_disabled_default_reset_smoke \
+    -DPAR_CFG_ENABLE_RESET_ALL_RAW=0 \
+    -DPAR_CFG_OBJECT_TYPES_ENABLED=0 \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
+
+run_case f32_disabled_runtime_smoke \
+    -DPAR_CFG_OBJECT_TYPES_ENABLED=0 \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
+
+printf 'CONFIG_FEATURE_SUMMARY Passed %u/%u\n' 13 13

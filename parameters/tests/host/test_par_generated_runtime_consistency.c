@@ -19,6 +19,10 @@ static bool test_generated_runtime_scalar_rows(void)
     TEST_ASSERT(g_par_generated_info.param_count == 3U);
     TEST_ASSERT(g_par_generated_info.count_obj == 0U);
     TEST_ASSERT(g_par_generated_info.obj_pool_bytes == 0UL);
+#elif defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED)
+    TEST_ASSERT(g_par_generated_info.param_count == 5U);
+    TEST_ASSERT(g_par_generated_info.count_obj == 2U);
+    TEST_ASSERT(g_par_generated_info.obj_pool_bytes == 12UL);
 #else
     TEST_ASSERT(g_par_generated_info.param_count == 6U);
     TEST_ASSERT(g_par_generated_info.count_obj == 3U);
@@ -33,6 +37,7 @@ static bool test_generated_runtime_scalar_rows(void)
     TEST_ASSERT(g_par_generated_info.count32 == (uint16_t)PAR_LAYOUT_STATIC_COUNT32);
     TEST_ASSERT(g_par_generated_info.count_obj == (uint16_t)PAR_LAYOUT_STATIC_COUNTOBJ);
     TEST_ASSERT(g_par_generated_info.obj_pool_bytes == (uint32_t)PAR_LAYOUT_STATIC_OBJ_POOL_BYTES);
+    TEST_ASSERT(g_par_generated_info.layout_signature == (uint32_t)PAR_LAYOUT_STATIC_SIGNATURE);
 
     TEST_ASSERT_OK(par_init());
     TEST_ASSERT(par_cfg_get_table_size() == ((uint32_t)sizeof(par_cfg_t) * (uint32_t)ePAR_NUM_OF));
@@ -64,11 +69,12 @@ static bool test_generated_manifest_counts_match_runtime_info(void)
     TEST_ASSERT(PAR_HOST_TEST_MANIFEST_COUNT32 == g_par_generated_info.count32);
     TEST_ASSERT(PAR_HOST_TEST_MANIFEST_COUNTOBJ == g_par_generated_info.count_obj);
     TEST_ASSERT(PAR_HOST_TEST_MANIFEST_OBJ_POOL_BYTES == g_par_generated_info.obj_pool_bytes);
+    TEST_ASSERT(PAR_HOST_TEST_MANIFEST_LAYOUT_SIGNATURE == g_par_generated_info.layout_signature);
     return true;
 }
 #endif /* defined(PAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX) */
 
-#if !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY)
+#if !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) && !defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED)
 /** @brief Verify generated object rows round-trip through the runtime object APIs. */
 static bool test_generated_runtime_object_rows_roundtrip(void)
 {
@@ -116,7 +122,33 @@ static bool test_generated_runtime_object_rows_roundtrip(void)
     TEST_ASSERT_OK(par_deinit());
     return true;
 }
-#endif /* !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) */
+#endif /* !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) && !defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED) */
+
+#if defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED)
+/** @brief Verify disabled conditional rows do not shift later object rows. */
+static bool test_generated_conditional_disabled_rows_keep_later_offsets(void)
+{
+    par_num_t par_num = ePAR_NUM_OF;
+    char name[9] = { 0 };
+    uint16_t arr16[2] = { 0U };
+    uint16_t out_len = 0U;
+    uint16_t out_count = 0U;
+
+    TEST_ASSERT_OK(par_init());
+    TEST_ASSERT((par_get_num_by_id(4U, &par_num) & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    TEST_ASSERT_OK(par_get_num_by_id(6U, &par_num));
+    TEST_ASSERT(par_num == ePAR_GEN_ARR16);
+    TEST_ASSERT_OK(par_get_str(ePAR_GEN_NAME, name, sizeof(name), &out_len));
+    TEST_ASSERT(out_len == 2U);
+    TEST_ASSERT(0 == strcmp(name, "ap"));
+    TEST_ASSERT_OK(par_get_arr_u16(ePAR_GEN_ARR16, arr16, 2U, &out_count));
+    TEST_ASSERT(out_count == 2U);
+    TEST_ASSERT(arr16[0] == 10U);
+    TEST_ASSERT(arr16[1] == 20U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED) */
 
 /** @brief Entrypoint for generated-output/runtime consistency tests. */
 int main(void)
@@ -126,9 +158,12 @@ int main(void)
 #if defined(PAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX)
         { "generated_manifest_counts_match_runtime_info", test_generated_manifest_counts_match_runtime_info },
 #endif /* defined(PAR_HOST_TEST_MANIFEST_PARAM_COUNT_MAX) */
-#if !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY)
+#if !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) && !defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED)
         { "generated_runtime_object_rows_roundtrip", test_generated_runtime_object_rows_roundtrip },
-#endif /* !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) */
+#endif /* !defined(PAR_HOST_TEST_GENERATED_SCALAR_ONLY) && !defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED) */
+#if defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED)
+        { "generated_conditional_disabled_rows_keep_later_offsets", test_generated_conditional_disabled_rows_keep_later_offsets },
+#endif /* defined(PAR_HOST_TEST_GENERATED_CONDITIONAL_DISABLED) */
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));

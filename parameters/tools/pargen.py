@@ -16,7 +16,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 VERSION = "1.0.0"
 
@@ -184,10 +184,13 @@ def read_lock(path: Path) -> Dict[str, int]:
         raise PargenError(f"{path}: lock file must be a JSON object")
     lock: Dict[str, int] = {}
     for enum, value in data.items():
+        enum_text = str(enum)
+        if not ENUM_RE.match(enum_text):
+            raise PargenError(f"{path}: locked enum {enum_text!r} must match ePAR_[A-Z0-9_]+")
         value_int = int(value)
         if value_int < 0 or value_int > 65535:
-            raise PargenError(f"{path}: locked ID for {enum} is outside 0..65535")
-        lock[str(enum)] = value_int
+            raise PargenError(f"{path}: locked ID for {enum_text} is outside 0..65535")
+        lock[enum_text] = value_int
     return lock
 
 
@@ -202,14 +205,33 @@ def read_rows(path: Path) -> List[Row]:
         missing = [col for col in REQUIRED_COLUMNS if col not in reader.fieldnames]
         if missing:
             raise PargenError(f"{path}: missing required columns: {', '.join(missing)}")
+        extra = [col for col in reader.fieldnames if col not in REQUIRED_COLUMNS]
+        if extra:
+            raise PargenError(f"{path}: unexpected columns: {', '.join(extra)}")
         rows = []
         for idx, raw in enumerate(reader, start=2):
+            extra_fields = csv_row_extra_fields(raw)
+            if extra_fields is not None:
+                extra_text = ", ".join(repr(value) for value in extra_fields)
+                raise PargenError(
+                    f"{path}:{idx}: unexpected extra CSV field(s): {extra_text}"
+                )
             if is_blank_csv_row(raw):
                 continue
             rows.append(normalize_row(idx, raw))
     if not rows:
         raise PargenError(f"{path}: schema contains no parameter rows")
     return rows
+
+
+def csv_row_extra_fields(raw: Dict[Any, Any]) -> Optional[List[str]]:
+    """Return row-level CSV fields that exceed the declared header."""
+    extra = raw.get(None)
+    if extra is None:
+        return None
+    if isinstance(extra, list):
+        return ["" if value is None else str(value) for value in extra]
+    return [str(extra)]
 
 
 def is_blank_csv_row(raw: Dict[str, Optional[str]]) -> bool:
@@ -524,7 +546,8 @@ def parse_c_int(text: str) -> int:
 
 def parse_c_float(text: str) -> float:
     token = cleanup_numeric_token(text)
-    token = token.replace("F", "").replace("f", "")
+    if token.lower() not in {"nan", "+nan", "-nan", "inf", "+inf", "-inf", "infinity", "+infinity", "-infinity"}:
+        token = re.sub(r"[fF]$", "", token)
     return float(token)
 
 
@@ -1125,9 +1148,10 @@ def generate_info_h() -> str:
         + "    uint16_t count16;          /**< Number of 16-bit storage entries. */\n"
         + "    uint16_t count32;          /**< Number of 32-bit storage entries. */\n"
         + "    uint16_t count_obj;        /**< Number of object storage entries. */\n"
-        + "    uint32_t obj_pool_bytes;   /**< Total object-pool capacity in bytes. */\n"
-        + "    uint32_t id_hash_bits;     /**< Static ID hash bit count. */\n"
-        + "    uint32_t id_hash_size;     /**< Static ID hash bucket count. */\n"
+        + "    uint32_t obj_pool_bytes;      /**< Total object-pool capacity in bytes. */\n"
+        + "    uint32_t layout_signature;    /**< Compiled static layout signature. */\n"
+        + "    uint32_t id_hash_bits;        /**< Static ID hash bit count. */\n"
+        + "    uint32_t id_hash_size;        /**< Static ID hash bucket count. */\n"
         + "} par_generated_info_t;\n\n"
         + "/**\n"
         + " * @brief Generated parameter-table summary instance.\n"
@@ -1156,6 +1180,7 @@ def generate_info_c() -> str:
         + "    .count32 = (uint16_t)PAR_LAYOUT_STATIC_COUNT32,\n"
         + "    .count_obj = (uint16_t)PAR_LAYOUT_STATIC_COUNTOBJ,\n"
         + "    .obj_pool_bytes = (uint32_t)PAR_LAYOUT_STATIC_OBJ_POOL_BYTES,\n"
+        + "    .layout_signature = (uint32_t)PAR_LAYOUT_STATIC_SIGNATURE,\n"
         + "#if (1 == PAR_CFG_ENABLE_ID)\n"
         + "    .id_hash_bits = (uint32_t)PAR_ID_HASH_BITS,\n"
         + "    .id_hash_size = (uint32_t)PAR_ID_HASH_SIZE,\n"
@@ -1165,6 +1190,35 @@ def generate_info_c() -> str:
         + "#endif /* (1 == PAR_CFG_ENABLE_ID) */\n"
         + "};\n"
     )
+
+
+def layout_signature_numbers(rows: List[Row]) -> Dict[str, int]:
+    """Return all-enabled numeric layout signatures for the manifest."""
+    sig_a = 0
+    sig_b = 0
+    for row_index, row in enumerate(rows):
+        type_code = LAYOUT_SIGNATURE_TYPE_CODES[row.type]
+        obj_bytes = row.obj_capacity_bytes if row.is_object() else 0
+        resolved_id = row.resolved_id or 0
+        term_a = (
+            (((row_index + 1) * (type_code + 1) * 257) +
+             (((row_index + 1) * ((resolved_id % 257) + 1)) * 17) +
+             (resolved_id * 5) +
+             ((obj_bytes + 1) * 31)) % LAYOUT_SIGNATURE_MOD
+        )
+        term_b = (
+            (((row_index + 1) * ((resolved_id % 257) + 1)) +
+             (resolved_id * 3) +
+             (type_code * 389) +
+             ((obj_bytes + 1) * 13)) % LAYOUT_SIGNATURE_MOD
+        )
+        sig_a = (sig_a + term_a) % LAYOUT_SIGNATURE_MOD
+        sig_b = (sig_b + term_b) % LAYOUT_SIGNATURE_MOD
+    return {
+        "signature_a": sig_a,
+        "signature_b": sig_b,
+        "signature": ((sig_a << 16) ^ sig_b),
+    }
 
 
 def generate_manifest(rows: List[Row], stats: Dict[str, object]) -> str:
@@ -1184,6 +1238,7 @@ def generate_manifest(rows: List[Row], stats: Dict[str, object]) -> str:
             "scalar_count": stats["persistent_scalar_count"],
             "object_count": stats["persistent_object_count"],
         },
+        "layout_signature_max": layout_signature_numbers(rows),
         "id_hash_validation": {
             "bits": stats["hash_bits"],
             "size": stats["hash_size"],

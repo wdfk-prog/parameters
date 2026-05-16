@@ -76,6 +76,7 @@ run_profile() {
     AUTOGEN_PM_CI_IMPORT_EXTERNAL_PACKAGES="$import_external_packages" \
     AUTOGEN_PM_CI_ROOT="$work_root/$profile_dir" \
     AUTOGEN_PM_CI_LOG_DIR="$log_dir" \
+    AUTOGEN_PM_CI_RTT_ENV_LOCK_DIR="$work_root/.rtthread-env.lock" \
         bash "$script_dir/rtthread-package-compile.sh"
 }
 

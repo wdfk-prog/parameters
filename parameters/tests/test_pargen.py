@@ -818,6 +818,107 @@ class PargenTests(unittest.TestCase):
         self.assertEqual(parsed[1].resolved_id, 3)
         self.assertEqual(stats["param_count"], 2)
 
+
+    def test_read_rows_rejects_extra_csv_columns(self) -> None:
+        """CSV input rejects columns outside the supported schema."""
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = Path(tmp) / "par_table.extra.csv"
+            rows = base_rows()
+            with csv_path.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=COLUMNS + ["extra"])
+                writer.writeheader()
+                for row in rows:
+                    extra_row = dict(row)
+                    extra_row["extra"] = "unsupported"
+                    writer.writerow(extra_row)
+            with self.assertRaisesRegex(pargen.PargenError, "unexpected columns: extra"):
+                pargen.read_rows(csv_path)
+
+    def test_read_rows_rejects_extra_csv_data_fields(self) -> None:
+        """CSV input rejects row values that exceed the supported header."""
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = Path(tmp) / "par_table.extra-fields.csv"
+            row = base_rows()[0]
+            with csv_path.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(COLUMNS)
+                writer.writerow([row[column] for column in COLUMNS] + ["unsupported"])
+            with self.assertRaisesRegex(
+                pargen.PargenError, r":2: unexpected extra CSV field"
+            ):
+                pargen.read_rows(csv_path)
+
+    def test_invalid_utf8_csv_reports_decode_error(self) -> None:
+        """Malformed UTF-8 input fails before partial schema normalization."""
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = Path(tmp) / "par_table.bad-utf8.csv"
+            csv_path.write_bytes(b"enum,id,type\n\xff")
+            with self.assertRaises(UnicodeDecodeError):
+                pargen.read_rows(csv_path)
+
+    def test_f32_nonfinite_and_extreme_values_are_rejected(self) -> None:
+        """F32 schema validation rejects non-finite and out-of-range defaults."""
+        cases = [
+            ("nan", "125.0", "25.0", "finite"),
+            ("-40.0", "inf", "25.0", "finite"),
+            ("-40.0", "125.0", "1e309", "finite"),
+            ("-40.0", "125.0", "126.0f", "inside"),
+        ]
+        for min_text, max_text, default_text, error in cases:
+            rows = base_rows()
+            rows[1]["min"] = min_text
+            rows[1]["max"] = max_text
+            rows[1]["default"] = default_text
+            with self.subTest(min=min_text, max=max_text, default=default_text):
+                with self.assertRaisesRegex(pargen.PargenError, error):
+                    self.run_generator(rows)
+
+    def test_cli_creates_missing_output_parents(self) -> None:
+        """CLI generation creates missing output directories for all artifacts."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            csv_path = tmpdir / "par_table.csv"
+            cfg_path = tmpdir / "pargen.json"
+            lock_path = tmpdir / "state" / "par_id_lock.json"
+            write_csv(csv_path, base_rows())
+            cfg_path.write_text('{"id_ranges":{"SYSTEM":[0,99],"OBJECT":[50000,50999]},"default_id_range":[0,65535]}\n', encoding="utf-8")
+            rc = pargen.main([
+                "--csv", str(csv_path),
+                "--id-lock", str(lock_path),
+                "--config", str(cfg_path),
+                "--out-def", str(tmpdir / "generated" / "defs" / "par_table.def"),
+                "--out-dir", str(tmpdir / "generated" / "out"),
+                "--manifest", str(tmpdir / "generated" / "manifest" / "par_manifest.json"),
+            ])
+            self.assertEqual(rc, 0)
+            self.assertTrue((tmpdir / "generated" / "defs" / "par_table.def").exists())
+            self.assertTrue((tmpdir / "generated" / "out" / "par_layout_static.h").exists())
+            self.assertTrue((tmpdir / "generated" / "manifest" / "par_manifest.json").exists())
+            self.assertTrue(lock_path.exists())
+
+    def test_generated_outputs_match_compact_golden_fixture(self) -> None:
+        """Generated outputs retain key golden snippets for table, layout, info, and manifest."""
+        rows, stats = self.run_generator(base_rows())
+        outputs = pargen.generate_outputs(rows, stats)
+        golden = {
+            "par_table_def": "PAR_ITEM_U8     (ePAR_SYS_MODE",
+            "layout_h": "#define PAR_LAYOUT_STATIC_SIGNATURE",
+            "layout_c": "const uint16_t g_par_layout_static_offset[ePAR_NUM_OF]",
+            "info_c": "const par_generated_info_t g_par_generated_info",
+            "manifest_json": '"enum": "ePAR_SYS_MODE"',
+        }
+        for attr, snippet in golden.items():
+            with self.subTest(output=attr):
+                self.assertIn(snippet, getattr(outputs, attr))
+
+    def test_lock_file_invalid_enum_name_is_rejected(self) -> None:
+        """Lock files reject JSON-valid enum keys that are not parameter enums."""
+        with tempfile.TemporaryDirectory() as tmp:
+            lock_path = Path(tmp) / "par_id_lock.json"
+            lock_path.write_text('{"ids":{"SYS_MODE":1}}\n', encoding="utf-8")
+            with self.assertRaisesRegex(pargen.PargenError, "locked enum"):
+                pargen.read_lock(lock_path)
+
     def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
         """Fixed-seed negative corpus rejects malformed object defaults."""
         cases = [
