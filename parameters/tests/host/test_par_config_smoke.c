@@ -92,6 +92,67 @@ static bool test_config_object_type_smoke(void)
 }
 #endif /* defined(PAR_HOST_TEST_CONFIG_OBJECT_TYPE_SMOKE) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) */
 
+#if defined(PAR_HOST_TEST_CONFIG_ACCESS_DISABLED) && (0 == PAR_CFG_ENABLE_ACCESS)
+/** @brief Verify disabled access checks allow writing a read-only row. */
+static bool test_config_access_disabled_allows_read_only_row_write(void)
+{
+    uint8_t value = 0U;
+
+    TEST_ASSERT_OK(par_init());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_RO, 4U));
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_RO, &value));
+    TEST_ASSERT(value == 4U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_CONFIG_ACCESS_DISABLED) && (0 == PAR_CFG_ENABLE_ACCESS) */
+
+#if defined(PAR_HOST_TEST_CONFIG_RANGE_DISABLED) && (0 == PAR_CFG_ENABLE_RANGE)
+/** @brief Verify disabled range checks allow nominally out-of-range values. */
+static bool test_config_range_disabled_accepts_out_of_range_value(void)
+{
+    uint8_t value = 0U;
+
+    TEST_ASSERT_OK(par_init());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 250U));
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &value));
+    TEST_ASSERT(value == 250U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_CONFIG_RANGE_DISABLED) && (0 == PAR_CFG_ENABLE_RANGE) */
+
+#if defined(PAR_HOST_TEST_CONFIG_ROLE_POLICY_DISABLED) && (0 == PAR_CFG_ENABLE_ROLE_POLICY)
+/** @brief Verify disabled role-policy builds keep scalar API behavior stable. */
+static bool test_config_role_policy_disabled_scalar_runtime_smoke(void)
+{
+    uint8_t value = 0U;
+
+    TEST_ASSERT_OK(par_init());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 6U));
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &value));
+    TEST_ASSERT(value == 6U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_CONFIG_ROLE_POLICY_DISABLED) && (0 == PAR_CFG_ENABLE_ROLE_POLICY) */
+
+#if defined(PAR_HOST_TEST_CONFIG_NO_CALLBACK_VALIDATION) && \
+    (0 == PAR_CFG_ENABLE_CHANGE_CALLBACK) && (0 == PAR_CFG_ENABLE_RUNTIME_VALIDATION)
+/** @brief Verify callback and validation feature-off builds keep setters usable. */
+static bool test_config_no_callback_validation_runtime_smoke(void)
+{
+    uint8_t value = 0U;
+
+    TEST_ASSERT_OK(par_init());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 7U));
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &value));
+    TEST_ASSERT(value == 7U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+#endif /* defined(PAR_HOST_TEST_CONFIG_NO_CALLBACK_VALIDATION) && (0 == PAR_CFG_ENABLE_CHANGE_CALLBACK) && (0 == PAR_CFG_ENABLE_RUNTIME_VALIDATION) */
+
 /** @brief Entrypoint for feature-off configuration smoke tests. */
 int main(void)
 {
@@ -100,6 +161,19 @@ int main(void)
 #if defined(PAR_HOST_TEST_CONFIG_OBJECT_TYPE_SMOKE) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED)
         { "config_object_type_smoke", test_config_object_type_smoke },
 #endif /* defined(PAR_HOST_TEST_CONFIG_OBJECT_TYPE_SMOKE) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) */
+#if defined(PAR_HOST_TEST_CONFIG_ACCESS_DISABLED) && (0 == PAR_CFG_ENABLE_ACCESS)
+        { "config_access_disabled_allows_read_only_row_write", test_config_access_disabled_allows_read_only_row_write },
+#endif /* defined(PAR_HOST_TEST_CONFIG_ACCESS_DISABLED) && (0 == PAR_CFG_ENABLE_ACCESS) */
+#if defined(PAR_HOST_TEST_CONFIG_RANGE_DISABLED) && (0 == PAR_CFG_ENABLE_RANGE)
+        { "config_range_disabled_accepts_out_of_range_value", test_config_range_disabled_accepts_out_of_range_value },
+#endif /* defined(PAR_HOST_TEST_CONFIG_RANGE_DISABLED) && (0 == PAR_CFG_ENABLE_RANGE) */
+#if defined(PAR_HOST_TEST_CONFIG_ROLE_POLICY_DISABLED) && (0 == PAR_CFG_ENABLE_ROLE_POLICY)
+        { "config_role_policy_disabled_scalar_runtime_smoke", test_config_role_policy_disabled_scalar_runtime_smoke },
+#endif /* defined(PAR_HOST_TEST_CONFIG_ROLE_POLICY_DISABLED) && (0 == PAR_CFG_ENABLE_ROLE_POLICY) */
+#if defined(PAR_HOST_TEST_CONFIG_NO_CALLBACK_VALIDATION) && \
+    (0 == PAR_CFG_ENABLE_CHANGE_CALLBACK) && (0 == PAR_CFG_ENABLE_RUNTIME_VALIDATION)
+        { "config_no_callback_validation_runtime_smoke", test_config_no_callback_validation_runtime_smoke },
+#endif /* defined(PAR_HOST_TEST_CONFIG_NO_CALLBACK_VALIDATION) && (0 == PAR_CFG_ENABLE_CHANGE_CALLBACK) && (0 == PAR_CFG_ENABLE_RUNTIME_VALIDATION) */
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));

@@ -19,6 +19,8 @@ static bool g_validation_accept = true;
 static unsigned g_reentrant_hits;
 /** @brief Validation callback readback result flag. */
 static bool g_validation_read_ok;
+/** @brief Callback registration mutation hit counter. */
+static unsigned g_callback_register_hits;
 
 /**
  * @brief Reset callback state shared by scalar callback test cases.
@@ -30,6 +32,7 @@ static void reset_callback_state(void)
     g_validation_accept = true;
     g_reentrant_hits = 0U;
     g_validation_read_ok = false;
+    g_callback_register_hits = 0U;
 }
 
 /**
@@ -85,6 +88,22 @@ static void on_scalar_change_same_parameter_reentry(const par_num_t par_num,
 }
 
 /**
+ * @brief Register a different callback while a callback is being dispatched.
+ * @param par_num Parameter number that changed.
+ * @param new_val New scalar value.
+ * @param old_val Previous scalar value.
+ */
+static void on_scalar_change_register_new_callback(const par_num_t par_num,
+                                                   const par_type_t new_val,
+                                                   const par_type_t old_val)
+{
+    (void)new_val;
+    (void)old_val;
+    g_callback_register_hits++;
+    par_register_on_change_cb(par_num, on_scalar_change);
+}
+
+/**
  * @brief Conditionally accept scalar writes for validation-path tests.
  * @param par_num Parameter number being written.
  * @param val Candidate scalar value.
@@ -112,6 +131,21 @@ static bool scalar_validation_reads_current_value(const par_num_t par_num,
     (void)val;
     g_validation_read_ok = (ePAR_OK == par_get_u8(ePAR_TEST_MODE, &current));
     return g_validation_read_ok;
+}
+
+/**
+ * @brief Update another scalar from inside scalar validation.
+ * @param par_num Parameter number being written.
+ * @param val Candidate scalar value.
+ * @return true when the reentrant update succeeds.
+ */
+static bool scalar_validation_reentrant_update_other(const par_num_t par_num,
+                                                     const par_type_t val)
+{
+    (void)par_num;
+    (void)val;
+    g_reentrant_hits++;
+    return (ePAR_OK == par_set_u16(ePAR_TEST_U16, 555U));
 }
 
 /**
@@ -446,6 +480,66 @@ static bool test_scalar_callback_registration_edge_policies(void)
     return true;
 }
 
+/** @brief Verify current validation policy permits updating another scalar. */
+static bool test_scalar_validation_reentrant_updates_other_parameter(void)
+{
+    uint16_t value16 = 0U;
+
+    TEST_ASSERT(init_module());
+    reset_callback_state();
+    par_register_validation(ePAR_TEST_MODE, scalar_validation_reentrant_update_other);
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 6U));
+    TEST_ASSERT(g_reentrant_hits == 1U);
+    TEST_ASSERT_OK(par_get_u16(ePAR_TEST_U16, &value16));
+    TEST_ASSERT(value16 == 555U);
+    par_register_validation(ePAR_TEST_MODE, NULL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify callback registration changes affect only later dispatches. */
+static bool test_scalar_callback_registers_new_callback_for_next_dispatch(void)
+{
+    TEST_ASSERT(init_module());
+    reset_callback_state();
+    par_register_on_change_cb(ePAR_TEST_MODE, on_scalar_change_register_new_callback);
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 2U));
+    TEST_ASSERT(g_callback_register_hits == 1U);
+    TEST_ASSERT(g_on_change_hits == 0U);
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 3U));
+    TEST_ASSERT(g_callback_register_hits == 1U);
+    TEST_ASSERT(g_on_change_hits == 1U);
+    TEST_ASSERT(g_on_change_last_par == ePAR_TEST_MODE);
+    par_register_on_change_cb(ePAR_TEST_MODE, NULL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify rejected scalar validation leaves value and changed state untouched. */
+static bool test_scalar_validation_rejects_without_changed_state(void)
+{
+    bool changed = true;
+    uint8_t value = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_to_default(ePAR_TEST_MODE));
+    reset_callback_state();
+    par_register_validation(ePAR_TEST_MODE, scalar_validation);
+    par_register_on_change_cb(ePAR_TEST_MODE, on_scalar_change);
+    g_validation_accept = false;
+    TEST_ASSERT_STATUS(par_set_u8(ePAR_TEST_MODE, 4U), ePAR_ERROR_VALUE);
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &value));
+    TEST_ASSERT(value == 1U);
+    TEST_ASSERT_OK(par_has_changed(ePAR_TEST_MODE, &changed));
+    TEST_ASSERT(!changed);
+    TEST_ASSERT(g_on_change_hits == 0U);
+    g_validation_accept = true;
+    par_register_validation(ePAR_TEST_MODE, NULL);
+    par_register_on_change_cb(ePAR_TEST_MODE, NULL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Verify manual mutex API wrappers remain balanced and callable. */
 static bool test_core_manual_mutex_public_paths(void)
 {
@@ -544,6 +638,9 @@ int main(void)
         { "scalar_fast_setters_cover_all_widths_and_bitwise", test_scalar_fast_setters_cover_all_widths_and_bitwise },
         { "scalar_fast_range_and_wrong_width_policies", test_scalar_fast_range_and_wrong_width_policies },
         { "scalar_callback_registration_edge_policies", test_scalar_callback_registration_edge_policies },
+        { "scalar_validation_reentrant_updates_other_parameter", test_scalar_validation_reentrant_updates_other_parameter },
+        { "scalar_callback_registers_new_callback_for_next_dispatch", test_scalar_callback_registers_new_callback_for_next_dispatch },
+        { "scalar_validation_rejects_without_changed_state", test_scalar_validation_rejects_without_changed_state },
         { "core_manual_mutex_public_paths", test_core_manual_mutex_public_paths },
         { "scalar_metadata_and_role_policy_helpers", test_scalar_metadata_and_role_policy_helpers },
         { "scalar_reset_default_and_has_changed", test_scalar_reset_default_and_has_changed },

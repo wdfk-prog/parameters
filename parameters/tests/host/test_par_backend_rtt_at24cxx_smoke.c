@@ -28,6 +28,8 @@ static bool g_at24_available;
 static int g_at24_fail_read;
 /** @brief Write failure countdown; zero disables it. */
 static int g_at24_fail_write;
+/** @brief Device-check failure countdown; zero disables it. */
+static int g_at24_fail_check;
 /** @brief Number of traced AT24CXX read operations. */
 static uint8_t g_at24_read_count;
 /** @brief Number of traced AT24CXX write operations. */
@@ -44,6 +46,7 @@ static void at24_stub_reset(void)
     g_at24_available = false;
     g_at24_fail_read = AT24_FAIL_DISABLED;
     g_at24_fail_write = AT24_FAIL_DISABLED;
+    g_at24_fail_check = AT24_FAIL_DISABLED;
     g_at24_read_count = 0U;
     g_at24_write_count = 0U;
     memset(g_at24_write_addr, 0, sizeof(g_at24_write_addr));
@@ -64,6 +67,14 @@ void at24cxx_deinit(at24cxx_device_t dev)
 
 int at24cxx_check(at24cxx_device_t dev)
 {
+    if (g_at24_fail_check > AT24_FAIL_DISABLED)
+    {
+        g_at24_fail_check--;
+        if (AT24_FAIL_DISABLED == g_at24_fail_check)
+        {
+            return -1;
+        }
+    }
     return (RT_NULL != dev) ? RT_EOK : -1;
 }
 
@@ -410,6 +421,29 @@ static bool test_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_policy(vo
     return true;
 }
 
+/** @brief Verify AT24CXX backend null-buffer and zero-length status policy. */
+static bool test_rtt_at24cxx_null_buffer_and_zero_len_status_matrix(void)
+{
+    const par_store_backend_api_t *api;
+    uint8_t value = 0x5AU;
+
+    at24_stub_reset();
+    g_at24_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_STATUS(api->read(0U, 1U, NULL), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->write(0U, 1U, NULL), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->read(0U, 0U, &value), ePAR_ERROR_NVM);
+    TEST_ASSERT_STATUS(api->write(0U, 0U, &value), ePAR_ERROR_NVM);
+    TEST_ASSERT_STATUS(api->erase(0U, 0U), ePAR_ERROR_NVM);
+    TEST_ASSERT_OK(api->deinit());
+    TEST_ASSERT_STATUS(api->read(0U, 1U, &value), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->write(0U, 1U, &value), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->erase(0U, 1U), ePAR_ERROR_PARAM);
+    return true;
+}
+
 /** @brief Verify AT24CXX sync is a no-op under the current synchronous-write policy. */
 static bool test_rtt_at24cxx_sync_noop_current_policy(void)
 {
@@ -449,6 +483,33 @@ static bool test_rtt_at24cxx_repeated_init_deinit_is_idempotent(void)
     return true;
 }
 
+/** @brief Verify a failed AT24CXX probe leaves no half-open backend state. */
+static bool test_rtt_at24cxx_init_check_fail_deinits_device_and_recovers(void)
+{
+    const par_store_backend_api_t *api;
+    bool is_init = true;
+    uint8_t readback = 0U;
+    const uint8_t value = 0x6BU;
+
+    at24_stub_reset();
+    g_at24_available = true;
+    g_at24_fail_check = 1;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_STATUS(api->init(), ePAR_ERROR_INIT);
+    api->is_init(&is_init);
+    TEST_ASSERT(!is_init);
+
+    TEST_ASSERT_OK(api->init());
+    api->is_init(&is_init);
+    TEST_ASSERT(is_init);
+    TEST_ASSERT_OK(api->write(0U, 1U, &value));
+    TEST_ASSERT_OK(api->read(0U, 1U, &readback));
+    TEST_ASSERT(readback == value);
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
 /** @brief Entrypoint for the host AT24CXX backend smoke test. */
 int main(void)
 {
@@ -464,6 +525,8 @@ int main(void)
         { "backend_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_policy", test_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_policy },
         { "backend_rtt_at24cxx_sync_noop_current_policy", test_rtt_at24cxx_sync_noop_current_policy },
         { "backend_rtt_at24cxx_repeated_init_deinit_is_idempotent", test_rtt_at24cxx_repeated_init_deinit_is_idempotent },
+        { "backend_rtt_at24cxx_init_check_fail_deinits_device_and_recovers", test_rtt_at24cxx_init_check_fail_deinits_device_and_recovers },
+        { "backend_rtt_at24cxx_null_buffer_and_zero_len_status_matrix", test_rtt_at24cxx_null_buffer_and_zero_len_status_matrix },
         { "backend_rtt_at24cxx_after_deinit_rejects_io", test_rtt_at24cxx_after_deinit_rejects_io },
     };
 

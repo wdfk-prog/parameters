@@ -455,6 +455,50 @@ static bool test_flash_ee_fal_runtime_short_io_reports_backend_errors(void)
     return true;
 }
 
+/** @brief Verify FAL backend reports stable NULL-buffer and zero-length statuses. */
+static bool test_flash_ee_fal_null_buffer_and_zero_len_status_matrix(void)
+{
+    const par_store_backend_api_t *api;
+    const uint8_t payload[2] = { 0x12U, 0x34U };
+    uint8_t readback[2] = { 0xA5U, 0x5AU };
+
+    fal_stub_reset();
+    TEST_ASSERT_OK(par_store_backend_bind());
+    g_fal_partition_available = true;
+    api = par_store_backend_get_api();
+    TEST_ASSERT(NULL != api);
+    TEST_ASSERT_OK(api->init());
+    TEST_ASSERT_STATUS(api->read(0U, 1U, NULL), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->write(0U, 1U, NULL), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->read(0U, 0U, readback), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->write(0U, 0U, payload), ePAR_ERROR_PARAM);
+    TEST_ASSERT_STATUS(api->erase(0U, 0U), ePAR_ERROR_PARAM);
+    TEST_ASSERT(readback[0] == 0xA5U);
+    TEST_ASSERT(readback[1] == 0x5AU);
+    TEST_ASSERT_OK(api->deinit());
+    return true;
+}
+
+/** @brief Verify a short FAL erase leaves partition neighbors and body unchanged. */
+static bool test_flash_ee_fal_short_erase_preserves_neighbors(void)
+{
+    const size_t part_offset = 128U;
+
+    fal_stub_reset();
+    g_fal_partition_available = true;
+    g_fal_part.offset = (long)part_offset;
+    g_fal_part.len = FAL_SMOKE_SIZE - (long)part_offset;
+    g_fal_flash[part_offset - 1U] = 0x5AU;
+    g_fal_flash[part_offset] = 0x33U;
+    g_fal_flash[part_offset + 3U] = 0x44U;
+    g_fal_short_erase = 1;
+    TEST_ASSERT(fal_partition_erase(&g_fal_part, 0U, 4U) == 3);
+    TEST_ASSERT(g_fal_flash[part_offset - 1U] == 0x5AU);
+    TEST_ASSERT(g_fal_flash[part_offset] == 0x33U);
+    TEST_ASSERT(g_fal_flash[part_offset + 3U] == 0x44U);
+    return true;
+}
+
 /** @brief Entrypoint for the host FAL adapter smoke test. */
 int main(void)
 {
@@ -470,6 +514,8 @@ int main(void)
         { "backend_flash_ee_fal_short_read_write_preserves_buffers", test_flash_ee_fal_short_read_write_preserves_buffers },
         { "backend_flash_ee_fal_partition_offset_failed_io_preserves_neighbors", test_flash_ee_fal_partition_offset_failed_io_preserves_neighbors },
         { "backend_flash_ee_fal_runtime_short_io_reports_backend_errors", test_flash_ee_fal_runtime_short_io_reports_backend_errors },
+        { "backend_flash_ee_fal_null_buffer_and_zero_len_status_matrix", test_flash_ee_fal_null_buffer_and_zero_len_status_matrix },
+        { "backend_flash_ee_fal_short_erase_preserves_neighbors", test_flash_ee_fal_short_erase_preserves_neighbors },
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));

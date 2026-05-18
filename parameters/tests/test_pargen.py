@@ -256,7 +256,7 @@ class PargenTests(unittest.TestCase):
     def test_hash_bucket_collision_fails(self) -> None:
         """IDs that map to the same static hash bucket are rejected."""
         rows = base_rows()
-        rows[1]["id"] = "3"
+        rows[1]["id"] = "8"
         with self.assertRaises(pargen.PargenError):
             self.run_generator(rows)
 
@@ -803,6 +803,77 @@ class PargenTests(unittest.TestCase):
         self.assertIn("#if (defined(PAR_HAS_ANY) && PAR_HAS_ANY(FOO, BAR))", outputs.layout_h)
         self.assertIn("#endif /* (defined(PAR_HAS_ANY) && PAR_HAS_ANY(FOO, BAR)) */", outputs.layout_h)
 
+    def test_condition_control_char_mutations_reject_cleanly(self) -> None:
+        """Fixed-seed malformed condition corpus rejects multiline/control text."""
+        cases = ["\n", "\r", "\x00", "\x1f"]
+        for suffix in cases:
+            rows = base_rows()
+            rows[2]["condition"] = "(1 == PAR_CFG_ENABLE_TYPE_STR)" + suffix
+            with self.subTest(condition=repr(rows[2]["condition"])):
+                with self.assertRaisesRegex(pargen.PargenError, "condition"):
+                    self.run_generator(rows)
+
+    def test_condition_injection_tokens_reject_cleanly(self) -> None:
+        """Fixed-seed condition corpus rejects comment, directive, and splice tokens."""
+        cases = [
+            "/*comment*/",
+            "*/",
+            "//comment",
+            "\\",
+            "#include",
+        ]
+        for token in cases:
+            rows = base_rows()
+            rows[2]["condition"] = "(1 == PAR_CFG_ENABLE_TYPE_STR)" + token
+            with self.subTest(condition=repr(rows[2]["condition"])):
+                with self.assertRaisesRegex(pargen.PargenError, "condition"):
+                    self.run_generator(rows)
+
+    def test_default_object_conditions_are_filled_when_csv_cell_is_empty(self) -> None:
+        """Object rows receive default feature guards when condition is omitted."""
+        cases = [
+            ("STR", "(1 == PAR_CFG_ENABLE_TYPE_STR)"),
+            ("BYTES", "(1 == PAR_CFG_ENABLE_TYPE_BYTES)"),
+            ("ARR_U8", "(1 == PAR_CFG_ENABLE_TYPE_ARR_U8)"),
+            ("ARR_U16", "(1 == PAR_CFG_ENABLE_TYPE_ARR_U16)"),
+            ("ARR_U32", "(1 == PAR_CFG_ENABLE_TYPE_ARR_U32)"),
+        ]
+        for type_name, expected_condition in cases:
+            rows = base_rows()
+            rows[2]["condition"] = ""
+            rows[2]["type"] = type_name
+            if type_name == "BYTES":
+                rows[2]["min"] = "0"
+                rows[2]["max"] = "4"
+                rows[2]["default"] = "0x01,0x02"
+            elif type_name == "ARR_U8":
+                rows[2]["min"] = "3"
+                rows[2]["max"] = "3"
+                rows[2]["default"] = "1,2,3"
+            elif type_name == "ARR_U16":
+                rows[2]["min"] = "2"
+                rows[2]["max"] = "2"
+                rows[2]["default"] = "10,20"
+            elif type_name == "ARR_U32":
+                rows[2]["min"] = "2"
+                rows[2]["max"] = "2"
+                rows[2]["default"] = "1000,2000"
+            with self.subTest(type=type_name):
+                generated_rows, generated_stats = self.run_generator(rows)
+                outputs = pargen.generate_outputs(generated_rows, generated_stats)
+                self.assertEqual(generated_rows[2].condition, expected_condition)
+                self.assertIn(f"#if {expected_condition}", outputs.layout_h)
+
+    def test_csv_condition_override_is_preserved(self) -> None:
+        """Explicit CSV condition values override type defaults."""
+        condition = "(defined(PAR_PRODUCT_AP) && (1 == PAR_CFG_ENABLE_TYPE_STR))"
+        rows = base_rows()
+        rows[2]["condition"] = condition
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertEqual(generated_rows[2].condition, condition)
+        self.assertIn(f"#if {condition}", outputs.layout_h)
+
     def test_lock_file_deleted_reserved_auto_id_interleaving_is_stable(self) -> None:
         """AUTO allocation skips IDs held by deleted lock entries and active rows."""
         rows = base_rows()[:2]
@@ -918,6 +989,48 @@ class PargenTests(unittest.TestCase):
             lock_path.write_text('{"ids":{"SYS_MODE":1}}\n', encoding="utf-8")
             with self.assertRaisesRegex(pargen.PargenError, "locked enum"):
                 pargen.read_lock(lock_path)
+
+    def test_fixed_seed_csv_header_mutations_reject_cleanly(self) -> None:
+        """Fixed malformed CSV headers fail without normalizing partial rows."""
+        cases = [
+            ("duplicate", COLUMNS + ["enum"], "duplicate columns"),
+            ("leading-space", [" group"] + COLUMNS[1:], "missing required columns"),
+            ("blank-header", COLUMNS + [""], "unexpected columns"),
+        ]
+        for name, header, error in cases:
+            with self.subTest(case=name):
+                with tempfile.TemporaryDirectory() as tmp:
+                    csv_path = Path(tmp) / f"par_table.{name}.csv"
+                    row = base_rows()[0]
+                    with csv_path.open("w", encoding="utf-8", newline="") as stream:
+                        writer = csv.writer(stream)
+                        writer.writerow(header)
+                        writer.writerow([row.get(column, "") for column in header])
+                    with self.assertRaisesRegex(pargen.PargenError, error):
+                        pargen.read_rows(csv_path)
+
+    def test_cli_failure_does_not_create_partial_outputs(self) -> None:
+        """CLI validation failures leave generated artifact paths absent."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            csv_path = tmpdir / "par_table.bad.csv"
+            cfg_path = tmpdir / "pargen.json"
+            lock_path = tmpdir / "state" / "par_id_lock.json"
+            rows = base_rows()
+            rows[0]["default"] = "999"
+            write_csv(csv_path, rows)
+            cfg_path.write_text('{"default_id_range":[0,65535]}\n', encoding="utf-8")
+            rc = pargen.main([
+                "--csv", str(csv_path),
+                "--id-lock", str(lock_path),
+                "--config", str(cfg_path),
+                "--out-def", str(tmpdir / "generated" / "defs" / "par_table.def"),
+                "--out-dir", str(tmpdir / "generated" / "out"),
+                "--manifest", str(tmpdir / "generated" / "manifest" / "par_manifest.json"),
+            ])
+            self.assertEqual(rc, 1)
+            self.assertFalse((tmpdir / "generated").exists())
+            self.assertFalse(lock_path.exists())
 
     def test_fixed_seed_mutations_reject_invalid_object_defaults(self) -> None:
         """Fixed-seed negative corpus rejects malformed object defaults."""

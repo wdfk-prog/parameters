@@ -36,6 +36,25 @@ static bool object_validation(const par_num_t par_num,
 }
 
 /**
+ * @brief Update another object while validating a string object.
+ * @param par_num Parameter number being written.
+ * @param p_data Candidate payload bytes.
+ * @param len Candidate payload length in bytes.
+ * @return true when the reentrant object update succeeds.
+ */
+static bool object_validation_reentrant_update_bytes(const par_num_t par_num,
+                                                     const uint8_t *p_data,
+                                                     const uint16_t len)
+{
+    const uint8_t payload[4] = { 7U, 8U, 9U, 10U };
+
+    (void)par_num;
+    (void)p_data;
+    (void)len;
+    return (ePAR_OK == par_set_bytes(ePAR_TEST_BYTES, payload, (uint16_t)sizeof(payload)));
+}
+
+/**
  * @brief Initialize the parameter module for one object test case.
  * @return true when initialization succeeds.
  */
@@ -456,6 +475,49 @@ static bool test_object_validation_rejects_without_payload_mutation(void)
 }
 
 
+/** @brief Verify rejected object validation leaves default changed-state untouched. */
+static bool test_object_validation_rejects_without_changed_state(void)
+{
+    bool changed = true;
+    char str_buf[9] = { 0 };
+    uint16_t len = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_to_default(ePAR_TEST_STR));
+    g_obj_validation_accept = false;
+    par_register_obj_validation(ePAR_TEST_STR, object_validation);
+    TEST_ASSERT_STATUS(par_set_str(ePAR_TEST_STR, "new"), ePAR_ERROR_VALUE);
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == 2U);
+    TEST_ASSERT(0 == strcmp(str_buf, "ap"));
+    TEST_ASSERT_OK(par_has_changed(ePAR_TEST_STR, &changed));
+    TEST_ASSERT(!changed);
+    g_obj_validation_accept = true;
+    par_register_obj_validation(ePAR_TEST_STR, NULL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify current object validation policy permits updating another object. */
+static bool test_object_validation_reentrant_updates_other_object(void)
+{
+    uint8_t bytes_buf[4] = { 0U };
+    uint16_t out_len = 0U;
+
+    TEST_ASSERT(init_module());
+    par_register_obj_validation(ePAR_TEST_STR, object_validation_reentrant_update_bytes);
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "new"));
+    TEST_ASSERT_OK(par_get_bytes(ePAR_TEST_BYTES, bytes_buf, sizeof(bytes_buf), &out_len));
+    TEST_ASSERT(out_len == (uint16_t)sizeof(bytes_buf));
+    TEST_ASSERT(bytes_buf[0] == 7U);
+    TEST_ASSERT(bytes_buf[1] == 8U);
+    TEST_ASSERT(bytes_buf[2] == 9U);
+    TEST_ASSERT(bytes_buf[3] == 10U);
+    par_register_obj_validation(ePAR_TEST_STR, NULL);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Verify object APIs reject use before initialization without mutating outputs. */
 static bool test_object_api_use_before_init_returns_init_error(void)
 {
@@ -550,6 +612,8 @@ int main(void)
         { "object_get_default_small_buffer_does_not_partial_overwrite", test_object_get_default_small_buffer_does_not_partial_overwrite },
         { "object_get_bytes_null_buffer_reports_len_without_copy", test_object_get_bytes_null_buffer_reports_len_without_copy },
         { "object_validation_rejects_without_payload_mutation", test_object_validation_rejects_without_payload_mutation },
+        { "object_validation_rejects_without_changed_state", test_object_validation_rejects_without_changed_state },
+        { "object_validation_reentrant_updates_other_object", test_object_validation_reentrant_updates_other_object },
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));
