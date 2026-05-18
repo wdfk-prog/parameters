@@ -42,42 +42,59 @@ run_nvm_flash_ee_schema_evolution_pair() {
     local name="$1"
     local fixture_dir="$2"
     local read_define="$3"
+    local record_layout="${4:-PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE}"
+    local object_store="${5:-PAR_CFG_NVM_OBJECT_STORE_SHARED}"
+    local object_addr="${6:-PAR_CFG_NVM_OBJECT_ADDR_FIXED}"
+    local object_fixed_addr="${7:-0xC0U}"
+    local object_region_size="${8:-0x40U}"
+    local layout_source="${9:-parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c}"
+    local extra_defines=()
     local image_file="$build_dir/par_nvm_flash_ee_schema_${name}.image"
+    local object_image_file="$image_file.object"
 
-    rm -f "$image_file"
+    if [ "$#" -gt 9 ]; then
+        shift 9
+        extra_defines=("$@")
+    fi
+
+    rm -f "$image_file" "$object_image_file"
     (
-        trap 'rm -f "$image_file"' EXIT
+        trap 'rm -f "$image_file" "$object_image_file"' EXIT
 
         PAR_HOST_FLASH_IMAGE_PATH="$image_file" \
+        PAR_HOST_OBJECT_FLASH_IMAGE_PATH="$object_image_file" \
             compile_and_run_nvm "par_nvm_flash_ee_schema_${name}_write" \
                 -DPAR_HOST_TEST_NVM \
                 -DPAR_HOST_TEST_SCHEMA_EVOLUTION_WRITE \
                 -DPAR_HOST_TEST_PROFILE_NAME='"schema_evolution_write"' \
-                -DPAR_CFG_NVM_RECORD_LAYOUT=PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
-                -DPAR_CFG_NVM_OBJECT_STORE_MODE=PAR_CFG_NVM_OBJECT_STORE_SHARED \
-                -DPAR_CFG_NVM_OBJECT_ADDR_MODE=PAR_CFG_NVM_OBJECT_ADDR_FIXED \
-                -DPAR_CFG_NVM_OBJECT_FIXED_ADDR=0xC0U \
-                -DPAR_CFG_NVM_OBJECT_REGION_SIZE=0x40U \
+                -DPAR_CFG_NVM_RECORD_LAYOUT="$record_layout" \
+                -DPAR_CFG_NVM_OBJECT_STORE_MODE="$object_store" \
+                -DPAR_CFG_NVM_OBJECT_ADDR_MODE="$object_addr" \
+                -DPAR_CFG_NVM_OBJECT_FIXED_ADDR="$object_fixed_addr" \
+                -DPAR_CFG_NVM_OBJECT_REGION_SIZE="$object_region_size" \
+                "${extra_defines[@]}" \
                 -Wno-unused-function \
                 parameters/tests/host/test_par_nvm_flash_ee.c \
                 "${base_sources[@]}" \
-                parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c \
+                "$layout_source" \
                 "${nvm_sources[@]}"
         PAR_HOST_FLASH_IMAGE_PATH="$image_file" \
+        PAR_HOST_OBJECT_FLASH_IMAGE_PATH="$object_image_file" \
             compile_and_run_nvm_with_fixture "par_nvm_flash_ee_schema_${name}_read" \
                 "$fixture_dir" \
                 -DPAR_HOST_TEST_NVM \
                 -D"$read_define" \
                 -DPAR_HOST_TEST_PROFILE_NAME='"schema_evolution_read"' \
-                -DPAR_CFG_NVM_RECORD_LAYOUT=PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
-                -DPAR_CFG_NVM_OBJECT_STORE_MODE=PAR_CFG_NVM_OBJECT_STORE_SHARED \
-                -DPAR_CFG_NVM_OBJECT_ADDR_MODE=PAR_CFG_NVM_OBJECT_ADDR_FIXED \
-                -DPAR_CFG_NVM_OBJECT_FIXED_ADDR=0xC0U \
-                -DPAR_CFG_NVM_OBJECT_REGION_SIZE=0x40U \
+                -DPAR_CFG_NVM_RECORD_LAYOUT="$record_layout" \
+                -DPAR_CFG_NVM_OBJECT_STORE_MODE="$object_store" \
+                -DPAR_CFG_NVM_OBJECT_ADDR_MODE="$object_addr" \
+                -DPAR_CFG_NVM_OBJECT_FIXED_ADDR="$object_fixed_addr" \
+                -DPAR_CFG_NVM_OBJECT_REGION_SIZE="$object_region_size" \
+                "${extra_defines[@]}" \
                 -Wno-unused-function \
                 parameters/tests/host/test_par_nvm_flash_ee.c \
                 "${base_sources[@]}" \
-                parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c \
+                "$layout_source" \
                 "${nvm_sources[@]}"
     )
 }
@@ -107,6 +124,88 @@ run_nvm_flash_ee_schema_evolution_profile() {
         object_capacity_shrink \
         parameters/tests/host/fixtures_schema_object_capacity_shrink \
         PAR_HOST_TEST_SCHEMA_OBJECT_CAPACITY_SHRINK_READ
+    run_nvm_flash_ee_schema_evolution_pair \
+        compact_payload_type_changed \
+        parameters/tests/host/fixtures_schema_type_changed \
+        PAR_HOST_TEST_SCHEMA_EVOLUTION_READ \
+        PAR_CFG_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD \
+        PAR_CFG_NVM_OBJECT_STORE_SHARED \
+        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+        0xC0U \
+        0x40U \
+        parameters/src/nvm/scalar/layout/par_nvm_layout_compact_payload.c
+    run_nvm_flash_ee_schema_evolution_pair \
+        fixed_slot_no_size_slot_reordered \
+        parameters/tests/host/fixtures_schema_slot_reordered \
+        PAR_HOST_TEST_SCHEMA_SLOT_REORDER_READ \
+        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE \
+        PAR_CFG_NVM_OBJECT_STORE_SHARED \
+        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+        0xC0U \
+        0x40U \
+        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_no_size.c
+    run_nvm_flash_ee_schema_evolution_pair \
+        dedicated_object_capacity_shrink \
+        parameters/tests/host/fixtures_schema_object_capacity_shrink \
+        PAR_HOST_TEST_SCHEMA_OBJECT_CAPACITY_SHRINK_READ \
+        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
+        PAR_CFG_NVM_OBJECT_STORE_DEDICATED \
+        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+        0x00U \
+        0x40U \
+        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c
+    run_nvm_flash_ee_schema_evolution_pair \
+        dedicated_object_to_scalar \
+        parameters/tests/host/fixtures_schema_object_to_scalar \
+        PAR_HOST_TEST_SCHEMA_OBJECT_TO_SCALAR_READ \
+        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
+        PAR_CFG_NVM_OBJECT_STORE_DEDICATED \
+        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+        0x00U \
+        0x40U \
+        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c
+    run_nvm_flash_ee_schema_evolution_pair \
+        dedicated_nonzero_base_object_capacity_shrink \
+        parameters/tests/host/fixtures_schema_object_capacity_shrink \
+        PAR_HOST_TEST_SCHEMA_OBJECT_CAPACITY_SHRINK_READ \
+        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
+        PAR_CFG_NVM_OBJECT_STORE_DEDICATED \
+        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+        0x00U \
+        0x40U \
+        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c \
+        -DPAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR=0x20U
+    run_nvm_flash_ee_schema_evolution_pair \
+        dedicated_nonzero_base_object_to_scalar \
+        parameters/tests/host/fixtures_schema_object_to_scalar \
+        PAR_HOST_TEST_SCHEMA_OBJECT_TO_SCALAR_READ \
+        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE \
+        PAR_CFG_NVM_OBJECT_STORE_DEDICATED \
+        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+        0x00U \
+        0x40U \
+        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c \
+        -DPAR_CFG_NVM_OBJECT_DEDICATED_BASE_ADDR=0x20U
+    run_nvm_flash_ee_schema_evolution_pair \
+        dedicated_fixed_slot_no_size_object_capacity_shrink \
+        parameters/tests/host/fixtures_schema_object_capacity_shrink \
+        PAR_HOST_TEST_SCHEMA_OBJECT_CAPACITY_SHRINK_READ \
+        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE \
+        PAR_CFG_NVM_OBJECT_STORE_DEDICATED \
+        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+        0x00U \
+        0x40U \
+        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_no_size.c
+    run_nvm_flash_ee_schema_evolution_pair \
+        dedicated_fixed_slot_no_size_object_to_scalar \
+        parameters/tests/host/fixtures_schema_object_to_scalar \
+        PAR_HOST_TEST_SCHEMA_OBJECT_TO_SCALAR_READ \
+        PAR_CFG_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE \
+        PAR_CFG_NVM_OBJECT_STORE_DEDICATED \
+        PAR_CFG_NVM_OBJECT_ADDR_FIXED \
+        0x00U \
+        0x40U \
+        parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_no_size.c
 }
 
 run_nvm_flash_ee_write_verify_profile() {

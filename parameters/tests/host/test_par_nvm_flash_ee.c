@@ -19,6 +19,7 @@
 #include "par_nvm_object_store.h"
 #include "par_nvm_object.h"
 #include "par_object.h"
+#include "par_registration_api.h"
 #include "fnv.h"
 
 #include <stdarg.h>
@@ -56,6 +57,8 @@
 #define HOST_FLASH_EE_HEADER_MAGIC    (0x50454548UL)
 /** @brief Flash-EE active-bank state word. */
 #define HOST_FLASH_EE_HEADER_ACTIVE   (0xFFFF0000UL)
+/** @brief Flash-EE append-record commit-unit magic. */
+#define HOST_FLASH_EE_RECORD_MAGIC    (0x50454552UL)
 /** @brief Flash-EE prepared-bank state word. */
 #define HOST_FLASH_EE_HEADER_PREPARE  (0xFFFFFF00UL)
 /** @brief Flash-EE bank header size. */
@@ -64,6 +67,9 @@
 #define HOST_FLASH_EE_RECORD_META_SIZE (12U)
 /** @brief Flash-EE line size used by host NVM tests. */
 #define HOST_FLASH_EE_LINE_SIZE       ((uint32_t)PAR_CFG_NVM_BACKEND_FLASH_EE_LINE_SIZE)
+/** @brief Flash-EE logical line count in the host test geometry. */
+#define HOST_FLASH_EE_LINE_COUNT \
+    ((uint32_t)(PAR_CFG_NVM_BACKEND_FLASH_EE_LOGICAL_SIZE / PAR_CFG_NVM_BACKEND_FLASH_EE_LINE_SIZE))
 /** @brief Flash-EE record commit-unit offset. */
 #define HOST_FLASH_EE_RECORD_COMMIT_OFFSET \
     (((HOST_FLASH_EE_LINE_SIZE + HOST_FLASH_EE_RECORD_META_SIZE + HOST_FLASH_PROGRAM_SIZE - 1U) / \
@@ -86,6 +92,115 @@
 static char g_nvm_shell_capture[NVM_SHELL_CAPTURE_SIZE];
 /** @brief Number of used bytes in g_nvm_shell_capture. */
 static size_t g_nvm_shell_capture_used;
+
+/** @brief Callback hit counter for NVM callback current-policy tests. */
+static unsigned g_nvm_callback_hits;
+
+/**
+ * @brief Persist the changed scalar from inside an on-change callback.
+ * @param par_num Parameter number that changed.
+ * @param new_val New scalar value.
+ * @param old_val Previous scalar value.
+ */
+static void on_nvm_scalar_change_save(const par_num_t par_num,
+                                      const par_type_t new_val,
+                                      const par_type_t old_val)
+{
+    (void)new_val;
+    (void)old_val;
+    g_nvm_callback_hits++;
+    (void)par_save(par_num);
+}
+
+/**
+ * @brief Persist all live values from inside an on-change callback.
+ * @param par_num Parameter number that changed.
+ * @param new_val New scalar value.
+ * @param old_val Previous scalar value.
+ */
+static void on_nvm_scalar_change_save_all(const par_num_t par_num,
+                                          const par_type_t new_val,
+                                          const par_type_t old_val)
+{
+    (void)par_num;
+    (void)new_val;
+    (void)old_val;
+    g_nvm_callback_hits++;
+    (void)par_save_all();
+}
+
+/**
+ * @brief Rewrite clean NVM state from inside an on-change callback.
+ * @param par_num Parameter number that changed.
+ * @param new_val New scalar value.
+ * @param old_val Previous scalar value.
+ */
+static void on_nvm_scalar_change_save_clean(const par_num_t par_num,
+                                            const par_type_t new_val,
+                                            const par_type_t old_val)
+{
+    (void)par_num;
+    (void)new_val;
+    (void)old_val;
+    g_nvm_callback_hits++;
+    (void)par_save_clean();
+}
+
+/**
+ * @brief Deinitialize the parameter module from inside an on-change callback.
+ * @param par_num Parameter number that changed.
+ * @param new_val New scalar value.
+ * @param old_val Previous scalar value.
+ */
+static void on_nvm_scalar_change_deinit(const par_num_t par_num,
+                                        const par_type_t new_val,
+                                        const par_type_t old_val)
+{
+    (void)par_num;
+    (void)new_val;
+    (void)old_val;
+    g_nvm_callback_hits++;
+    (void)par_deinit();
+}
+
+
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
+    (1 == PAR_CFG_ENABLE_TYPE_STR)
+/** @brief Persist the current object from inside object validation. */
+static bool on_nvm_object_validation_save(const par_num_t par_num,
+                                          const uint8_t *p_data,
+                                          const uint16_t len)
+{
+    (void)p_data;
+    (void)len;
+    g_nvm_callback_hits++;
+    return (ePAR_OK == par_save(par_num));
+}
+
+/** @brief Persist all current values from inside object validation. */
+static bool on_nvm_object_validation_save_all(const par_num_t par_num,
+                                              const uint8_t *p_data,
+                                              const uint16_t len)
+{
+    (void)par_num;
+    (void)p_data;
+    (void)len;
+    g_nvm_callback_hits++;
+    return (ePAR_OK == par_save_all());
+}
+
+/** @brief Rewrite clean current values from inside object validation. */
+static bool on_nvm_object_validation_save_clean(const par_num_t par_num,
+                                                const uint8_t *p_data,
+                                                const uint16_t len)
+{
+    (void)par_num;
+    (void)p_data;
+    (void)len;
+    g_nvm_callback_hits++;
+    return (ePAR_OK == par_save_clean());
+}
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (1 == PAR_CFG_ENABLE_TYPE_STR) */
 
 /** @brief Reset the NVM shell output capture buffer. */
 static void nvm_shell_capture_reset(void)
@@ -171,6 +286,12 @@ static char g_flash_image_path[HOST_FLASH_IMAGE_PATH_LEN];
 static bool g_flash_is_init;
 /** @brief Program failpoint countdown; negative disables it. */
 static int g_fail_program_after = HOST_FLASH_FAIL_DISABLED;
+/** @brief Address captured when the program failpoint rejects a write. */
+static uint32_t g_fail_program_addr;
+/** @brief Size captured when the program failpoint rejects a write. */
+static uint32_t g_fail_program_size;
+/** @brief true once the program failpoint has rejected one write. */
+static bool g_fail_program_hit;
 /** @brief Read failpoint countdown; negative disables it. */
 static int g_fail_read_after = HOST_FLASH_FAIL_DISABLED;
 /** @brief Erase failpoint countdown; negative disables it. */
@@ -181,6 +302,8 @@ static int g_corrupt_program_after = HOST_FLASH_FAIL_DISABLED;
 static int g_corrupt_read_after = HOST_FLASH_FAIL_DISABLED;
 /** @brief Dedicated object-store fake flash bytes. */
 static uint8_t g_object_flash[HOST_FLASH_SIZE];
+/** @brief Process-unique dedicated object fake flash image path. */
+static char g_object_flash_image_path[HOST_FLASH_IMAGE_PATH_LEN + 16U];
 /** @brief Dedicated object-store initialization flag. */
 static bool g_object_flash_is_init;
 /** @brief Dedicated object-store write failpoint countdown; negative disables it. */
@@ -227,20 +350,106 @@ static const char *host_flash_image_path(void)
 }
 
 /**
+ * @brief Return the process-unique dedicated object fake flash image path.
+ * @return Null-terminated host object flash image path.
+ */
+static const char *host_object_flash_image_path(void)
+{
+    const char * const env_path = getenv("PAR_HOST_OBJECT_FLASH_IMAGE_PATH");
+
+    if ((NULL != env_path) && ('\0' != env_path[0]))
+    {
+        return env_path;
+    }
+
+    if ('\0' == g_object_flash_image_path[0])
+    {
+        const int written = snprintf(g_object_flash_image_path,
+                                     sizeof(g_object_flash_image_path),
+                                     "%s.object",
+                                     host_flash_image_path());
+
+        if ((written < 0) || ((size_t)written >= sizeof(g_object_flash_image_path)))
+        {
+            fprintf(stderr, "host object flash image path is too long\n");
+            abort();
+        }
+    }
+
+    return g_object_flash_image_path;
+}
+
+/**
+ * @brief Write the current dedicated object fake flash image to disk.
+ */
+static void host_object_flash_write_image(void)
+{
+    FILE *fp = fopen(host_object_flash_image_path(), "wb");
+
+    if (NULL == fp)
+    {
+        perror("fopen host object flash image");
+        abort();
+    }
+    if (HOST_FLASH_SIZE != fwrite(g_object_flash, 1U, HOST_FLASH_SIZE, fp))
+    {
+        perror("fwrite host object flash image");
+        abort();
+    }
+    if (0 != fclose(fp))
+    {
+        perror("fclose host object flash image");
+        abort();
+    }
+}
+
+/**
+ * @brief Load the dedicated object fake flash image from disk.
+ */
+static void host_object_flash_load_image(void)
+{
+    FILE *fp = fopen(host_object_flash_image_path(), "rb");
+
+    if (NULL == fp)
+    {
+        memset(g_object_flash, 0xFF, sizeof(g_object_flash));
+        host_object_flash_write_image();
+        return;
+    }
+
+    if (HOST_FLASH_SIZE != fread(g_object_flash, 1U, HOST_FLASH_SIZE, fp))
+    {
+        perror("fread host object flash image");
+        abort();
+    }
+    if (0 != fclose(fp))
+    {
+        perror("fclose host object flash image");
+        abort();
+    }
+}
+
+/**
  * @brief Remove the process-local fake flash image when host tests finish.
  */
 static void host_flash_remove_image(void)
 {
     const char * const env_path = getenv("PAR_HOST_FLASH_IMAGE_PATH");
+    const char * const object_env_path = getenv("PAR_HOST_OBJECT_FLASH_IMAGE_PATH");
 
-    if ((NULL != env_path) && ('\0' != env_path[0]))
+    if ((NULL == env_path) || ('\0' == env_path[0]))
     {
-        return;
+        if ('\0' != g_flash_image_path[0])
+        {
+            (void)remove(g_flash_image_path);
+        }
     }
-
-    if ('\0' != g_flash_image_path[0])
+    if ((NULL == object_env_path) || ('\0' == object_env_path[0]))
     {
-        (void)remove(g_flash_image_path);
+        if ('\0' != g_object_flash_image_path[0])
+        {
+            (void)remove(g_object_flash_image_path);
+        }
     }
 }
 
@@ -302,7 +511,11 @@ static void host_flash_reset_erased(void)
     g_flash_is_init = false;
     g_object_flash_is_init = false;
     memset(g_object_flash, 0xFF, sizeof(g_object_flash));
+    host_object_flash_write_image();
     g_fail_program_after = HOST_FLASH_FAIL_DISABLED;
+    g_fail_program_addr = 0U;
+    g_fail_program_size = 0U;
+    g_fail_program_hit = false;
     g_fail_read_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
     g_corrupt_program_after = HOST_FLASH_FAIL_DISABLED;
@@ -319,6 +532,9 @@ static void host_flash_reset_erased(void)
 static void host_flash_clear_failpoints(void)
 {
     g_fail_program_after = HOST_FLASH_FAIL_DISABLED;
+    g_fail_program_addr = 0U;
+    g_fail_program_size = 0U;
+    g_fail_program_hit = false;
     g_fail_read_after = HOST_FLASH_FAIL_DISABLED;
     g_fail_erase_after = HOST_FLASH_FAIL_DISABLED;
     g_corrupt_program_after = HOST_FLASH_FAIL_DISABLED;
@@ -551,6 +767,41 @@ static bool host_flash_ee_append_uncommitted_tail_record(const uint32_t line_ind
     meta.reserved = 0UL;
     memcpy(&record[HOST_FLASH_EE_LINE_SIZE], &meta, sizeof(meta));
     record[HOST_FLASH_EE_RECORD_COMMIT_OFFSET] = 'R';
+    memcpy(&g_flash[bank_base + next_offset], record, sizeof(record));
+    host_flash_write_image();
+    return true;
+}
+
+/**
+ * @brief Append a committed but CRC-invalid tail record.
+ * @details This fixture locks the Flash-EE replay current policy: a bad
+ *          committed tail record makes the image untrusted and triggers
+ *          default rebuild instead of falling back to older good records.
+ *          Change this expectation only with an intentional recovery-policy
+ *          change.
+ * @param line_index Logical EEPROM line index to encode in the bad record.
+ * @return true when the bad committed tail record was written.
+ */
+static bool host_flash_ee_append_bad_committed_tail_record(const uint32_t line_index)
+{
+    uint32_t bank_base = 0U;
+    uint32_t next_offset = 0U;
+    uint8_t record[HOST_FLASH_EE_RECORD_SIZE];
+    host_flash_ee_record_meta_t meta = { 0 };
+
+    TEST_ASSERT(host_flash_ee_find_active_bank(&bank_base, &next_offset));
+    TEST_ASSERT((next_offset + HOST_FLASH_EE_RECORD_SIZE) <= HOST_FLASH_EE_BANK_SIZE);
+
+    memset(record, 0xFF, sizeof(record));
+    memset(record, 0x00, HOST_FLASH_EE_LINE_SIZE);
+    meta.line_index = line_index;
+    meta.payload_size = (uint16_t)HOST_FLASH_EE_LINE_SIZE;
+    meta.record_crc = 0x1234U;
+    meta.reserved = 0xFFFFFFFFUL;
+    memcpy(&record[HOST_FLASH_EE_LINE_SIZE], &meta, sizeof(meta));
+    memcpy(&record[HOST_FLASH_EE_RECORD_COMMIT_OFFSET],
+           &(const uint32_t){ HOST_FLASH_EE_RECORD_MAGIC },
+           sizeof(uint32_t));
     memcpy(&g_flash[bank_base + next_offset], record, sizeof(record));
     host_flash_write_image();
     return true;
@@ -1347,6 +1598,9 @@ par_status_t par_store_flash_ee_native_port_program(uint32_t addr, uint32_t size
     }
     if (0 == g_fail_program_after)
     {
+        g_fail_program_addr = addr;
+        g_fail_program_size = size;
+        g_fail_program_hit = true;
         return ePAR_ERROR;
     }
     if (g_fail_program_after > 0)
@@ -1428,6 +1682,7 @@ const char *par_store_flash_ee_native_port_name(void)
 /** @brief Initialize the dedicated object-store fake backend. */
 static par_status_t host_object_backend_init(void)
 {
+    host_object_flash_load_image();
     g_object_flash_is_init = true;
     return ePAR_OK;
 }
@@ -1509,6 +1764,7 @@ static par_status_t host_object_backend_write(const uint32_t addr,
     {
         g_object_corrupt_write_after--;
     }
+    host_object_flash_write_image();
     return ePAR_OK;
 }
 
@@ -1530,6 +1786,7 @@ static par_status_t host_object_backend_erase(const uint32_t addr, const uint32_
     }
 
     memset(&g_object_flash[addr], 0xFF, size);
+    host_object_flash_write_image();
     return ePAR_OK;
 }
 
@@ -1545,6 +1802,7 @@ static par_status_t host_object_backend_sync(void)
         g_object_fail_sync_after--;
     }
 
+    host_object_flash_write_image();
     return ePAR_OK;
 }
 
@@ -1889,6 +2147,229 @@ static bool test_flash_ee_record_commit_marker_corruption_ignores_partial_record
     return true;
 }
 
+/** @brief Append a bad committed tail after a valid commit. */
+static bool host_flash_child_append_bad_committed_tail_after_commit(void)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+    TEST_ASSERT(host_flash_ee_append_bad_committed_tail_record(0U));
+    return true;
+}
+
+/** @brief Append a bad committed tail after two valid records for the same scalar. */
+static bool host_flash_child_append_newer_bad_record_after_two_commits(void)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
+    TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+    TEST_ASSERT(host_flash_ee_append_bad_committed_tail_record(0U));
+    return true;
+}
+
+/**
+ * @brief Verify a bad committed tail rebuilds defaults by current policy.
+ * @details The current replay policy does not skip a bad committed tail and
+ *          does not fall back to an older good record. Once the committed tail
+ *          record fails validation, the image is treated as untrusted and the
+ *          runtime is rebuilt from defaults.
+ */
+static bool test_flash_ee_bad_committed_tail_rebuilds_default_current_policy(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_append_bad_committed_tail_after_commit());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(1U));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+/**
+ * @brief Verify a newer bad record rebuilds defaults by current policy.
+ * @details This intentionally expects the default mode value after restart,
+ *          even though older good records exist. Do not change this test to
+ *          older-good fallback unless Flash-EE replay policy is changed and
+ *          documented explicitly.
+ */
+static bool test_flash_ee_newer_bad_record_rebuilds_default_current_policy(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_append_newer_bad_record_after_two_commits());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(1U));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+/** @brief Save a scalar through a change callback and exit without deinit. */
+static bool host_flash_child_callback_save_during_dispatch(void)
+{
+    TEST_ASSERT(init_module());
+    g_nvm_callback_hits = 0U;
+    par_register_on_change_cb(ePAR_TEST_MODE, on_nvm_scalar_change_save);
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT(g_nvm_callback_hits == 1U);
+    return true;
+}
+
+/** @brief Verify callback-time save survives a hard process restart. */
+static bool test_flash_ee_callback_save_during_dispatch_persists_value(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_callback_save_during_dispatch());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(4U));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+/** @brief Save all live values from a callback and exit without deinit. */
+static bool host_flash_child_callback_save_all_during_dispatch(void)
+{
+    TEST_ASSERT(init_module());
+    g_nvm_callback_hits = 0U;
+    par_register_on_change_cb(ePAR_TEST_MODE, on_nvm_scalar_change_save_all);
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 7U));
+    TEST_ASSERT(g_nvm_callback_hits == 1U);
+    return true;
+}
+
+/** @brief Verify callback-time save-all survives a hard process restart. */
+static bool test_flash_ee_callback_save_all_during_dispatch_persists_value(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_callback_save_all_during_dispatch());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(7U));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+/** @brief Save-clean from a callback and exit without deinit. */
+static bool host_flash_child_callback_save_clean_during_dispatch(void)
+{
+    TEST_ASSERT(init_module());
+    g_nvm_callback_hits = 0U;
+    par_register_on_change_cb(ePAR_TEST_MODE, on_nvm_scalar_change_save_clean);
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 8U));
+    TEST_ASSERT(g_nvm_callback_hits == 1U);
+    return true;
+}
+
+/** @brief Verify callback-time save-clean survives a hard process restart. */
+static bool test_flash_ee_callback_save_clean_during_dispatch_persists_value(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_callback_save_clean_during_dispatch());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(8U));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+/** @brief Deinitialize from a change callback and exit with the module down. */
+static bool host_flash_child_callback_deinit_during_dispatch(void)
+{
+    TEST_ASSERT(init_module());
+    g_nvm_callback_hits = 0U;
+    par_register_on_change_cb(ePAR_TEST_MODE, on_nvm_scalar_change_deinit);
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 6U));
+    TEST_ASSERT(g_nvm_callback_hits == 1U);
+    TEST_ASSERT(!par_is_init());
+    return true;
+}
+
+/** @brief Verify callback-time deinit does not persist through the current policy. */
+static bool test_flash_ee_callback_deinit_during_dispatch_current_policy(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_callback_deinit_during_dispatch());
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(1U));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
 /** @brief Fill the active bank, then fail the next checkpoint erase. */
 static bool host_flash_child_fail_checkpoint_after_commit(void)
 {
@@ -2008,6 +2489,310 @@ static bool test_flash_ee_newer_bank_with_bad_cfg_crc_is_ignored(void)
         host_child_exit_from_result(host_flash_child_verify_mode_value(4U));
     }
     TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+
+/**
+ * @brief Reinitialize only the Flash-EE backend for raw logical tests.
+ * @return true when the backend is bound and initialized.
+ */
+static bool host_flash_ee_backend_reinit_only(void)
+{
+    const par_store_backend_api_t * const p_store = par_store_backend_flash_ee_get_api();
+    bool is_init = false;
+
+    TEST_ASSERT(NULL != p_store);
+    TEST_ASSERT(NULL != p_store->init);
+    TEST_ASSERT(NULL != p_store->deinit);
+    TEST_ASSERT(NULL != p_store->is_init);
+    p_store->is_init(&is_init);
+    if (is_init)
+    {
+        TEST_ASSERT_OK(p_store->deinit());
+    }
+
+    TEST_ASSERT_OK(par_store_backend_bind());
+    TEST_ASSERT_OK(p_store->init());
+    return true;
+}
+
+/**
+ * @brief Build one deterministic logical Flash-EE line pattern.
+ * @param p_line Output logical line buffer.
+ * @param seed Pattern seed that identifies the expected line value.
+ * @return true when @p p_line was populated.
+ */
+static bool host_flash_ee_build_line_pattern(uint8_t * const p_line,
+                                             const uint8_t seed)
+{
+    TEST_ASSERT(NULL != p_line);
+    for (uint32_t idx = 0U; idx < HOST_FLASH_EE_LINE_SIZE; idx++)
+    {
+        p_line[idx] = (uint8_t)(seed + idx);
+    }
+    return true;
+}
+
+/**
+ * @brief Build the expected logical image for checkpoint-copy sweep tests.
+ * @param p_expected Output logical image indexed by Flash-EE line.
+ * @return true when @p p_expected was populated.
+ */
+static bool host_flash_ee_build_checkpoint_expected_image(
+    uint8_t p_expected[HOST_FLASH_EE_LINE_COUNT][HOST_FLASH_EE_LINE_SIZE])
+{
+    TEST_ASSERT(NULL != p_expected);
+    for (uint32_t line = 0U; line < HOST_FLASH_EE_LINE_COUNT; line++)
+    {
+        TEST_ASSERT(host_flash_ee_build_line_pattern(p_expected[line],
+                                                     (uint8_t)(0x10U + line)));
+    }
+
+    TEST_ASSERT(host_flash_ee_build_line_pattern(p_expected[0], 0xA0U));
+    return true;
+}
+
+/**
+ * @brief Write one full logical Flash-EE line through the backend API.
+ * @param p_store Active Flash-EE backend API.
+ * @param line_index Logical line index to write.
+ * @param p_line Source line buffer.
+ * @return true when the logical line is persisted.
+ */
+static bool host_flash_ee_write_logical_line(const par_store_backend_api_t * const p_store,
+                                             const uint32_t line_index,
+                                             const uint8_t * const p_line)
+{
+    TEST_ASSERT(NULL != p_store);
+    TEST_ASSERT(NULL != p_store->write);
+    TEST_ASSERT(NULL != p_line);
+    TEST_ASSERT(line_index < HOST_FLASH_EE_LINE_COUNT);
+    TEST_ASSERT_OK(p_store->write(line_index * HOST_FLASH_EE_LINE_SIZE,
+                                  HOST_FLASH_EE_LINE_SIZE,
+                                  p_line));
+    return true;
+}
+
+/**
+ * @brief Prepare a full active bank with every logical line live.
+ * @return true when the next logical write will force a checkpoint.
+ */
+static bool host_flash_ee_prepare_full_checkpoint_image(void)
+{
+    const par_store_backend_api_t * const p_store = par_store_backend_flash_ee_get_api();
+    uint8_t line_buf[HOST_FLASH_EE_LINE_SIZE];
+    uint32_t bank_base = 0U;
+    uint32_t next_offset = 0U;
+
+    TEST_ASSERT(host_flash_ee_backend_reinit_only());
+    TEST_ASSERT(NULL != p_store);
+
+    for (uint32_t line = 0U; line < HOST_FLASH_EE_LINE_COUNT; line++)
+    {
+        TEST_ASSERT(host_flash_ee_build_line_pattern(line_buf, (uint8_t)(0x10U + line)));
+        TEST_ASSERT(host_flash_ee_write_logical_line(p_store, line, line_buf));
+    }
+
+    TEST_ASSERT(host_flash_ee_build_line_pattern(line_buf, 0xA0U));
+    for (uint16_t attempt = 0U; attempt < 300U; attempt++)
+    {
+        TEST_ASSERT(host_flash_ee_find_active_bank(&bank_base, &next_offset));
+        if ((next_offset + HOST_FLASH_EE_RECORD_SIZE) > HOST_FLASH_EE_BANK_SIZE)
+        {
+            break;
+        }
+        TEST_ASSERT(host_flash_ee_write_logical_line(p_store, 0U, line_buf));
+    }
+
+    TEST_ASSERT(host_flash_ee_find_active_bank(&bank_base, &next_offset));
+    TEST_ASSERT((next_offset + HOST_FLASH_EE_RECORD_SIZE) > HOST_FLASH_EE_BANK_SIZE);
+    return true;
+}
+
+/**
+ * @brief Verify the logical Flash-EE image matches checkpoint-copy baseline.
+ * @return true when all logical lines reload unchanged.
+ */
+static bool host_flash_ee_verify_checkpoint_expected_image(void)
+{
+    const par_store_backend_api_t * const p_store = par_store_backend_flash_ee_get_api();
+    uint8_t expected[HOST_FLASH_EE_LINE_COUNT][HOST_FLASH_EE_LINE_SIZE];
+    uint8_t readback[HOST_FLASH_EE_LINE_SIZE];
+
+    host_flash_clear_failpoints();
+    TEST_ASSERT(host_flash_ee_build_checkpoint_expected_image(expected));
+    TEST_ASSERT(host_flash_ee_backend_reinit_only());
+    TEST_ASSERT(NULL != p_store);
+    TEST_ASSERT(NULL != p_store->read);
+
+    for (uint32_t line = 0U; line < HOST_FLASH_EE_LINE_COUNT; line++)
+    {
+        TEST_ASSERT_OK(p_store->read(line * HOST_FLASH_EE_LINE_SIZE,
+                                     HOST_FLASH_EE_LINE_SIZE,
+                                     readback));
+        TEST_ASSERT(0 == memcmp(readback, expected[line], sizeof(readback)));
+    }
+
+    TEST_ASSERT_OK(p_store->deinit());
+    return true;
+}
+
+
+/** @brief Checkpoint-copy program phase selected for failpoint injection. */
+typedef enum
+{
+    eHOST_FLASH_EE_CHECKPOINT_COPY_PAYLOAD_META = 0, /**< Payload and metadata program phase. */
+    eHOST_FLASH_EE_CHECKPOINT_COPY_COMMIT_MARKER     /**< Commit-marker program phase. */
+} host_flash_ee_checkpoint_copy_phase_t;
+
+/**
+ * @brief Return the checkpoint-copy program phase name used in repro logs.
+ * @param phase Checkpoint-copy program phase.
+ * @return Human-readable phase name.
+ */
+static const char *host_flash_ee_checkpoint_copy_phase_name(
+    const host_flash_ee_checkpoint_copy_phase_t phase)
+{
+    return (eHOST_FLASH_EE_CHECKPOINT_COPY_PAYLOAD_META == phase) ?
+           "payload_meta" : "commit_marker";
+}
+
+/**
+ * @brief Return the failpoint countdown for one checkpoint-copy program phase.
+ * @details Countdown zero is the prepared-bank header program. Record-copy
+ *          payload/metadata and commit-marker writes start at countdown one.
+ * @param line_index Logical line copied into the checkpoint target bank.
+ * @param phase Record-copy program phase to fail.
+ * @return Program failpoint countdown value for the selected phase.
+ */
+static int host_flash_ee_checkpoint_copy_fail_after(
+    const uint32_t line_index,
+    const host_flash_ee_checkpoint_copy_phase_t phase)
+{
+    return (int)(1U + (line_index * 2U) + (uint32_t)phase);
+}
+
+/**
+ * @brief Calculate the expected failed program range for one copied record.
+ * @param target_bank Physical base address of the checkpoint target bank.
+ * @param line_index Logical line copied into the checkpoint target bank.
+ * @param phase Record-copy program phase to fail.
+ * @param p_addr Expected failed program address.
+ * @param p_size Expected failed program size.
+ * @return true when @p p_addr and @p p_size were populated.
+ */
+static bool host_flash_ee_checkpoint_copy_expected_program_range(
+    const uint32_t target_bank,
+    const uint32_t line_index,
+    const host_flash_ee_checkpoint_copy_phase_t phase,
+    uint32_t * const p_addr,
+    uint32_t * const p_size)
+{
+    const uint32_t record_addr = target_bank + HOST_FLASH_EE_HEADER_SIZE +
+                                 (line_index * HOST_FLASH_EE_RECORD_SIZE);
+
+    TEST_ASSERT(line_index < HOST_FLASH_EE_LINE_COUNT);
+    TEST_ASSERT(NULL != p_addr);
+    TEST_ASSERT(NULL != p_size);
+    if (eHOST_FLASH_EE_CHECKPOINT_COPY_PAYLOAD_META == phase)
+    {
+        *p_addr = record_addr;
+        *p_size = HOST_FLASH_EE_RECORD_COMMIT_OFFSET;
+    }
+    else
+    {
+        *p_addr = record_addr + HOST_FLASH_EE_RECORD_COMMIT_OFFSET;
+        *p_size = HOST_FLASH_PROGRAM_SIZE;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Fail one selected program operation during checkpoint record copy.
+ * @param line_index Logical line whose copied record should fail.
+ * @param phase Record-copy program phase to fail.
+ * @return true when the selected checkpoint-copy failure is injected and
+ *         lands on the expected physical record range.
+ */
+static bool host_flash_child_fail_checkpoint_record_copy_sweep(
+    const uint32_t line_index,
+    const host_flash_ee_checkpoint_copy_phase_t phase)
+{
+    const par_store_backend_api_t * const p_store = par_store_backend_flash_ee_get_api();
+    uint8_t attempted[HOST_FLASH_EE_LINE_SIZE];
+    uint32_t active_bank = 0U;
+    uint32_t next_offset = 0U;
+    uint32_t expected_addr = 0U;
+    uint32_t expected_size = 0U;
+    const int fail_after = host_flash_ee_checkpoint_copy_fail_after(line_index, phase);
+
+    TEST_ASSERT(host_flash_ee_prepare_full_checkpoint_image());
+    TEST_ASSERT(host_flash_ee_find_active_bank(&active_bank, &next_offset));
+    TEST_ASSERT(host_flash_ee_checkpoint_copy_expected_program_range(
+        (0U == active_bank) ? HOST_FLASH_EE_BANK_SIZE : 0U,
+        line_index,
+        phase,
+        &expected_addr,
+        &expected_size));
+    TEST_ASSERT(host_flash_ee_build_line_pattern(attempted, 0xE0U));
+    g_fail_program_after = fail_after;
+    TEST_ASSERT((p_store->write(0U, HOST_FLASH_EE_LINE_SIZE, attempted) &
+                 ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    TEST_ASSERT(g_fail_program_hit);
+    TEST_ASSERT(g_fail_program_addr == expected_addr);
+    TEST_ASSERT(g_fail_program_size == expected_size);
+    return true;
+}
+
+/** @brief Verify every checkpoint-copied record tolerates program failpoints. */
+static bool test_flash_ee_checkpoint_record_copy_failpoint_sweep_preserves_previous_bank(void)
+{
+    static const host_flash_ee_checkpoint_copy_phase_t phases[] = {
+        eHOST_FLASH_EE_CHECKPOINT_COPY_PAYLOAD_META,
+        eHOST_FLASH_EE_CHECKPOINT_COPY_COMMIT_MARKER,
+    };
+
+    if (0 != strcmp(PAR_HOST_TEST_PROFILE_NAME, "default"))
+    {
+        printf("PAR_HOST_CHECKPOINT_COPY_FAILPOINT_SKIP profile=%s\n",
+               PAR_HOST_TEST_PROFILE_NAME);
+        return true;
+    }
+
+    for (uint32_t line = 0U; line < HOST_FLASH_EE_LINE_COUNT; line++)
+    {
+        for (size_t phase_idx = 0U; phase_idx < (sizeof(phases) / sizeof(phases[0])); phase_idx++)
+        {
+            const host_flash_ee_checkpoint_copy_phase_t phase = phases[phase_idx];
+            const int fail_after = host_flash_ee_checkpoint_copy_fail_after(line, phase);
+            pid_t child_pid;
+
+            printf("PAR_HOST_CHECKPOINT_COPY_FAILPOINT line=%lu phase=%s fail_after=%d\n",
+                   (unsigned long)line,
+                   host_flash_ee_checkpoint_copy_phase_name(phase),
+                   fail_after);
+            host_flash_reset_erased();
+            child_pid = fork();
+            TEST_ASSERT(child_pid >= 0);
+            if (0 == child_pid)
+            {
+                host_child_exit_from_result(
+                    host_flash_child_fail_checkpoint_record_copy_sweep(line, phase));
+            }
+            TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+            child_pid = fork();
+            TEST_ASSERT(child_pid >= 0);
+            if (0 == child_pid)
+            {
+                host_child_exit_from_result(host_flash_ee_verify_checkpoint_expected_image());
+            }
+            TEST_ASSERT(host_child_exit_is_success(child_pid));
+        }
+    }
+
     return true;
 }
 
@@ -2312,6 +3097,36 @@ static bool test_flash_ee_repeated_failed_saves_converge_to_last_commit(void)
         host_child_exit_from_result(host_flash_child_verify_mode_value(6U));
     }
     TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+
+/** @brief Verify deterministic scalar save/restart operations match a small model. */
+static bool test_flash_ee_seeded_scalar_restarts_match_model(void)
+{
+    static const uint8_t values[] = { 2U, 7U, 3U, 10U, 1U, 8U };
+    uint8_t value = 0U;
+
+    host_flash_reset_erased();
+    for (size_t i = 0U; i < (sizeof(values) / sizeof(values[0])); i++)
+    {
+        TEST_ASSERT(init_module());
+        TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, values[i]));
+        if (0U == (i % 2U))
+        {
+            TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+        }
+        else
+        {
+            TEST_ASSERT_OK(par_save_all());
+        }
+        TEST_ASSERT_OK(par_deinit());
+
+        TEST_ASSERT(init_module());
+        TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &value));
+        TEST_ASSERT(value == values[i]);
+        TEST_ASSERT_OK(par_deinit());
+    }
     return true;
 }
 
@@ -3082,6 +3897,218 @@ static bool test_nvm_shared_repeated_mixed_failures_converge_to_last_commit(void
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
+
+/** @brief Verify deterministic mixed scalar/object save-restart steps match a model. */
+static bool test_nvm_shared_seeded_mixed_restarts_match_model(void)
+{
+    static const struct
+    {
+        uint8_t mode;       /**< Expected scalar mode after the step. */
+        const char *str;    /**< Expected string object after the step. */
+        bool save_all;      /**< Persist with save-all instead of per-item saves. */
+    } steps[] = {
+        { 2U, "aa", false },
+        { 5U, "bbb", true },
+        { 8U, "c", false },
+        { 3U, "model", true },
+        { 6U, "d", false },
+        { 9U, "ee", true },
+        { 4U, "fff", false },
+        { 7U, "gggg", true },
+        { 1U, "h", false },
+        { 10U, "ii", true },
+        { 2U, "jjj", false },
+        { 5U, "final", true },
+    };
+
+    host_flash_reset_erased();
+    for (size_t i = 0U; i < (sizeof(steps) / sizeof(steps[0])); i++)
+    {
+        TEST_ASSERT(init_module());
+        TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, steps[i].mode));
+        TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, steps[i].str));
+        if (steps[i].save_all)
+        {
+            TEST_ASSERT_OK(par_save_all());
+        }
+        else
+        {
+            TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+            TEST_ASSERT_OK(par_save(ePAR_TEST_STR));
+        }
+        TEST_ASSERT_OK(par_deinit());
+        TEST_ASSERT(host_flash_verify_mode_and_str_value(steps[i].mode, steps[i].str));
+    }
+    return true;
+}
+
+/**
+ * @brief Advance a deterministic host model pseudo-random seed.
+ * @param p_seed Seed updated in place.
+ * @return Next pseudo-random value.
+ */
+static uint32_t host_model_next_seed(uint32_t *const p_seed)
+{
+    *p_seed = ((*p_seed * 1103515245UL) + 12345UL);
+    return *p_seed;
+}
+
+/**
+ * @brief Generate a deterministic bounded object string for model tests.
+ * @param seed Pseudo-random seed used to derive characters.
+ * @param p_out Destination string buffer.
+ * @param out_size Destination buffer size in bytes.
+ */
+static bool host_model_make_str(uint32_t seed, char *const p_out, const size_t out_size)
+{
+    const size_t len = (size_t)((seed % 6UL) + 1UL);
+
+    TEST_ASSERT(out_size > len);
+    for (size_t idx = 0U; idx < len; idx++)
+    {
+        seed = ((seed * 1664525UL) + 1013904223UL);
+        p_out[idx] = (char)('a' + (char)((seed >> 24U) % 26UL));
+    }
+    p_out[len] = '\0';
+    return true;
+}
+
+/** @brief Verify a larger deterministic mixed scalar/object random model. */
+static bool test_nvm_shared_seeded_mixed_random_restarts_match_model(void)
+{
+    uint32_t seed = 0x13572468UL;
+
+    host_flash_reset_erased();
+    for (size_t step = 0U; step < 24U; step++)
+    {
+        char expected_str[9] = { 0 };
+        const uint8_t expected_mode = (uint8_t)((host_model_next_seed(&seed) % 10UL) + 1UL);
+        const bool save_all = ((host_model_next_seed(&seed) & 1UL) != 0UL);
+        const bool object_first = ((host_model_next_seed(&seed) & 2UL) != 0UL);
+
+        TEST_ASSERT(host_model_make_str(host_model_next_seed(&seed), expected_str, sizeof(expected_str)));
+        TEST_ASSERT(init_module());
+        TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, expected_mode));
+        TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, expected_str));
+        if (save_all)
+        {
+            TEST_ASSERT_OK(par_save_all());
+        }
+        else if (object_first)
+        {
+            TEST_ASSERT_OK(par_save(ePAR_TEST_STR));
+            TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+        }
+        else
+        {
+            TEST_ASSERT_OK(par_save(ePAR_TEST_MODE));
+            TEST_ASSERT_OK(par_save(ePAR_TEST_STR));
+        }
+        TEST_ASSERT_OK(par_deinit());
+        TEST_ASSERT(host_flash_verify_mode_and_str_value(expected_mode, expected_str));
+    }
+    return true;
+}
+
+#if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
+    (1 == PAR_CFG_ENABLE_TYPE_STR) && \
+    (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED)
+/**
+ * @brief Update an object while its validation callback persists current state.
+ * @param validation Object validation callback to install.
+ * @return true when the child scenario completes.
+ */
+static bool host_flash_child_object_validation_save_policy(
+    const pf_par_obj_validation_t validation)
+{
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "old"));
+    TEST_ASSERT_OK(par_save_all());
+    g_nvm_callback_hits = 0U;
+    par_register_obj_validation(ePAR_TEST_STR, validation);
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "new"));
+    TEST_ASSERT(g_nvm_callback_hits == 1U);
+    return true;
+}
+
+/** @brief Verify object validation-time save persists pre-validation state. */
+static bool test_nvm_object_validation_save_during_dispatch_current_policy(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_object_validation_save_policy(
+            on_nvm_object_validation_save));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_verify_mode_and_str_value(4U, "old"));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+/** @brief Verify object validation-time save-all persists pre-validation state. */
+static bool test_nvm_object_validation_save_all_during_dispatch_current_policy(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_object_validation_save_policy(
+            on_nvm_object_validation_save_all));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_verify_mode_and_str_value(4U, "old"));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+/** @brief Verify object validation-time save-clean persists pre-validation state. */
+static bool test_nvm_object_validation_save_clean_during_dispatch_current_policy(void)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_object_validation_save_policy(
+            on_nvm_object_validation_save_clean));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_verify_mode_and_str_value(4U, "old"));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+#endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (1 == PAR_CFG_ENABLE_TYPE_STR) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) */
+
+
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) */
 
 /** @brief Verify unchanged object n-save calls do not mutate the flash image. */
@@ -3202,6 +4229,78 @@ static bool host_flash_child_fail_save_clean_after_commit(const int erase_fail_a
     g_fail_erase_after = erase_fail_after;
     g_fail_program_after = program_fail_after;
     TEST_ASSERT((par_save_clean() & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    return true;
+}
+
+/**
+ * @brief Execute a forked failpoint attempt and verify the old mode survives.
+ * @param p_attempt Child callback that applies one failing save operation.
+ * @param program_fail_after Program failpoint countdown passed to @p p_attempt.
+ * @return true when the failed attempt preserves mode value 4 after restart.
+ */
+static bool host_flash_verify_mode_failpoint_case(
+    bool (* const p_attempt)(const int),
+    const int program_fail_after)
+{
+    pid_t child_pid;
+
+    host_flash_reset_erased();
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(p_attempt(program_fail_after));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+    child_pid = fork();
+    TEST_ASSERT(child_pid >= 0);
+    if (0 == child_pid)
+    {
+        host_child_exit_from_result(host_flash_child_verify_mode_value(4U));
+    }
+    TEST_ASSERT(host_child_exit_is_success(child_pid));
+    return true;
+}
+
+/**
+ * @brief Save a committed scalar, then fail save-clean at a selected program step.
+ * @param program_fail_after Program failpoint countdown.
+ * @return true when save-clean reports the injected backend error.
+ */
+static bool host_flash_child_fail_save_clean_program_after_commit(
+    const int program_fail_after)
+{
+    return host_flash_child_fail_save_clean_after_commit(HOST_FLASH_FAIL_DISABLED,
+                                                         program_fail_after);
+}
+
+/**
+ * @brief Verify representative save APIs preserve the last full commit on
+ *        early program failures.
+ */
+static bool test_flash_ee_representative_program_failpoint_sweep_preserves_last_commit(void)
+{
+    static bool (* const attempts[])(const int) = {
+        host_flash_child_fail_save_after_commit,
+        host_flash_child_fail_save_all_after_commit,
+        host_flash_child_fail_save_clean_program_after_commit,
+    };
+    static const int program_fail_after_cases[] = { 0, 1 };
+
+    for (size_t attempt = 0U;
+         attempt < (sizeof(attempts) / sizeof(attempts[0]));
+         attempt++)
+    {
+        for (size_t fail_idx = 0U;
+             fail_idx < (sizeof(program_fail_after_cases) / sizeof(program_fail_after_cases[0]));
+             fail_idx++)
+        {
+            TEST_ASSERT(host_flash_verify_mode_failpoint_case(
+                attempts[attempt], program_fail_after_cases[fail_idx]));
+        }
+    }
+
     return true;
 }
 
@@ -3966,6 +5065,109 @@ static bool test_object_dedicated_save_all_object_write_fail_scalar_new_object_d
 }
 
 
+/**
+ * @brief Describe one dedicated object write-all failpoint phase.
+ */
+typedef struct
+{
+    int fail_after;          /**< Dedicated backend write countdown to fail. */
+    const char *phase_name;  /**< Human-readable phase label for repro logs. */
+} host_object_write_failpoint_case_t;
+
+/**
+ * @brief Verify scalar state and object defaults after failed object write-all.
+ * @param expected_mode Scalar mode value expected after reload.
+ * @return true when scalar persistence survived and object storage rebuilt defaults.
+ */
+static bool host_object_dedicated_verify_scalar_and_default_objects(
+    const uint8_t expected_mode)
+{
+    static const uint8_t default_bytes[] = { 0x01U, 0x02U };
+    uint8_t mode = 0U;
+    char str_buf[9] = { 0 };
+    uint8_t bytes_buf[4] = { 0U };
+    uint16_t len = 0U;
+
+    host_flash_clear_failpoints();
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &mode));
+    TEST_ASSERT(mode == expected_mode);
+    TEST_ASSERT_OK(par_get_str(ePAR_TEST_STR, str_buf, sizeof(str_buf), &len));
+    TEST_ASSERT(len == 2U);
+    TEST_ASSERT(0 == strcmp(str_buf, "ap"));
+    TEST_ASSERT_OK(par_get_bytes(ePAR_TEST_BYTES, bytes_buf, sizeof(bytes_buf), &len));
+    TEST_ASSERT(len == (uint16_t)sizeof(default_bytes));
+    TEST_ASSERT(0 == memcmp(bytes_buf, default_bytes, sizeof(default_bytes)));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/**
+ * @brief Fail one selected dedicated object write-all phase in a child process.
+ * @param fail_after Dedicated backend write countdown to fail.
+ * @return true when the selected write-all phase reports an NVM error.
+ */
+static bool host_object_dedicated_child_save_all_fail_phase(const int fail_after)
+{
+    const uint8_t old_bytes[4] = { 1U, 2U, 3U, 4U };
+    const uint8_t new_bytes[4] = { 9U, 8U, 7U, 6U };
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 4U));
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "old"));
+    TEST_ASSERT_OK(par_set_bytes(ePAR_TEST_BYTES, old_bytes, (uint16_t)sizeof(old_bytes)));
+    TEST_ASSERT_OK(par_save_all());
+
+    TEST_ASSERT_OK(par_set_u8(ePAR_TEST_MODE, 5U));
+    TEST_ASSERT_OK(par_set_str(ePAR_TEST_STR, "new"));
+    TEST_ASSERT_OK(par_set_bytes(ePAR_TEST_BYTES, new_bytes, (uint16_t)sizeof(new_bytes)));
+    g_object_fail_write_after = fail_after;
+    TEST_ASSERT((par_save_all() & ePAR_STATUS_ERROR_MASK) != ePAR_OK);
+    return true;
+}
+
+/** @brief Verify payload, metadata, and marker object write failpoints. */
+static bool test_object_dedicated_save_all_payload_metadata_marker_failpoint_sweep(void)
+{
+    static const host_object_write_failpoint_case_t cases[] = {
+        { 0, "str_payload" },
+        { 1, "str_metadata" },
+        { 2, "bytes_payload" },
+        { 3, "bytes_metadata" },
+        { 4, "header_marker" },
+    };
+
+    for (size_t i = 0U; i < (sizeof(cases) / sizeof(cases[0])); i++)
+    {
+        pid_t child_pid;
+
+        printf("PAR_HOST_OBJECT_PHASE_FAILPOINT phase=%s fail_after=%d\n",
+               cases[i].phase_name,
+               cases[i].fail_after);
+        host_flash_reset_erased();
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(
+                host_object_dedicated_child_save_all_fail_phase(cases[i].fail_after));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+
+        child_pid = fork();
+        TEST_ASSERT(child_pid >= 0);
+        if (0 == child_pid)
+        {
+            host_child_exit_from_result(
+                host_object_dedicated_verify_scalar_and_default_objects(5U));
+        }
+        TEST_ASSERT(host_child_exit_is_success(child_pid));
+    }
+
+    return true;
+}
+
+
 /** @brief Verify repeated dedicated object write failures converge to last object. */
 static bool test_object_dedicated_repeated_write_failures_converge_to_last_object(void)
 {
@@ -4045,6 +5247,8 @@ int main(void)
         { "flash_ee_failed_program_reload_preserves_last_committed_value", test_flash_ee_failed_program_reload_preserves_last_committed_value },
         { "flash_ee_program_failpoint_matrix_preserves_last_commit", test_flash_ee_program_failpoint_matrix_preserves_last_commit },
         { "flash_ee_repeated_failed_saves_converge_to_last_commit", test_flash_ee_repeated_failed_saves_converge_to_last_commit },
+        { "flash_ee_seeded_scalar_restarts_match_model", test_flash_ee_seeded_scalar_restarts_match_model },
+        { "flash_ee_representative_program_failpoint_sweep_preserves_last_commit", test_flash_ee_representative_program_failpoint_sweep_preserves_last_commit },
 #if (1 == PAR_CFG_NVM_WRITE_VERIFY_EN)
         { "nvm_scalar_write_verify_detects_readback_mismatch", test_nvm_scalar_write_verify_detects_readback_mismatch },
         { "nvm_scalar_write_verify_read_error_is_reported", test_nvm_scalar_write_verify_read_error_is_reported },
@@ -4058,10 +5262,17 @@ int main(void)
         { "flash_ee_failed_erase_preserves_existing_bytes", test_flash_ee_failed_erase_preserves_existing_bytes },
         { "flash_ee_many_updates_preserve_last_committed_value", test_flash_ee_many_updates_preserve_last_committed_value },
         { "flash_ee_record_commit_marker_corruption_ignores_partial_record", test_flash_ee_record_commit_marker_corruption_ignores_partial_record },
+        { "flash_ee_bad_committed_tail_rebuilds_default_current_policy", test_flash_ee_bad_committed_tail_rebuilds_default_current_policy },
+        { "flash_ee_newer_bad_record_rebuilds_default_current_policy", test_flash_ee_newer_bad_record_rebuilds_default_current_policy },
+        { "flash_ee_callback_save_during_dispatch_persists_value", test_flash_ee_callback_save_during_dispatch_persists_value },
+        { "flash_ee_callback_save_all_during_dispatch_persists_value", test_flash_ee_callback_save_all_during_dispatch_persists_value },
+        { "flash_ee_callback_save_clean_during_dispatch_persists_value", test_flash_ee_callback_save_clean_during_dispatch_persists_value },
+        { "flash_ee_callback_deinit_during_dispatch_current_policy", test_flash_ee_callback_deinit_during_dispatch_current_policy },
         { "flash_ee_checkpoint_power_loss_preserves_previous_active_bank", test_flash_ee_checkpoint_power_loss_preserves_previous_active_bank },
         { "flash_ee_checkpoint_prepare_header_power_loss_ignores_new_bank", test_flash_ee_checkpoint_prepare_header_power_loss_ignores_new_bank },
         { "flash_ee_newer_bank_with_bad_cfg_crc_is_ignored", test_flash_ee_newer_bank_with_bad_cfg_crc_is_ignored },
         { "flash_ee_checkpoint_record_copy_power_loss_preserves_previous_active_bank", test_flash_ee_checkpoint_record_copy_power_loss_preserves_previous_active_bank },
+        { "flash_ee_checkpoint_record_copy_failpoint_sweep_preserves_previous_bank", test_flash_ee_checkpoint_record_copy_failpoint_sweep_preserves_previous_bank },
         { "flash_ee_port_rejects_wrapped_ranges", test_flash_ee_port_rejects_wrapped_ranges },
         { "flash_ee_program_one_to_zero_semantics", test_flash_ee_program_one_to_zero_semantics },
         { "flash_ee_partial_line_write_preserves_neighbor_bytes", test_flash_ee_partial_line_write_preserves_neighbor_bytes },
@@ -4100,6 +5311,13 @@ int main(void)
         { "nvm_shared_save_all_failpoint_preserves_last_committed_values", test_nvm_shared_save_all_failpoint_preserves_last_committed_values },
         { "nvm_shared_obj_n_save_program_failpoint_matrix_preserves_last_commit", test_nvm_shared_obj_n_save_program_failpoint_matrix_preserves_last_commit },
         { "nvm_shared_repeated_mixed_failures_converge_to_last_commit", test_nvm_shared_repeated_mixed_failures_converge_to_last_commit },
+        { "nvm_shared_seeded_mixed_restarts_match_model", test_nvm_shared_seeded_mixed_restarts_match_model },
+        { "nvm_shared_seeded_mixed_random_restarts_match_model", test_nvm_shared_seeded_mixed_random_restarts_match_model },
+#if (1 == PAR_CFG_ENABLE_TYPE_STR)
+        { "nvm_object_validation_save_during_dispatch_current_policy", test_nvm_object_validation_save_during_dispatch_current_policy },
+        { "nvm_object_validation_save_all_during_dispatch_current_policy", test_nvm_object_validation_save_all_during_dispatch_current_policy },
+        { "nvm_object_validation_save_clean_during_dispatch_current_policy", test_nvm_object_validation_save_clean_during_dispatch_current_policy },
+#endif /* (1 == PAR_CFG_ENABLE_TYPE_STR) */
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) */
         { "msh_save_persists_live_scalar_after_restart", test_msh_save_persists_live_scalar_after_restart },
         { "msh_save_clean_rewrites_live_values", test_msh_save_clean_rewrites_live_values },
@@ -4119,6 +5337,7 @@ int main(void)
         { "object_dedicated_erase_fail_aborts_save_all", test_object_dedicated_erase_fail_aborts_save_all },
         { "object_dedicated_n_save_write_fail_preserves_persisted_object", test_object_dedicated_n_save_write_fail_preserves_persisted_object },
         { "object_dedicated_save_all_object_write_fail_scalar_new_object_default", test_object_dedicated_save_all_object_write_fail_scalar_new_object_default },
+        { "object_dedicated_save_all_payload_metadata_marker_failpoint_sweep", test_object_dedicated_save_all_payload_metadata_marker_failpoint_sweep },
         { "object_dedicated_repeated_write_failures_converge_to_last_object", test_object_dedicated_repeated_write_failures_converge_to_last_object },
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_DEDICATED) */
     };

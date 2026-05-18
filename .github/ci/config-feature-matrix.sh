@@ -82,6 +82,17 @@ run_case scalar_no_id_no_range \
     -DPAR_CFG_ENABLE_RANGE=0 \
     -DPAR_CFG_TABLE_ID_CHECK_EN=0
 
+run_case scalar_range_disabled_runtime_policy \
+    -DPAR_HOST_TEST_CONFIG_RANGE_DISABLED \
+    -DPAR_CFG_OBJECT_TYPES_ENABLED=0 \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0 \
+    -DPAR_CFG_ENABLE_RANGE=0
+
 run_case scalar_no_metadata \
     -DPAR_CFG_OBJECT_TYPES_ENABLED=0 \
     -DPAR_CFG_ENABLE_TYPE_F32=0 \
@@ -106,7 +117,24 @@ run_case scalar_no_access_role \
     -DPAR_CFG_ENABLE_ACCESS=0 \
     -DPAR_CFG_ENABLE_ROLE_POLICY=0
 
+run_case scalar_role_policy_disabled_runtime_policy \
+    -DPAR_HOST_TEST_CONFIG_ROLE_POLICY_DISABLED \
+    -DPAR_CFG_OBJECT_TYPES_ENABLED=0 \
+    -DPAR_CFG_ENABLE_TYPE_F32=0 \
+    -DPAR_CFG_ENABLE_TYPE_STR=0 \
+    -DPAR_CFG_ENABLE_TYPE_BYTES=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U8=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
+    -DPAR_CFG_ENABLE_TYPE_ARR_U32=0 \
+    -DPAR_CFG_ENABLE_ROLE_POLICY=0
+
+AUTOGEN_PM_CONFIG_FIXTURE_DIR=parameters/tests/host/fixtures \
+run_case access_disabled_read_only_runtime_policy \
+    -DPAR_HOST_TEST_CONFIG_ACCESS_DISABLED \
+    -DPAR_CFG_ENABLE_ACCESS=0
+
 run_case scalar_no_validation_callback \
+    -DPAR_HOST_TEST_CONFIG_NO_CALLBACK_VALIDATION \
     -DPAR_CFG_OBJECT_TYPES_ENABLED=0 \
     -DPAR_CFG_ENABLE_TYPE_F32=0 \
     -DPAR_CFG_ENABLE_TYPE_STR=0 \
@@ -197,4 +225,4 @@ run_case f32_disabled_runtime_smoke \
     -DPAR_CFG_ENABLE_TYPE_ARR_U16=0 \
     -DPAR_CFG_ENABLE_TYPE_ARR_U32=0
 
-printf 'CONFIG_FEATURE_SUMMARY Passed %u/%u\n' 13 13
+printf 'CONFIG_FEATURE_SUMMARY Passed %u/%u\n' 16 16

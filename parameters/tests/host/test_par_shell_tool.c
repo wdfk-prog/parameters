@@ -542,6 +542,89 @@ static bool test_msh_json_escapes_control_chars(void)
     return true;
 }
 
+/** @brief Verify scalar numeric trailing garbage is rejected without mutation. */
+static bool test_msh_set_rejects_numeric_trailing_garbage_without_mutation(void)
+{
+    char *set_u8_args[] = { "par", "set", "1", "4" };
+    char *u8_garbage_args[] = { "par", "set", "1", "4abc" };
+    char *u16_bad_hex_args[] = { "par", "set", "3", "0x" };
+    char *i8_double_sign_args[] = { "par", "set", "2", "--1" };
+    uint8_t mode = 0U;
+    int8_t i8_value = 0;
+    uint16_t u16_value = 0U;
+
+    TEST_ASSERT(init_module());
+    TEST_ASSERT_OK(par_set_i8(ePAR_TEST_I8, -1));
+    TEST_ASSERT_OK(par_set_u16(ePAR_TEST_U16, 100U));
+    run_shell(4, set_u8_args);
+    TEST_ASSERT(shell_capture_contains("OK"));
+    run_shell(4, u8_garbage_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(4, u16_bad_hex_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(4, i8_double_sign_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    TEST_ASSERT_OK(par_get_u8(ePAR_TEST_MODE, &mode));
+    TEST_ASSERT(mode == 4U);
+    TEST_ASSERT_OK(par_get_i8(ePAR_TEST_I8, &i8_value));
+    TEST_ASSERT(i8_value == -1);
+    TEST_ASSERT_OK(par_get_u16(ePAR_TEST_U16, &u16_value));
+    TEST_ASSERT(u16_value == 100U);
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify non-finite float tokens are rejected without mutation. */
+static bool test_msh_set_rejects_nonfinite_float_without_mutation(void)
+{
+    char *set_f32_args[] = { "par", "set", "7", "2.5" };
+    char *nan_args[] = { "par", "set", "7", "nan" };
+    char *inf_args[] = { "par", "set", "7", "inf" };
+    char *suffix_args[] = { "par", "set", "7", "1.0fxx" };
+    float32_t f32_value = 0.0f;
+
+    TEST_ASSERT(init_module());
+    run_shell(4, set_f32_args);
+    TEST_ASSERT(shell_capture_contains("OK"));
+    run_shell(4, nan_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(4, inf_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(4, suffix_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    TEST_ASSERT_OK(par_get_f32(ePAR_TEST_F32, &f32_value));
+    TEST_ASSERT((f32_value > 2.49f) && (f32_value < 2.51f));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
+/** @brief Verify empty and mixed role separators reject invalid role tokens. */
+static bool test_msh_role_rejects_empty_and_mixed_separator_tokens(void)
+{
+    char *role_set_public_args[] = { "par", "role", "set", "public" };
+    char *role_set_empty_args[] = { "par", "role", "set", "" };
+    char *role_set_empty_mid_args[] = { "par", "role", "set", "public||service" };
+    char *role_set_spaced_empty_args[] = { "par", "role", "set", "public, ,service" };
+    char *role_set_mixed_args[] = { "par", "role", "set", "public,service+developer" };
+    char *role_query_args[] = { "par", "role" };
+
+    TEST_ASSERT(init_module());
+    run_shell(4, role_set_public_args);
+    TEST_ASSERT(shell_capture_contains("shell_roles=public"));
+    run_shell(4, role_set_empty_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(4, role_set_empty_mid_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(4, role_set_spaced_empty_args);
+    TEST_ASSERT(shell_capture_contains("ERR"));
+    run_shell(2, role_query_args);
+    TEST_ASSERT(shell_capture_contains("shell_roles=public"));
+    run_shell(4, role_set_mixed_args);
+    TEST_ASSERT(shell_capture_contains("shell_roles=public|service|developer"));
+    TEST_ASSERT_OK(par_deinit());
+    return true;
+}
+
 /** @brief Verify malformed role commands preserve the previous role mask. */
 static bool test_msh_role_rejects_unknown_token_without_role_change(void)
 {
@@ -585,6 +668,9 @@ int main(void)
         { "msh_parser_whitespace_and_empty_token_matrix", test_msh_parser_whitespace_and_empty_token_matrix },
         { "msh_role_combination_and_duplicate_token_policy", test_msh_role_combination_and_duplicate_token_policy },
         { "msh_json_escapes_control_chars", test_msh_json_escapes_control_chars },
+        { "msh_set_rejects_numeric_trailing_garbage_without_mutation", test_msh_set_rejects_numeric_trailing_garbage_without_mutation },
+        { "msh_set_rejects_nonfinite_float_without_mutation", test_msh_set_rejects_nonfinite_float_without_mutation },
+        { "msh_role_rejects_empty_and_mixed_separator_tokens", test_msh_role_rejects_empty_and_mixed_separator_tokens },
         { "msh_role_rejects_unknown_token_without_role_change", test_msh_role_rejects_unknown_token_without_role_change },
     };
 

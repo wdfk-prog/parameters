@@ -69,6 +69,13 @@ LAYOUT_SIGNATURE_TYPE_CODES = {
     "ARR_U16": 11,
     "ARR_U32": 12,
 }
+DEFAULT_TYPE_CONDITIONS = {
+    "STR": "(1 == PAR_CFG_ENABLE_TYPE_STR)",
+    "BYTES": "(1 == PAR_CFG_ENABLE_TYPE_BYTES)",
+    "ARR_U8": "(1 == PAR_CFG_ENABLE_TYPE_ARR_U8)",
+    "ARR_U16": "(1 == PAR_CFG_ENABLE_TYPE_ARR_U16)",
+    "ARR_U32": "(1 == PAR_CFG_ENABLE_TYPE_ARR_U32)",
+}
 ENUM_RE = re.compile(r"^ePAR_[A-Z0-9_]+$")
 
 
@@ -202,6 +209,9 @@ def read_rows(path: Path) -> List[Row]:
         reader = csv.DictReader(f)
         if reader.fieldnames is None:
             raise PargenError(f"{path}: missing CSV header")
+        duplicate = sorted({col for col in reader.fieldnames if reader.fieldnames.count(col) > 1})
+        if duplicate:
+            raise PargenError(f"{path}: duplicate columns: {', '.join(duplicate)}")
         missing = [col for col in REQUIRED_COLUMNS if col not in reader.fieldnames]
         if missing:
             raise PargenError(f"{path}: missing required columns: {', '.join(missing)}")
@@ -247,13 +257,14 @@ def normalize_row(line: int, raw: Dict[str, Optional[str]]) -> Row:
 
     enum = field("enum")
     type_name = field("type").upper()
+    condition = resolve_condition(raw_field("condition"), type_name, line)
     persistent = parse_persistent(field("persistent"), line)
     default_text = raw_field("default") if type_name == "STR" else field("default")
     return Row(
         line=line,
         group=field("group"),
         section=field("section"),
-        condition=field("condition"),
+        condition=condition,
         enum=enum,
         id_text=field("id"),
         type=type_name,
@@ -269,6 +280,33 @@ def normalize_row(line: int, raw: Dict[str, Optional[str]]) -> Row:
         desc=field("desc"),
         comment=field("comment"),
     )
+
+
+def default_condition_for_type(type_name: str) -> str:
+    """Return the default feature guard for a parameter type when one is needed."""
+    return DEFAULT_TYPE_CONDITIONS.get(type_name, "")
+
+
+def resolve_condition(text: str, type_name: str, line: int) -> str:
+    """Return the CSV override condition or the default type feature guard."""
+    condition = validate_condition_text(text, line).strip()
+    if condition:
+        return condition
+    return default_condition_for_type(type_name)
+
+
+def validate_condition_text(text: str, line: int) -> str:
+    """Return a safe, single-line preprocessor condition expression."""
+    for ch in text:
+        if ch in {"\n", "\r"} or ord(ch) < 32:
+            raise PargenError(f"line {line}: condition must be a single-line expression")
+    if "\\" in text:
+        raise PargenError(f"line {line}: condition must not contain backslashes")
+    if "/*" in text or "*/" in text or "//" in text:
+        raise PargenError(f"line {line}: condition must not contain comments")
+    if "#" in text:
+        raise PargenError(f"line {line}: condition must not contain preprocessor directives")
+    return text
 
 
 def parse_persistent(text: str, line: int) -> int:
@@ -643,8 +681,7 @@ def normalize_role(text: str, line: int) -> str:
 
 
 def hash_bits_for_rows(rows: Sequence[Row]) -> int:
-    always_enabled = sum(1 for row in rows if not row.condition)
-    min_rows = max(always_enabled, 1)
+    min_rows = max(len(rows), 1)
     min_buckets = 2 * min_rows
     bits = 1
     while (1 << bits) < min_buckets:

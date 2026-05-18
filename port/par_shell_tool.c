@@ -21,6 +21,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <math.h>
 #include <string.h>
 #include <errno.h>
 
@@ -325,6 +327,7 @@ static bool par_shell_parse_roles(const char *str, par_role_t *const p_roles)
 {
     char buf[64];
     char *token;
+    bool saw_token = false;
     par_role_t roles = ePAR_ROLE_NONE;
     par_role_t role = ePAR_ROLE_NONE;
 
@@ -340,8 +343,21 @@ static bool par_shell_parse_roles(const char *str, par_role_t *const p_roles)
     {
         if ((*token == '|') || (*token == ',') || (*token == '+'))
         {
+            if (false == saw_token)
+            {
+                return false;
+            }
+            saw_token = false;
             *token = ' ';
         }
+        else if (0 == isspace((unsigned char)*token))
+        {
+            saw_token = true;
+        }
+    }
+    if (false == saw_token)
+    {
+        return false;
     }
 
     token = strtok(buf, " ");
@@ -1464,8 +1480,10 @@ static bool par_shell_parse_value(const char *str, const par_type_list_t type, p
         return par_shell_parse_i32(str, &p_value->i32);
 
     case ePAR_TYPE_F32:
+        errno = 0;
         p_value->f32 = strtof(str, &end);
-        if ((end == str) || (*end != '\0'))
+        if ((end == str) || (*end != '\0') || (errno == ERANGE) ||
+            !isfinite((double)p_value->f32))
             return false;
         return true;
 
