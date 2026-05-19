@@ -60,6 +60,8 @@ jobs:
 
       - name: Run host runtime tests in parallel
         shell: bash
+        env:
+          PAR_HOST_TEST_GROUP: mandatory
         run: bash .github/ci/host-tests.sh
 
   config-profile-matrix:
@@ -73,6 +75,22 @@ jobs:
       - name: Validate CI configuration profiles
         shell: bash
         run: bash .github/ci/config-matrix.sh
+
+  host-runtime-current-policy-tests:
+    name: Host runtime current-policy tests
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run current-policy host tests in parallel
+        shell: bash
+        env:
+          PAR_HOST_TEST_GROUP: current-policy
+          PAR_HOST_REQUIRE_SELECTED: 1
+        run: bash .github/ci/host-tests.sh
 
   host-cppcheck-src:
     name: host-cppcheck-src

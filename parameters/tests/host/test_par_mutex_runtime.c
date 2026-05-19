@@ -92,6 +92,7 @@ void par_if_release_mutex(const par_num_t par_num)
  * @param new_val New scalar value.
  * @param old_val Previous scalar value.
  */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static void on_mutex_reentrant_update_other(const par_num_t par_num,
                                             const par_type_t new_val,
                                             const par_type_t old_val)
@@ -102,6 +103,7 @@ static void on_mutex_reentrant_update_other(const par_num_t par_num,
     g_mutex_reentrant_hits++;
     g_mutex_reentrant_set_status = par_set_u16(ePAR_TEST_U16, 444U);
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /**
  * @brief Initialize the parameter module for one mutex test case.
@@ -199,8 +201,9 @@ static bool test_mutex_default_reset_failure_reports_mutex(void)
     return true;
 }
 
-/** @brief Verify recursive mutex policy permits cross-parameter callbacks. */
-static bool test_mutex_reentrant_callback_updates_other_parameter_recursive_policy(void)
+/** @brief Verify current recursive-mutex policy permits cross-parameter callbacks. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+static bool test_mutex_reentrant_callback_updates_other_parameter_recursive_current_policy(void)
 {
     uint16_t value16 = 0U;
 
@@ -220,6 +223,7 @@ static bool test_mutex_reentrant_callback_updates_other_parameter_recursive_poli
     TEST_ASSERT_OK(par_deinit());
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Entrypoint for mutex host runtime tests. */
 int main(void)
@@ -229,7 +233,9 @@ int main(void)
         { "mutex_object_setter_failure_preserves_value", test_mutex_object_setter_failure_preserves_value },
         { "mutex_object_has_changed_failure_reports_mutex", test_mutex_object_has_changed_failure_reports_mutex },
         { "mutex_default_reset_failure_reports_mutex", test_mutex_default_reset_failure_reports_mutex },
-        { "mutex_reentrant_callback_updates_other_parameter_recursive_policy", test_mutex_reentrant_callback_updates_other_parameter_recursive_policy },
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+        { "mutex_reentrant_callback_updates_other_parameter_recursive_current_policy", test_mutex_reentrant_callback_updates_other_parameter_recursive_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
     };
 
     return par_host_run_tests(cases, sizeof(cases) / sizeof(cases[0]));

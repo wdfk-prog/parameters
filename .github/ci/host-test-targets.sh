@@ -32,6 +32,14 @@ host_targets=(
     par_generated_runtime_scalar_only
 )
 
+current_policy_host_targets=(
+    par_mutex_runtime
+    par_shell_tool
+    par_nvm_flash_ee
+    par_nvm_flash_ee_schema_current_policy
+    par_backend_adapter_smoke
+)
+
 run_host_targets_parallel() {
     local target
     local pid
@@ -85,12 +93,21 @@ run_host_targets_wait_batch() {
 }
 
 run_all_host_targets() {
+    local targets=("${host_targets[@]}")
+
+    if [ "${PAR_HOST_TEST_GROUP:-mandatory}" = "current-policy" ] || \
+       [ "${PAR_HOST_TEST_GROUP:-mandatory}" = "current_policy" ]; then
+        targets=("${current_policy_host_targets[@]}")
+    elif [ "${PAR_HOST_TEST_GROUP:-mandatory}" = "all" ]; then
+        targets+=(par_nvm_flash_ee_schema_current_policy)
+    fi
+
     if [ "${AUTOGEN_PM_HOST_TEST_PARALLEL:-1}" = "0" ]; then
-        for target in "${host_targets[@]}"; do
+        for target in "${targets[@]}"; do
             run_host_target "$target"
         done
     else
-        run_host_targets_parallel "${host_targets[@]}"
+        run_host_targets_parallel "${targets[@]}"
     fi
 }
 
@@ -177,6 +194,9 @@ run_host_target() {
             ;;
         par_nvm_flash_ee_schema_evolution)
             run_nvm_flash_ee_schema_evolution_profile
+            ;;
+        par_nvm_flash_ee_schema_current_policy)
+            run_nvm_flash_ee_schema_current_policy_profile
             ;;
         par_nvm_flash_ee_object_write_verify)
             run_nvm_flash_ee_object_write_verify_profile

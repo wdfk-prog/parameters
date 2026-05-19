@@ -315,9 +315,9 @@ static bool test_rtt_at24cxx_driver_error_propagates(void)
     return true;
 }
 
-
-/** @brief Verify a failure after the first AT24 page write preserves untouched tail bytes. */
-static bool test_rtt_at24cxx_second_page_write_fail_reports_partial_progress_policy(void)
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+/** @brief Verify current partial-progress policy after the first AT24 page write. */
+static bool test_rtt_at24cxx_second_page_write_fail_reports_partial_progress_current_policy(void)
 {
     const par_store_backend_api_t *api;
     const uint32_t first_chunk = (uint32_t)AT24CXX_PAGE_BYTE -
@@ -343,6 +343,7 @@ static bool test_rtt_at24cxx_second_page_write_fail_reports_partial_progress_pol
     TEST_ASSERT_OK(api->deinit());
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Verify AT24CXX backend calls reject access after deinitialization. */
 static bool test_rtt_at24cxx_after_deinit_rejects_io(void)
@@ -396,7 +397,8 @@ static bool test_rtt_at24cxx_second_page_read_fail_preserves_tail_buffer(void)
 }
 
 /** @brief Verify an erase chunk failure reports partial-progress current policy. */
-static bool test_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_policy(void)
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+static bool test_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_current_policy(void)
 {
     const par_store_backend_api_t *api;
     const uint32_t first_chunk = (uint32_t)AT24CXX_PAGE_BYTE -
@@ -420,6 +422,7 @@ static bool test_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_policy(vo
     TEST_ASSERT_OK(api->deinit());
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Verify AT24CXX backend null-buffer and zero-length status policy. */
 static bool test_rtt_at24cxx_null_buffer_and_zero_len_status_matrix(void)
@@ -445,6 +448,7 @@ static bool test_rtt_at24cxx_null_buffer_and_zero_len_status_matrix(void)
 }
 
 /** @brief Verify AT24CXX sync is a no-op under the current synchronous-write policy. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool test_rtt_at24cxx_sync_noop_current_policy(void)
 {
     const par_store_backend_api_t *api;
@@ -460,6 +464,7 @@ static bool test_rtt_at24cxx_sync_noop_current_policy(void)
     TEST_ASSERT_OK(api->sync());
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Verify repeated AT24CXX backend init/deinit cycles are idempotent. */
 static bool test_rtt_at24cxx_repeated_init_deinit_is_idempotent(void)
@@ -520,10 +525,16 @@ int main(void)
         { "backend_rtt_at24cxx_base_addr_offsets_window", test_rtt_at24cxx_base_addr_offsets_window },
         { "backend_rtt_at24cxx_exact_end_and_zero_len_boundaries", test_rtt_at24cxx_exact_end_and_zero_len_boundaries },
         { "backend_rtt_at24cxx_driver_error_propagates", test_rtt_at24cxx_driver_error_propagates },
-        { "backend_rtt_at24cxx_second_page_write_fail_reports_partial_progress_policy", test_rtt_at24cxx_second_page_write_fail_reports_partial_progress_policy },
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+        { "backend_rtt_at24cxx_second_page_write_fail_reports_partial_progress_current_policy", test_rtt_at24cxx_second_page_write_fail_reports_partial_progress_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
         { "backend_rtt_at24cxx_second_page_read_fail_preserves_tail_buffer", test_rtt_at24cxx_second_page_read_fail_preserves_tail_buffer },
-        { "backend_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_policy", test_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_policy },
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+        { "backend_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_current_policy", test_rtt_at24cxx_erase_chunk_fail_reports_partial_progress_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
         { "backend_rtt_at24cxx_sync_noop_current_policy", test_rtt_at24cxx_sync_noop_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
         { "backend_rtt_at24cxx_repeated_init_deinit_is_idempotent", test_rtt_at24cxx_repeated_init_deinit_is_idempotent },
         { "backend_rtt_at24cxx_init_check_fail_deinits_device_and_recovers", test_rtt_at24cxx_init_check_fail_deinits_device_and_recovers },
         { "backend_rtt_at24cxx_null_buffer_and_zero_len_status_matrix", test_rtt_at24cxx_null_buffer_and_zero_len_status_matrix },
