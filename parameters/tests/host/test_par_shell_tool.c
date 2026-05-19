@@ -515,8 +515,9 @@ static bool test_msh_parser_whitespace_and_empty_token_matrix(void)
     return true;
 }
 
-/** @brief Verify role list separators and duplicate tokens preserve the same mask. */
-static bool test_msh_role_combination_and_duplicate_token_policy(void)
+/** @brief Verify current role-token policy preserves the same mask. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+static bool test_msh_role_combination_and_duplicate_token_current_policy(void)
 {
     char *role_set_combo_args[] = { "par", "role", "set", "public|service" };
     char *role_add_duplicate_args[] = { "par", "role", "add", "service" };
@@ -532,6 +533,7 @@ static bool test_msh_role_combination_and_duplicate_token_policy(void)
     TEST_ASSERT_OK(par_deinit());
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Verify JSON escaping covers quotes, backslashes, and control chars. */
 static bool test_msh_json_escapes_control_chars(void)
@@ -666,7 +668,9 @@ int main(void)
         { "msh_set_all_scalar_widths_and_float", test_msh_set_all_scalar_widths_and_float },
         { "msh_set_rejects_overflow_and_negative_unsigned", test_msh_set_rejects_overflow_and_negative_unsigned },
         { "msh_parser_whitespace_and_empty_token_matrix", test_msh_parser_whitespace_and_empty_token_matrix },
-        { "msh_role_combination_and_duplicate_token_policy", test_msh_role_combination_and_duplicate_token_policy },
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+        { "msh_role_combination_and_duplicate_token_current_policy", test_msh_role_combination_and_duplicate_token_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
         { "msh_json_escapes_control_chars", test_msh_json_escapes_control_chars },
         { "msh_set_rejects_numeric_trailing_garbage_without_mutation", test_msh_set_rejects_numeric_trailing_garbage_without_mutation },
         { "msh_set_rejects_nonfinite_float_without_mutation", test_msh_set_rejects_nonfinite_float_without_mutation },

@@ -49,6 +49,7 @@ run_nvm_flash_ee_schema_evolution_pair() {
     local object_region_size="${8:-0x40U}"
     local layout_source="${9:-parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_with_size.c}"
     local extra_defines=()
+    local host_test_group="${PAR_HOST_TEST_GROUP:-mandatory}"
     local image_file="$build_dir/par_nvm_flash_ee_schema_${name}.image"
     local object_image_file="$image_file.object"
 
@@ -61,6 +62,8 @@ run_nvm_flash_ee_schema_evolution_pair() {
     (
         trap 'rm -f "$image_file" "$object_image_file"' EXIT
 
+        # Always create the schema baseline image; read-side cases are group-filtered below.
+        PAR_HOST_TEST_GROUP=all \
         PAR_HOST_FLASH_IMAGE_PATH="$image_file" \
         PAR_HOST_OBJECT_FLASH_IMAGE_PATH="$object_image_file" \
             compile_and_run_nvm "par_nvm_flash_ee_schema_${name}_write" \
@@ -78,6 +81,7 @@ run_nvm_flash_ee_schema_evolution_pair() {
                 "${base_sources[@]}" \
                 "$layout_source" \
                 "${nvm_sources[@]}"
+        PAR_HOST_TEST_GROUP="$host_test_group" \
         PAR_HOST_FLASH_IMAGE_PATH="$image_file" \
         PAR_HOST_OBJECT_FLASH_IMAGE_PATH="$object_image_file" \
             compile_and_run_nvm_with_fixture "par_nvm_flash_ee_schema_${name}_read" \
@@ -112,10 +116,6 @@ run_nvm_flash_ee_schema_evolution_profile() {
         persistent_removed \
         parameters/tests/host/fixtures_schema_persistent_removed \
         PAR_HOST_TEST_SCHEMA_PERSISTENT_REMOVED_READ
-    run_nvm_flash_ee_schema_evolution_pair \
-        scalar_to_object \
-        parameters/tests/host/fixtures_schema_scalar_to_object \
-        PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ
     run_nvm_flash_ee_schema_evolution_pair \
         object_to_scalar \
         parameters/tests/host/fixtures_schema_object_to_scalar \
@@ -206,6 +206,13 @@ run_nvm_flash_ee_schema_evolution_profile() {
         0x00U \
         0x40U \
         parameters/src/nvm/scalar/layout/par_nvm_layout_fixed_slot_no_size.c
+}
+
+run_nvm_flash_ee_schema_current_policy_profile() {
+    run_nvm_flash_ee_schema_evolution_pair \
+        scalar_to_object \
+        parameters/tests/host/fixtures_schema_scalar_to_object \
+        PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ
 }
 
 run_nvm_flash_ee_write_verify_profile() {

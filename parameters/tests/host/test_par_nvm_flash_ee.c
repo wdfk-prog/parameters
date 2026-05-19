@@ -93,6 +93,7 @@ static char g_nvm_shell_capture[NVM_SHELL_CAPTURE_SIZE];
 /** @brief Number of used bytes in g_nvm_shell_capture. */
 static size_t g_nvm_shell_capture_used;
 
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 /** @brief Callback hit counter for NVM callback current-policy tests. */
 static unsigned g_nvm_callback_hits;
 
@@ -145,6 +146,7 @@ static void on_nvm_scalar_change_save_clean(const par_num_t par_num,
     g_nvm_callback_hits++;
     (void)par_save_clean();
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /**
  * @brief Deinitialize the parameter module from inside an on-change callback.
@@ -152,6 +154,7 @@ static void on_nvm_scalar_change_save_clean(const par_num_t par_num,
  * @param new_val New scalar value.
  * @param old_val Previous scalar value.
  */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static void on_nvm_scalar_change_deinit(const par_num_t par_num,
                                         const par_type_t new_val,
                                         const par_type_t old_val)
@@ -162,11 +165,13 @@ static void on_nvm_scalar_change_deinit(const par_num_t par_num,
     g_nvm_callback_hits++;
     (void)par_deinit();
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 
 #if (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && \
     (1 == PAR_CFG_ENABLE_TYPE_STR)
 /** @brief Persist the current object from inside object validation. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool on_nvm_object_validation_save(const par_num_t par_num,
                                           const uint8_t *p_data,
                                           const uint16_t len)
@@ -176,8 +181,10 @@ static bool on_nvm_object_validation_save(const par_num_t par_num,
     g_nvm_callback_hits++;
     return (ePAR_OK == par_save(par_num));
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Persist all current values from inside object validation. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool on_nvm_object_validation_save_all(const par_num_t par_num,
                                               const uint8_t *p_data,
                                               const uint16_t len)
@@ -188,8 +195,10 @@ static bool on_nvm_object_validation_save_all(const par_num_t par_num,
     g_nvm_callback_hits++;
     return (ePAR_OK == par_save_all());
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Rewrite clean current values from inside object validation. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool on_nvm_object_validation_save_clean(const par_num_t par_num,
                                                 const uint8_t *p_data,
                                                 const uint16_t len)
@@ -200,6 +209,7 @@ static bool on_nvm_object_validation_save_clean(const par_num_t par_num,
     g_nvm_callback_hits++;
     return (ePAR_OK == par_save_clean());
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (1 == PAR_CFG_ENABLE_TYPE_STR) */
 
 /** @brief Reset the NVM shell output capture buffer. */
@@ -782,6 +792,7 @@ static bool host_flash_ee_append_uncommitted_tail_record(const uint32_t line_ind
  * @param line_index Logical EEPROM line index to encode in the bad record.
  * @return true when the bad committed tail record was written.
  */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool host_flash_ee_append_bad_committed_tail_record(const uint32_t line_index)
 {
     uint32_t bank_base = 0U;
@@ -806,6 +817,7 @@ static bool host_flash_ee_append_bad_committed_tail_record(const uint32_t line_i
     host_flash_write_image();
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /**
  * @brief Calculate the scalar NVM header CRC for one count/table-ID pair.
@@ -2148,6 +2160,7 @@ static bool test_flash_ee_record_commit_marker_corruption_ignores_partial_record
 }
 
 /** @brief Append a bad committed tail after a valid commit. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool host_flash_child_append_bad_committed_tail_after_commit(void)
 {
     TEST_ASSERT(init_module());
@@ -2156,8 +2169,10 @@ static bool host_flash_child_append_bad_committed_tail_after_commit(void)
     TEST_ASSERT(host_flash_ee_append_bad_committed_tail_record(0U));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Append a bad committed tail after two valid records for the same scalar. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool host_flash_child_append_newer_bad_record_after_two_commits(void)
 {
     TEST_ASSERT(init_module());
@@ -2168,6 +2183,7 @@ static bool host_flash_child_append_newer_bad_record_after_two_commits(void)
     TEST_ASSERT(host_flash_ee_append_bad_committed_tail_record(0U));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /**
  * @brief Verify a bad committed tail rebuilds defaults by current policy.
@@ -2176,6 +2192,7 @@ static bool host_flash_child_append_newer_bad_record_after_two_commits(void)
  *          record fails validation, the image is treated as untrusted and the
  *          runtime is rebuilt from defaults.
  */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool test_flash_ee_bad_committed_tail_rebuilds_default_current_policy(void)
 {
     pid_t child_pid;
@@ -2198,6 +2215,7 @@ static bool test_flash_ee_bad_committed_tail_rebuilds_default_current_policy(voi
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /**
  * @brief Verify a newer bad record rebuilds defaults by current policy.
@@ -2206,6 +2224,7 @@ static bool test_flash_ee_bad_committed_tail_rebuilds_default_current_policy(voi
  *          older-good fallback unless Flash-EE replay policy is changed and
  *          documented explicitly.
  */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool test_flash_ee_newer_bad_record_rebuilds_default_current_policy(void)
 {
     pid_t child_pid;
@@ -2228,7 +2247,9 @@ static bool test_flash_ee_newer_bad_record_rebuilds_default_current_policy(void)
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 /** @brief Save a scalar through a change callback and exit without deinit. */
 static bool host_flash_child_callback_save_during_dispatch(void)
 {
@@ -2240,8 +2261,8 @@ static bool host_flash_child_callback_save_during_dispatch(void)
     return true;
 }
 
-/** @brief Verify callback-time save survives a hard process restart. */
-static bool test_flash_ee_callback_save_during_dispatch_persists_value(void)
+/** @brief Verify current callback-time save policy survives a hard process restart. */
+static bool test_flash_ee_callback_save_during_dispatch_current_policy(void)
 {
     pid_t child_pid;
 
@@ -2275,8 +2296,8 @@ static bool host_flash_child_callback_save_all_during_dispatch(void)
     return true;
 }
 
-/** @brief Verify callback-time save-all survives a hard process restart. */
-static bool test_flash_ee_callback_save_all_during_dispatch_persists_value(void)
+/** @brief Verify current callback-time save-all policy survives a hard process restart. */
+static bool test_flash_ee_callback_save_all_during_dispatch_current_policy(void)
 {
     pid_t child_pid;
 
@@ -2310,8 +2331,8 @@ static bool host_flash_child_callback_save_clean_during_dispatch(void)
     return true;
 }
 
-/** @brief Verify callback-time save-clean survives a hard process restart. */
-static bool test_flash_ee_callback_save_clean_during_dispatch_persists_value(void)
+/** @brief Verify current callback-time save-clean policy survives a hard process restart. */
+static bool test_flash_ee_callback_save_clean_during_dispatch_current_policy(void)
 {
     pid_t child_pid;
 
@@ -2333,8 +2354,10 @@ static bool test_flash_ee_callback_save_clean_during_dispatch_persists_value(voi
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Deinitialize from a change callback and exit with the module down. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool host_flash_child_callback_deinit_during_dispatch(void)
 {
     TEST_ASSERT(init_module());
@@ -2345,8 +2368,10 @@ static bool host_flash_child_callback_deinit_during_dispatch(void)
     TEST_ASSERT(!par_is_init());
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Verify callback-time deinit does not persist through the current policy. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool test_flash_ee_callback_deinit_during_dispatch_current_policy(void)
 {
     pid_t child_pid;
@@ -2369,6 +2394,7 @@ static bool test_flash_ee_callback_deinit_during_dispatch_current_policy(void)
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Fill the active bank, then fail the next checkpoint erase. */
 static bool host_flash_child_fail_checkpoint_after_commit(void)
@@ -3297,6 +3323,7 @@ static bool test_nvm_schema_persistent_removed_rebuilds_remaining_defaults(void)
 
 #if defined(PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ)
 /** @brief Verify scalar-to-object schema drift is rejected by the current policy. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool test_nvm_schema_scalar_to_object_rejects_stale_image_current_policy(void)
 {
     par_status_t status;
@@ -3310,6 +3337,7 @@ static bool test_nvm_schema_scalar_to_object_rejects_stale_image_current_policy(
     }
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 #endif /* defined(PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ) */
 
 #if defined(PAR_HOST_TEST_SCHEMA_OBJECT_TO_SCALAR_READ)
@@ -4018,6 +4046,7 @@ static bool test_nvm_shared_seeded_mixed_random_restarts_match_model(void)
  * @param validation Object validation callback to install.
  * @return true when the child scenario completes.
  */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool host_flash_child_object_validation_save_policy(
     const pf_par_obj_validation_t validation)
 {
@@ -4031,8 +4060,10 @@ static bool host_flash_child_object_validation_save_policy(
     TEST_ASSERT(g_nvm_callback_hits == 1U);
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Verify object validation-time save persists pre-validation state. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool test_nvm_object_validation_save_during_dispatch_current_policy(void)
 {
     pid_t child_pid;
@@ -4056,8 +4087,10 @@ static bool test_nvm_object_validation_save_during_dispatch_current_policy(void)
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Verify object validation-time save-all persists pre-validation state. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool test_nvm_object_validation_save_all_during_dispatch_current_policy(void)
 {
     pid_t child_pid;
@@ -4081,8 +4114,10 @@ static bool test_nvm_object_validation_save_all_during_dispatch_current_policy(v
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 
 /** @brief Verify object validation-time save-clean persists pre-validation state. */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static bool test_nvm_object_validation_save_clean_during_dispatch_current_policy(void)
 {
     pid_t child_pid;
@@ -4106,6 +4141,7 @@ static bool test_nvm_object_validation_save_clean_during_dispatch_current_policy
     TEST_ASSERT(host_child_exit_is_success(child_pid));
     return true;
 }
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (1 == PAR_CFG_ENABLE_TYPE_STR) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) */
 
 
@@ -5213,9 +5249,13 @@ int main(void)
         { "nvm_schema_persistent_removed_rebuilds_remaining_defaults", test_nvm_schema_persistent_removed_rebuilds_remaining_defaults },
     };
 #elif defined(PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ)
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
     static const par_host_test_case_t cases[] = {
         { "nvm_schema_scalar_to_object_rejects_stale_image_current_policy", test_nvm_schema_scalar_to_object_rejects_stale_image_current_policy },
     };
+#else
+#error "PAR_HOST_TEST_SCHEMA_SCALAR_TO_OBJECT_READ requires PAR_HOST_ENABLE_CURRENT_POLICY_TESTS"
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 #elif defined(PAR_HOST_TEST_SCHEMA_OBJECT_TO_SCALAR_READ)
     static const par_host_test_case_t cases[] = {
         { "nvm_schema_object_to_scalar_rebuilds_scalar_default", test_nvm_schema_object_to_scalar_rebuilds_scalar_default },
@@ -5262,12 +5302,18 @@ int main(void)
         { "flash_ee_failed_erase_preserves_existing_bytes", test_flash_ee_failed_erase_preserves_existing_bytes },
         { "flash_ee_many_updates_preserve_last_committed_value", test_flash_ee_many_updates_preserve_last_committed_value },
         { "flash_ee_record_commit_marker_corruption_ignores_partial_record", test_flash_ee_record_commit_marker_corruption_ignores_partial_record },
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
         { "flash_ee_bad_committed_tail_rebuilds_default_current_policy", test_flash_ee_bad_committed_tail_rebuilds_default_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
         { "flash_ee_newer_bad_record_rebuilds_default_current_policy", test_flash_ee_newer_bad_record_rebuilds_default_current_policy },
-        { "flash_ee_callback_save_during_dispatch_persists_value", test_flash_ee_callback_save_during_dispatch_persists_value },
-        { "flash_ee_callback_save_all_during_dispatch_persists_value", test_flash_ee_callback_save_all_during_dispatch_persists_value },
-        { "flash_ee_callback_save_clean_during_dispatch_persists_value", test_flash_ee_callback_save_clean_during_dispatch_persists_value },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+        { "flash_ee_callback_save_during_dispatch_current_policy", test_flash_ee_callback_save_during_dispatch_current_policy },
+        { "flash_ee_callback_save_all_during_dispatch_current_policy", test_flash_ee_callback_save_all_during_dispatch_current_policy },
+        { "flash_ee_callback_save_clean_during_dispatch_current_policy", test_flash_ee_callback_save_clean_during_dispatch_current_policy },
         { "flash_ee_callback_deinit_during_dispatch_current_policy", test_flash_ee_callback_deinit_during_dispatch_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
         { "flash_ee_checkpoint_power_loss_preserves_previous_active_bank", test_flash_ee_checkpoint_power_loss_preserves_previous_active_bank },
         { "flash_ee_checkpoint_prepare_header_power_loss_ignores_new_bank", test_flash_ee_checkpoint_prepare_header_power_loss_ignores_new_bank },
         { "flash_ee_newer_bank_with_bad_cfg_crc_is_ignored", test_flash_ee_newer_bank_with_bad_cfg_crc_is_ignored },
@@ -5314,9 +5360,15 @@ int main(void)
         { "nvm_shared_seeded_mixed_restarts_match_model", test_nvm_shared_seeded_mixed_restarts_match_model },
         { "nvm_shared_seeded_mixed_random_restarts_match_model", test_nvm_shared_seeded_mixed_random_restarts_match_model },
 #if (1 == PAR_CFG_ENABLE_TYPE_STR)
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
         { "nvm_object_validation_save_during_dispatch_current_policy", test_nvm_object_validation_save_during_dispatch_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
         { "nvm_object_validation_save_all_during_dispatch_current_policy", test_nvm_object_validation_save_all_during_dispatch_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
         { "nvm_object_validation_save_clean_during_dispatch_current_policy", test_nvm_object_validation_save_clean_during_dispatch_current_policy },
+#endif /* PAR_HOST_ENABLE_CURRENT_POLICY_TESTS */
 #endif /* (1 == PAR_CFG_ENABLE_TYPE_STR) */
 #endif /* (1 == PAR_CFG_NVM_OBJECT_EN) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (PAR_CFG_NVM_OBJECT_STORE_MODE == PAR_CFG_NVM_OBJECT_STORE_SHARED) */
         { "msh_save_persists_live_scalar_after_restart", test_msh_save_persists_live_scalar_after_restart },

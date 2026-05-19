@@ -29,6 +29,15 @@ common_includes=(
     -Iparameters/src/scalar
 )
 
+case "${PAR_HOST_TEST_GROUP:-mandatory}" in
+    current-policy|current_policy|all)
+        host_group_cflags=(-DPAR_HOST_ENABLE_CURRENT_POLICY_TESTS=1)
+        ;;
+    *)
+        host_group_cflags=(-DPAR_HOST_ENABLE_CURRENT_POLICY_TESTS=0)
+        ;;
+esac
+
 common_cflags=(
     -std=c11
     -Wall
@@ -73,7 +82,7 @@ compile_and_run() {
 
     echo "[host-tests] build $name"
     rm -f "$output"
-    gcc "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
+    gcc "${common_cflags[@]}" "${host_group_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
     echo "[host-tests] run $name"
     "$output"
 }
@@ -85,7 +94,7 @@ compile_and_run_nvm() {
 
     echo "[host-tests] build $name"
     rm -f "$output"
-    gcc -Iparameters/tests/host/fixtures_nvm "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
+    gcc -Iparameters/tests/host/fixtures_nvm "${common_cflags[@]}" "${host_group_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
     echo "[host-tests] run $name"
     "$output"
 }
@@ -98,7 +107,7 @@ compile_and_run_nvm_with_fixture() {
 
     echo "[host-tests] build $name"
     rm -f "$output"
-    gcc -I"$fixture_dir" -Iparameters/tests/host/fixtures_nvm "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
+    gcc -I"$fixture_dir" -Iparameters/tests/host/fixtures_nvm "${common_cflags[@]}" "${host_group_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -o "$output" || return $?
     echo "[host-tests] run $name"
     "$output"
 }
@@ -109,5 +118,5 @@ compile_only() {
     local output="$build_dir/$name.o"
 
     echo "[host-tests] compile $name"
-    gcc "${common_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -c -o "$output"
+    gcc "${common_cflags[@]}" "${host_group_cflags[@]}" "${autogen_pm_ci_defines[@]}" "$@" -c -o "$output"
 }
