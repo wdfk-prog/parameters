@@ -8,6 +8,8 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 . "$script_dir/host-test-common.sh"
 # shellcheck source=.github/ci/host-test-nvm-matrix.sh
 . "$script_dir/host-test-nvm-matrix.sh"
+# shellcheck source=.github/ci/host-test-generated-targets.sh
+. "$script_dir/host-test-generated-targets.sh"
 # shellcheck source=.github/ci/host-test-targets.sh
 . "$script_dir/host-test-targets.sh"
 

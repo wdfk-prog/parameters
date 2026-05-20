@@ -86,13 +86,13 @@ void par_if_release_mutex(const par_num_t par_num)
     }
 }
 
+#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 /**
  * @brief Update another scalar from a callback while mutex hooks are enabled.
  * @param par_num Parameter number that changed.
  * @param new_val New scalar value.
  * @param old_val Previous scalar value.
  */
-#if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
 static void on_mutex_reentrant_update_other(const par_num_t par_num,
                                             const par_type_t new_val,
                                             const par_type_t old_val)
@@ -201,8 +201,8 @@ static bool test_mutex_default_reset_failure_reports_mutex(void)
     return true;
 }
 
-/** @brief Verify current recursive-mutex policy permits cross-parameter callbacks. */
 #if PAR_HOST_ENABLE_CURRENT_POLICY_TESTS
+/** @brief Verify current recursive-mutex policy permits cross-parameter callbacks. */
 static bool test_mutex_reentrant_callback_updates_other_parameter_recursive_current_policy(void)
 {
     uint16_t value16 = 0U;
