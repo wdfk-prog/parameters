@@ -793,7 +793,7 @@ static const char *par_shell_current_value_to_cstr(const par_num_t par_num,
 }
 #endif /* (defined(AUTOGEN_PM_MSH_CMD_INFO) || defined(AUTOGEN_PM_MSH_CMD_JSON)) */
 
-#if ((defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_DEF)) && (1 == PAR_CFG_ENABLE_ID))
+#if ((defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_DEF) || defined(AUTOGEN_PM_MSH_CMD_SAVE)) && (1 == PAR_CFG_ENABLE_ID))
 /**
  * @brief Parse one unsigned 16-bit integer from shell input.
  * @param str Input string.
@@ -819,7 +819,7 @@ static bool par_shell_parse_u16(const char *str, uint16_t *const p_value)
     *p_value = (uint16_t)value;
     return true;
 }
-#endif /* ((defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_DEF)) && (1 == PAR_CFG_ENABLE_ID)) */
+#endif /* ((defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_DEF) || defined(AUTOGEN_PM_MSH_CMD_SAVE)) && (1 == PAR_CFG_ENABLE_ID)) */
 
 #if (defined(AUTOGEN_PM_MSH_CMD_SET) && (1 == PAR_CFG_ENABLE_ID))
 /**
@@ -1307,7 +1307,7 @@ static par_status_t par_shell_print_object_get(const par_num_t par_num, const pa
 }
 #endif /* (defined(AUTOGEN_PM_MSH_CMD_GET) && (1 == PAR_CFG_ENABLE_ID) && (1 == PAR_CFG_OBJECT_TYPES_ENABLED) && (1 == PAR_SHELL_OBJECT_GET_ENABLED)) */
 
-#if ((defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_DEF)) && (1 == PAR_CFG_ENABLE_ID))
+#if ((defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_DEF) || defined(AUTOGEN_PM_MSH_CMD_SAVE)) && (1 == PAR_CFG_ENABLE_ID))
 /**
  * @brief Resolve one shell target from the external parameter ID.
  * @param id_str Parameter ID string.
@@ -1328,7 +1328,7 @@ static bool par_shell_resolve_target(const char *id_str, par_shell_target_t *con
 
     return (par_get_num_by_id(p_target->id, &p_target->par_num) == ePAR_OK);
 }
-#endif /* ((defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_DEF)) && (1 == PAR_CFG_ENABLE_ID)) */
+#endif /* ((defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_DEF) || defined(AUTOGEN_PM_MSH_CMD_SAVE)) && (1 == PAR_CFG_ENABLE_ID)) */
 
 #if (defined(AUTOGEN_PM_MSH_CMD_INFO) || defined(AUTOGEN_PM_MSH_CMD_GET) || defined(AUTOGEN_PM_MSH_CMD_SET) || defined(AUTOGEN_PM_MSH_CMD_JSON))
 /**
@@ -1480,54 +1480,30 @@ static bool par_shell_parse_value(const char *str, const par_type_list_t type, p
  * @param argv Argument vector.
  * @param[out] p_target Resolved shell target.
  * @param[out] p_value_str Pointer to the scalar value string.
- * @param pair_buf Mutable storage used when the `id,value` form is provided.
- * @param pair_buf_size Size of pair_buf in bytes.
  * @return true on success.
  */
 static bool par_shell_parse_set_args(const int argc,
                                      char **argv,
                                      par_shell_target_t *const p_target,
-                                     const char **const p_value_str,
-                                     char *const pair_buf,
-                                     const rt_size_t pair_buf_size)
+                                     const char **const p_value_str)
 {
-    char *comma;
-
-    if ((p_target == RT_NULL) || (p_value_str == RT_NULL) || (pair_buf == RT_NULL) || (pair_buf_size == 0U))
+    if ((p_target == RT_NULL) || (p_value_str == RT_NULL))
     {
         return false;
     }
 
-    if (argc >= 4)
+    if (argc != 4)
     {
-        if (!par_shell_resolve_target(argv[2], p_target))
-        {
-            return false;
-        }
-        *p_value_str = argv[3];
-        return true;
+        return false;
     }
 
-    if (argc == 3)
+    if (!par_shell_resolve_target(argv[2], p_target))
     {
-        rt_strncpy(pair_buf, argv[2], pair_buf_size - 1U);
-        pair_buf[pair_buf_size - 1U] = '\0';
-        comma = strchr(pair_buf, ',');
-        if (comma == RT_NULL)
-        {
-            return false;
-        }
-
-        *comma = '\0';
-        if (!par_shell_resolve_target(pair_buf, p_target))
-        {
-            return false;
-        }
-        *p_value_str = comma + 1;
-        return true;
+        return false;
     }
 
-    return false;
+    *p_value_str = argv[3];
+    return true;
 }
 #endif /* (defined(AUTOGEN_PM_MSH_CMD_SET) && (1 == PAR_CFG_ENABLE_ID)) */
 
@@ -1546,7 +1522,6 @@ static void par_shell_print_usage(void)
 #endif /* defined(AUTOGEN_PM_MSH_CMD_GET) && (1 == PAR_CFG_ENABLE_ID) */
 #if defined(AUTOGEN_PM_MSH_CMD_SET) && (1 == PAR_CFG_ENABLE_ID)
     rt_kprintf("  set <id> <value>        Set scalar parameter value by ID\n");
-    rt_kprintf("  set <id>,<value>        Alternate compact syntax\n");
     rt_kprintf("  note: object rows use typed firmware APIs only\n");
 #endif /* defined(AUTOGEN_PM_MSH_CMD_SET) && (1 == PAR_CFG_ENABLE_ID) */
 #if defined(AUTOGEN_PM_MSH_CMD_DEF) && (1 == PAR_CFG_ENABLE_ID)
@@ -1556,7 +1531,7 @@ static void par_shell_print_usage(void)
     rt_kprintf("  def_all                 Restore all parameters to default\n");
 #endif /* defined(AUTOGEN_PM_MSH_CMD_DEF_ALL) */
 #if defined(AUTOGEN_PM_MSH_CMD_SAVE) && (1 == PAR_CFG_NVM_EN)
-    rt_kprintf("  save                    Save all persistent parameters\n");
+    rt_kprintf("  save [id]               Save all persistent parameters or one parameter by ID\n");
 #endif /* defined(AUTOGEN_PM_MSH_CMD_SAVE) && (1 == PAR_CFG_NVM_EN) */
 #if defined(AUTOGEN_PM_MSH_CMD_SAVE_CLEAN) && (1 == PAR_CFG_NVM_EN)
     rt_kprintf("  save_clean              Rewrite managed parameter NVM area\n");
@@ -1746,11 +1721,10 @@ static void par_shell_cmd_set(const int argc, char **argv)
     par_shell_target_t target;
     par_type_t value = {0};
     char value_buf[32];
-    char pair_buf[96];
     const char *value_str = RT_NULL;
     par_status_t status;
 
-    if (!par_shell_parse_set_args(argc, argv, &target, &value_str, pair_buf, sizeof(pair_buf)))
+    if (!par_shell_parse_set_args(argc, argv, &target, &value_str))
     {
         rt_kprintf("ERR, usage: par set <id> <value>\n");
         return;
@@ -1962,28 +1936,58 @@ static void par_shell_cmd_def_all(const int argc)
 
 #if defined(AUTOGEN_PM_MSH_CMD_SAVE) && (1 == PAR_CFG_NVM_EN)
 /**
- * @brief Execute the shell save-all command.
+ * @brief Execute the shell save command.
+ *
+ * @details
+ * - `par save` saves all persistent parameters for backward compatibility.
+ * - `par save <id>` saves one persistent parameter selected by external ID.
+ *
  * @param argc Argument count.
+ * @param argv Argument vector.
  */
-static void par_shell_cmd_save(const int argc)
+static void par_shell_cmd_save(const int argc, char **argv)
 {
     par_status_t status;
 
-    if (argc != 2)
+    if (argc == 2)
     {
-        rt_kprintf("ERR, usage: par save\n");
+        status = par_save_all();
+        if (status == ePAR_OK)
+        {
+            rt_kprintf("OK, parameters stored to NVM\n");
+        }
+        else
+        {
+            par_shell_print_status("par_save_all", status);
+        }
         return;
     }
 
-    status = par_save_all();
-    if (status == ePAR_OK)
+#if (1 == PAR_CFG_ENABLE_ID)
+    if (argc == 3)
     {
-        rt_kprintf("OK, parameters stored to NVM\n");
+        par_shell_target_t target;
+
+        if (!par_shell_resolve_target(argv[2], &target))
+        {
+            rt_kprintf("ERR, usage: par save [id]\n");
+            return;
+        }
+
+        status = par_save(target.par_num);
+        if (status == ePAR_OK)
+        {
+            rt_kprintf("OK, parameter %u stored to NVM\n", (unsigned int)target.id);
+        }
+        else
+        {
+            par_shell_print_status("par_save", status);
+        }
+        return;
     }
-    else
-    {
-        par_shell_print_status("par_save", status);
-    }
+#endif /* (1 == PAR_CFG_ENABLE_ID) */
+
+    rt_kprintf("ERR, usage: par save [id]\n");
 }
 #endif /* defined(AUTOGEN_PM_MSH_CMD_SAVE) && (1 == PAR_CFG_NVM_EN) */
 
@@ -2198,7 +2202,7 @@ static void par_msh(int argc, char **argv)
 #if defined(AUTOGEN_PM_MSH_CMD_SAVE) && (1 == PAR_CFG_NVM_EN)
     if (strcmp(argv[1], "save") == 0)
     {
-        par_shell_cmd_save(argc);
+        par_shell_cmd_save(argc, argv);
         return;
     }
 #endif /* defined(AUTOGEN_PM_MSH_CMD_SAVE) && (1 == PAR_CFG_NVM_EN) */
