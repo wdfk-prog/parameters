@@ -623,6 +623,63 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
 
             if AUTOGEN_PM_USING_TESTS
 
+                config AUTOGEN_PM_TEST_USING_RAM_CONFIG
+                    bool "Enable RAM configuration validation tests"
+                    default y
+                    help
+                        Validate RAM behavior and feature APIs, including
+                        default restore, scalar set/get/restore, range limiting,
+                        metadata string getters, ID accessors, access policy,
+                        runtime validation, change callbacks, raw reset-all, F32,
+                        and object parameter paths when the matching features are
+                        compiled in.
+
+                config AUTOGEN_PM_TEST_FORCE_RAM_FEATURES
+                    bool "Force-enable RAM test feature coverage"
+                    default y
+                    depends on AUTOGEN_PM_TEST_USING_RAM_CONFIG
+                    select AUTOGEN_PM_ENABLE_RANGE
+                    select AUTOGEN_PM_ENABLE_NAME
+                    select AUTOGEN_PM_ENABLE_UNIT
+                    select AUTOGEN_PM_ENABLE_DESC
+                    select AUTOGEN_PM_ENABLE_DESC_CHECK
+                    select AUTOGEN_PM_ENABLE_ID
+                    select AUTOGEN_PM_ENABLE_ACCESS
+                    select AUTOGEN_PM_ENABLE_TYPE_F32
+                    select AUTOGEN_PM_ENABLE_RUNTIME_VALIDATION
+                    select AUTOGEN_PM_ENABLE_CHANGE_CALLBACK
+                    select AUTOGEN_PM_ENABLE_RESET_ALL_RAW
+                    help
+                        Force-enable optional parameter-module features required
+                        for the RAM runtime tests to exercise full coverage.
+                        Disable this only when CI intentionally validates a
+                        reduced feature profile.
+
+                config AUTOGEN_PM_TEST_TABLE_ROWS
+                    bool
+                    default y if AUTOGEN_PM_TEST_USING_RAM_CONFIG
+                    depends on AUTOGEN_PM_TEST_USING_RAM_CONFIG
+                    help
+                        Compile the dedicated non-persistent RAM test rows from
+                        par_table.def. This is intentionally hidden because the
+                        RAM test suite references those rows directly.
+
+                config AUTOGEN_PM_TEST_OBJECT_ROWS
+                    bool "Enable object parameter test rows"
+                    default y if AUTOGEN_PM_TEST_TABLE_ROWS
+                    depends on AUTOGEN_PM_TEST_TABLE_ROWS
+                    select AUTOGEN_PM_ENABLE_TYPE_OBJECT
+                    select AUTOGEN_PM_ENABLE_TYPE_STR
+                    select AUTOGEN_PM_ENABLE_TYPE_BYTES
+                    select AUTOGEN_PM_ENABLE_TYPE_ARR_U8
+                    select AUTOGEN_PM_ENABLE_TYPE_ARR_U16
+                    select AUTOGEN_PM_ENABLE_TYPE_ARR_U32
+                    help
+                        Compile dedicated object parameter rows used by the RAM
+                        runtime tests. Keep this enabled when CI should validate
+                        STR, BYTES, ARR_U8, ARR_U16, and ARR_U32 RAM object
+                        paths together with scalar parameters.
+
                 config AUTOGEN_PM_TEST_AUTO_RUN
                     bool "Run parameter tests automatically after boot"
                     default n

@@ -54,6 +54,11 @@ if GetDepend('AUTOGEN_PM_USING_TESTS'):
         cwd + '/parameters/tests',
     ]
 
+    if GetDepend('AUTOGEN_PM_TEST_USING_RAM_CONFIG'):
+        src += Split('''
+        parameters/tests/par_test_ram_config.c
+        ''')
+
 if GetDepend('AUTOGEN_PM_LAYOUT_SOURCE_SCRIPT'):
     src += Split('''
     parameters/generated/par_layout_static.c
