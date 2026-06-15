@@ -36,7 +36,6 @@ REQUIRED_COLUMNS = (
     "read_roles",
     "write_roles",
     "persistent",
-    "desc",
     "comment",
 )
 
@@ -138,6 +137,14 @@ class GeneratorConfig:
     default_id_range: Tuple[int, int]
 
 
+@dataclass
+class ParTableFormat:
+    """Dynamic column widths used while formatting par_table.def."""
+
+    macro_width: int
+    field_widths: Tuple[int, ...]
+
+
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate parameter-manager C files from CSV.")
     parser.add_argument("--csv", default="parameters/schema/par_table.csv", help="CSV schema input path")
@@ -225,6 +232,7 @@ def normalize_row(line: int, raw: Dict[str, Optional[str]]) -> Row:
 
     enum = field("enum")
     type_name = field("type").upper()
+    name = field("name")
     persistent = parse_persistent(field("persistent"), line)
     default_text = raw_field("default") if type_name == "STR" else field("default")
     return Row(
@@ -235,7 +243,7 @@ def normalize_row(line: int, raw: Dict[str, Optional[str]]) -> Row:
         enum=enum,
         id_text=field("id"),
         type=type_name,
-        name=field("name"),
+        name=name,
         min_text=field("min"),
         max_text=field("max"),
         default_text=default_text,
@@ -244,9 +252,18 @@ def normalize_row(line: int, raw: Dict[str, Optional[str]]) -> Row:
         read_roles=field("read_roles"),
         write_roles=field("write_roles"),
         persistent=persistent,
-        desc=field("desc"),
+        desc=normalize_desc(field("desc"), name, enum),
         comment=field("comment"),
     )
+
+
+def normalize_desc(desc: str, name: str, enum: str) -> str:
+    """Return the explicit description or a deterministic fallback."""
+    if desc:
+        return desc
+    if name:
+        return name
+    return enum
 
 
 def parse_persistent(text: str, line: int) -> int:
@@ -344,8 +361,6 @@ def validate_basic(row: Row) -> None:
         raise PargenError(f"line {row.line}: min and max are required")
     if not row.default_text and row.type not in {"STR", "BYTES"}:
         raise PargenError(f"line {row.line}: default is required")
-    if not row.desc:
-        raise PargenError(f"line {row.line}: desc is required")
     normalize_access(row.access, row.line)
     normalize_role(row.read_roles, row.line)
     normalize_role(row.write_roles, row.line)
@@ -611,8 +626,12 @@ def normalize_role(text: str, line: int) -> str:
 
 
 def hash_bits_for_rows(rows: Sequence[Row]) -> int:
-    always_enabled = sum(1 for row in rows if not row.condition)
-    min_rows = max(always_enabled, 1)
+    """Return the static ID hash-table width for all generated rows."""
+    # Size the static ID hash table for every generated row, including rows
+    # that are conditionally compiled by Kconfig. Otherwise a test-only table
+    # made entirely of conditional rows would be forced into two buckets and
+    # would fail collision checks even though the compiled table is valid.
+    min_rows = max(len(rows), 1)
     min_buckets = 2 * min_rows
     bits = 1
     while (1 << bits) < min_buckets:
@@ -662,7 +681,28 @@ def aligned_define(name: str, value: str, width: int) -> str:
     return f"#define {name:<{width}} {value}\n"
 
 
+PAR_TABLE_FIELD_HEADERS = (
+    "enum_",
+    "id_",
+    "name_",
+    "min_",
+    "max_",
+    "def_",
+    "unit_",
+    "access_",
+    "read_roles_",
+    "write_roles_",
+    "pers_",
+    "desc_",
+)
+
+PAR_TABLE_COMMENT_PREFIX = "/* "
+PAR_TABLE_COMMENT_SUFFIX = " */"
+
+
 def generate_par_table_def(rows: List[Row]) -> str:
+    fmt = build_par_table_format(rows)
+    ruler = par_table_comment_ruler(fmt)
     out: List[str] = []
     out.append(generated_banner())
     out.append("/*\n")
@@ -670,18 +710,20 @@ def generate_par_table_def(rows: List[Row]) -> str:
     out.append(" *\n")
     out.append(" * This file is intentionally included multiple times. Do not add include guards.\n")
     out.append(" */\n\n")
-    out.append("/* ============================================================================================================================= */\n")
-    out.append("/*              enum_               id_         name_                        min_     max_     def_     unit_    access_         read_roles_      write_roles_  pers_  desc_ */\n")
-    out.append("/* ============================================================================================================================= */\n\n")
+    out.append(ruler)
+    out.append(format_par_table_header(fmt))
+    out.append(ruler)
+    out.append("\n")
 
     last_group = None
     last_section = None
     for row in rows:
         if row.group != last_group:
             out.append("\n")
-            out.append("/* ============================================================================================================================= */\n")
-            out.append(f"/*  {row.group:<124}*/\n")
-            out.append("/* ============================================================================================================================= */\n\n")
+            out.append(ruler)
+            out.append(format_par_table_group(row.group, fmt))
+            out.append(ruler)
+            out.append("\n")
             last_group = row.group
             last_section = None
         if row.section and row.section != last_section:
@@ -692,17 +734,83 @@ def generate_par_table_def(rows: List[Row]) -> str:
                 out.append(f"/* {line} */\n")
         if row.condition:
             out.append(f"#if {row.condition}\n")
-        out.append(format_par_item(row))
+        out.append(format_par_item(row, fmt))
         if row.condition:
             out.append(f"#endif /* {row.condition} */\n")
-        out.append("\n")
     return "".join(out).rstrip() + "\n"
 
 
-def format_par_item(row: Row) -> str:
+def build_par_table_format(rows: List[Row]) -> ParTableFormat:
+    """Return par_table.def column widths derived from all generated rows."""
+    macro_width = max(16, max((len(row.item_macro) for row in rows), default=0))
+    field_widths = [len(header) for header in PAR_TABLE_FIELD_HEADERS]
+    for row in rows:
+        for index, field in enumerate(format_par_item_fields(row)):
+            field_widths[index] = max(field_widths[index], len(field))
+    return ParTableFormat(macro_width=macro_width, field_widths=tuple(field_widths))
+
+
+def par_table_line_width(fmt: ParTableFormat) -> int:
+    """Return the width of one generated PAR_ITEM line without the newline."""
+    return len(format_par_item_body("", fmt.macro_width, PAR_TABLE_FIELD_HEADERS, fmt.field_widths))
+
+
+def par_table_comment_width(fmt: ParTableFormat) -> int:
+    """Return the inner width used by par_table.def comment separators."""
+    return max(0, par_table_line_width(fmt) - len(PAR_TABLE_COMMENT_PREFIX))
+
+
+def par_table_comment_ruler(fmt: ParTableFormat) -> str:
+    """Return one par_table.def separator comment matching dynamic columns."""
+    return f"{PAR_TABLE_COMMENT_PREFIX}{'=' * par_table_comment_width(fmt)}{PAR_TABLE_COMMENT_SUFFIX}\n"
+
+
+def format_par_table_header(fmt: ParTableFormat) -> str:
+    """Return the generated par_table.def column-header comment."""
+    body = format_par_table_header_body(fmt)
+    return f"{PAR_TABLE_COMMENT_PREFIX}{body:<{par_table_comment_width(fmt)}}{PAR_TABLE_COMMENT_SUFFIX}\n"
+
+
+def format_par_table_header_body(fmt: ParTableFormat) -> str:
+    """Return the column-header body aligned with PAR_ITEM field columns."""
+    args = ", ".join(
+        f"{header:<{width}}"
+        for header, width in zip(PAR_TABLE_FIELD_HEADERS, fmt.field_widths)
+    )
+    first_arg_column = fmt.macro_width + 1
+    padding = max(0, first_arg_column - len(PAR_TABLE_COMMENT_PREFIX))
+    return f"{'':<{padding}}{args}"
+
+
+def format_par_table_group(group: str, fmt: ParTableFormat) -> str:
+    """Return one generated group separator comment for par_table.def."""
+    return f"{PAR_TABLE_COMMENT_PREFIX} {group:<{par_table_comment_width(fmt) - 1}}{PAR_TABLE_COMMENT_SUFFIX}\n"
+
+
+def format_par_item(row: Row, fmt: ParTableFormat) -> str:
+    fields = format_par_item_fields(row)
+    return format_par_item_body(row.item_macro, fmt.macro_width, fields, fmt.field_widths) + "\n"
+
+
+def format_par_item_body(
+    item_macro: str,
+    macro_width: int,
+    fields: Sequence[str],
+    field_widths: Sequence[int],
+) -> str:
+    """Return one PAR_ITEM line body with schema-wide column alignment."""
+    args = ", ".join(
+        f"{field:<{width}}"
+        for field, width in zip(fields, field_widths)
+    )
+    return f"{item_macro:<{macro_width}}({args})"
+
+
+def format_par_item_fields(row: Row) -> List[str]:
+    """Return formatted PAR_ITEM argument fields before column padding."""
     assert row.resolved_id is not None
     def_text = format_default(row)
-    fields = [
+    return [
         row.enum,
         str(row.resolved_id),
         c_string(row.name),
@@ -716,13 +824,6 @@ def format_par_item(row: Row) -> str:
         str(row.persistent),
         c_string(row.desc),
     ]
-    return (
-        f"{row.item_macro:<16}("
-        f"{fields[0]:<22}, {fields[1]:<5}, {fields[2]:<34}, "
-        f"{fields[3]:<8}, {fields[4]:<10}, {fields[5]:<120}, "
-        f"{fields[6]:<8}, {fields[7]:<14}, {fields[8]:<14}, {fields[9]:<15}, "
-        f"{fields[10]:<5}, {fields[11]})\n"
-    )
 
 
 def c_unsigned(text: str) -> str:
@@ -824,6 +925,7 @@ def generate_layout_h(rows: List[Row]) -> str:
     out.append(f"#define PAR_LAYOUT_STATIC_COUNT32        ({count32_expr})\n")
     out.append(f"#define PAR_LAYOUT_STATIC_COUNTOBJ       ({count_obj_expr})\n")
     out.append(f"#define PAR_LAYOUT_STATIC_OBJ_POOL_BYTES ({pool_expr})\n\n")
+    out.append(generate_layout_index_macros(rows))
     out.append(generate_layout_signature_macros(rows))
     out.append(generate_layout_offset_macros(rows))
     out.append("/**\n")
@@ -904,16 +1006,35 @@ def prior_object_pool_expr(rows: List[Row], row: Row) -> str:
     return compact_sum_expr(const_value, terms)
 
 
+def compiled_row_index_macro(row: Row) -> str:
+    """Return the generated macro name for one row's compiled enum index."""
+    return f"PAR_LAYOUT_STATIC_INDEX_{row.enum}"
+
+
+def generate_layout_index_macros(rows: List[Row]) -> str:
+    """Return bounded-length compiled-index macros for generated rows."""
+    out: List[str] = []
+    out.append("/**\n")
+    out.append(" * @brief Generated compiled enum-index helpers.\n")
+    out.append(" */\n")
+    macro_width = max((len(compiled_row_index_macro(row)) for row in rows), default=0)
+    prev_row: Optional[Row] = None
+    for row in rows:
+        macro = compiled_row_index_macro(row)
+        if prev_row is None:
+            expr = "(0u)"
+        else:
+            expr = f"({compiled_row_index_macro(prev_row)} + {prev_row.enabled_macro})"
+        out.append(aligned_define(macro, expr, macro_width))
+        prev_row = row
+    out.append("\n")
+    return "".join(out)
+
+
 def compiled_row_index_expr(rows: List[Row], row: Row) -> str:
     """Return the generated C expression for one row's compiled enum index."""
-    const_value = 0
-    terms = []
-    for prev in rows[:rows.index(row)]:
-        if prev.condition:
-            terms.append(prev.enabled_macro)
-        else:
-            const_value += 1
-    return compact_sum_expr(const_value, terms)
+    del rows
+    return compiled_row_index_macro(row)
 
 
 def layout_signature_term_a_expr(rows: List[Row], row: Row) -> str:
@@ -1058,22 +1179,40 @@ def generate_layout_c(rows: List[Row]) -> str:
     for row in rows:
         if row.condition:
             out.append(f"#if {row.condition}\n")
-        out.append(f"    [{row.enum}] = (uint16_t)(PAR_LAYOUT_STATIC_OFFSET_{row.enum}),\n")
+        out.append(format_layout_table_entry(
+            row.enum,
+            f"PAR_LAYOUT_STATIC_OFFSET_{row.enum}",
+            "uint16_t",
+            rows,
+        ))
         if row.condition:
             out.append(f"#endif /* {row.condition} */\n")
     out.append("};\n\n")
     out.append("const uint32_t g_par_layout_static_object_pool_offset[ePAR_NUM_OF] = {\n")
     out.append("    0u, /* Keep the initializer valid when all object rows are compiled out. */\n")
-    for row in rows:
-        if not row.is_object():
-            continue
+    object_rows = [row for row in rows if row.is_object()]
+    for row in object_rows:
         if row.condition:
             out.append(f"#if {row.condition}\n")
-        out.append(f"    [{row.enum}] = (uint32_t)(PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_{row.enum}),\n")
+        out.append(format_layout_table_entry(
+            row.enum,
+            f"PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_{row.enum}",
+            "uint32_t",
+            object_rows,
+        ))
         if row.condition:
             out.append(f"#endif /* {row.condition} */\n")
     out.append("};\n")
     return "".join(out)
+
+
+def format_layout_table_entry(enum: str, macro: str, cast_type: str, rows: List[Row]) -> str:
+    """Return one aligned generated designated initializer entry."""
+    designator_width = max((len(f"[{row.enum}]") for row in rows), default=len(f"[{enum}]"))
+    macro_width = max((len(f"PAR_LAYOUT_STATIC_OFFSET_{row.enum}") for row in rows), default=len(macro))
+    if macro.startswith("PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_"):
+        macro_width = max((len(f"PAR_LAYOUT_STATIC_OBJECT_POOL_OFFSET_{row.enum}") for row in rows), default=len(macro))
+    return f"    {f'[{enum}]':<{designator_width}} = ({cast_type})({macro:<{macro_width}}),\n"
 
 
 def layout_offset_expr(rows: List[Row], row: Row) -> str:

@@ -28,6 +28,8 @@ extern "C" {
  * @brief Include dependencies.
  */
 #include <stdint.h>
+
+#include "par_cfg_features.h"
 /**
  * @brief Compile-time definitions.
  *

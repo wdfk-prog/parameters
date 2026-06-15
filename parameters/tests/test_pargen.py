@@ -37,10 +37,10 @@ COLUMNS = [
 ]
 
 
-def write_csv(path: Path, rows: list[dict[str, str]]) -> None:
+def write_csv(path: Path, rows: list[dict[str, str]], fieldnames: list[str] | None = None) -> None:
     """Write a temporary pargen CSV schema."""
     with path.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=COLUMNS)
+        writer = csv.DictWriter(stream, fieldnames=fieldnames or COLUMNS)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -184,6 +184,57 @@ class PargenTests(unittest.TestCase):
         self.assertIn("0u, /* Keep the initializer valid", object_table)
         self.assertIn("[ePAR_WIFI_SSID]", object_table)
 
+    def test_empty_desc_falls_back_to_name(self) -> None:
+        """Empty descriptions are normalized from the parameter name."""
+        rows = base_rows()[:1]
+        rows[0]["desc"] = ""
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        self.assertEqual(generated_rows[0].desc, "System Mode")
+        self.assertIn('"System Mode")', outputs.par_table_def)
+
+    def test_desc_column_is_optional(self) -> None:
+        """Schemas without a desc column use the parameter name as a fallback."""
+        rows = base_rows()[:1]
+        row_without_desc = {key: value for key, value in rows[0].items() if key != "desc"}
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = Path(tmp)
+            csv_path = tmpdir / "par_table.csv"
+            columns_without_desc = [column for column in COLUMNS if column != "desc"]
+            write_csv(csv_path, [row_without_desc], columns_without_desc)
+            loaded_rows = pargen.read_rows(csv_path)
+            self.assertEqual(loaded_rows[0].desc, "System Mode")
+
+    def test_par_table_def_uses_dynamic_column_widths(self) -> None:
+        """The generated X-Macro table aligns fields using schema-wide widths."""
+        rows = base_rows()[:2]
+        rows[1]["enum"] = "ePAR_SYS_EXTRA_LONG_PARAMETER_NAME"
+        rows[1]["name"] = "long_parameter_name"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        lines = outputs.par_table_def.splitlines()
+        header = next(line for line in lines if "enum_" in line and "id_" in line)
+        item_lines = [line for line in lines if line.startswith("PAR_ITEM_")]
+        first_id_column = item_lines[0].index(", 0")
+        second_id_column = item_lines[1].index(", 1")
+        self.assertEqual(first_id_column, second_id_column)
+        self.assertEqual(header.index("enum_"), item_lines[0].index("ePAR_SYS_MODE"))
+        self.assertEqual(header.index("id_"), item_lines[0].index(", 0") + 2)
+        self.assertEqual(header.index("name_"), item_lines[0].index('"System Mode"'))
+        self.assertEqual(header.index("min_"), item_lines[0].index(", 0U") + 2)
+        self.assertNotEqual("", lines[lines.index(item_lines[0]) + 1])
+
+    def test_layout_c_uses_dynamic_designator_widths(self) -> None:
+        """Generated layout tables align designated initializer columns."""
+        rows = base_rows()[:2]
+        rows[1]["enum"] = "ePAR_SYS_EXTRA_LONG_PARAMETER_NAME"
+        rows[1]["name"] = "long_parameter_name"
+        generated_rows, generated_stats = self.run_generator(rows)
+        outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        layout_lines = [line for line in outputs.layout_c.splitlines() if "PAR_LAYOUT_STATIC_OFFSET_ePAR_SYS" in line]
+        self.assertEqual(layout_lines[0].index(" = "), layout_lines[1].index(" = "))
+        self.assertEqual(layout_lines[0].index("),"), layout_lines[1].index("),"))
+
     def test_default_value_out_of_range_fails(self) -> None:
         """Scalar defaults outside [min,max] are rejected before C generation."""
         rows = base_rows()
@@ -255,7 +306,7 @@ class PargenTests(unittest.TestCase):
     def test_hash_bucket_collision_fails(self) -> None:
         """IDs that map to the same static hash bucket are rejected."""
         rows = base_rows()
-        rows[1]["id"] = "3"
+        rows[1]["id"] = "8"
         with self.assertRaises(pargen.PargenError):
             self.run_generator(rows)
 
@@ -296,13 +347,18 @@ class PargenTests(unittest.TestCase):
         rows = [rows[0], rows[2], rows[1]]
         generated_rows, generated_stats = self.run_generator(rows)
         generated_outputs = pargen.generate_outputs(generated_rows, generated_stats)
+        index_line = next(
+            line
+            for line in generated_outputs.layout_h.splitlines()
+            if "PAR_LAYOUT_STATIC_INDEX_ePAR_SYS_TEMP" in line
+        )
         term_line = next(
             line
             for line in generated_outputs.layout_h.splitlines()
             if "PAR_LAYOUT_STATIC_SIGNATURE_A_TERM_ePAR_SYS_TEMP" in line
         )
-        self.assertIn("PAR_LAYOUT_ROW_ENABLED_ePAR_WIFI_SSID", term_line)
-        self.assertIn("1u + (PAR_LAYOUT_ROW_ENABLED_ePAR_WIFI_SSID)", term_line)
+        self.assertIn("PAR_LAYOUT_ROW_ENABLED_ePAR_WIFI_SSID", index_line)
+        self.assertIn("PAR_LAYOUT_STATIC_INDEX_ePAR_SYS_TEMP", term_line)
 
 
     def test_generated_layout_header_lines_are_bounded(self) -> None:
