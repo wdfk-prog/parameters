@@ -738,6 +738,116 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
                         RT_USING_FAL; enable FAL_PART_HAS_TABLE_CFG separately
                         when the board uses a static fal_cfg.h partition table.
 
+                config AUTOGEN_PM_TEST_ALLOW_DESTRUCTIVE
+                    bool "Allow destructive runtime tests"
+                    default n
+                    help
+                        Allow test cases marked destructive to execute. Keep
+                        this disabled unless the board uses disposable NVM data.
+
+                config AUTOGEN_PM_TEST_NVM_RAW_HELPER
+                    bool "Enable raw NVM backend manual helper"
+                    default n
+                    depends on AUTOGEN_PM_TEST_ALLOW_DESTRUCTIVE
+                    depends on AUTOGEN_PM_USING_NVM
+                    depends on AUTOGEN_PM_NVM_SCALAR
+                    depends on RT_USING_FINSH
+                    help
+                        Build the par_nvm_raw MSH helper for layout-neutral
+                        raw access to the active parameter NVM backend. The
+                        helper can dump, poke, flip, and corrupt the scalar
+                        header signature byte through backend-relative offsets.
+                        Enable it only on test firmware with disposable
+                        persistent data.
+
+                config AUTOGEN_PM_TEST_NVM_FIXED_SLOT_WITH_SIZE
+                    bool "Enable fixed-slot-with-size NVM manual tests"
+                    default n
+                    depends on AUTOGEN_PM_TEST_ALLOW_DESTRUCTIVE
+                    depends on AUTOGEN_PM_USING_NVM
+                    depends on AUTOGEN_PM_NVM_SCALAR
+                    depends on AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND
+                    depends on AUTOGEN_PM_NVM_RECORD_LAYOUT_FIXED_SLOT_WITH_SIZE
+                    depends on RT_USING_FINSH
+                    help
+                        Build the par_nvm_fslot MSH helper for board-level
+                        validation of the fixed-slot-with-size scalar NVM
+                        layout on an AT24CXX backend. The helper injects
+                        layout-aware slot CRC corruption inside the managed
+                        parameter EEPROM window. Use par_nvm_raw for generic
+                        raw dump, poke, flip, header corruption, and LUT access.
+                        Enable it only on test firmware with disposable
+                        persistent data.
+
+                config AUTOGEN_PM_TEST_NVM_FIXED_SLOT_NO_SIZE
+                    bool "Enable fixed-slot-no-size NVM manual tests"
+                    default n
+                    depends on AUTOGEN_PM_TEST_ALLOW_DESTRUCTIVE
+                    depends on AUTOGEN_PM_USING_NVM
+                    depends on AUTOGEN_PM_NVM_SCALAR
+                    depends on AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND
+                    depends on AUTOGEN_PM_NVM_RECORD_LAYOUT_FIXED_SLOT_NO_SIZE
+                    depends on RT_USING_FINSH
+                    help
+                        Build the par_nvm_fslot_no_size MSH helper for
+                        board-level validation of the fixed-slot-no-size scalar
+                        NVM layout on an AT24CXX backend. The helper prints
+                        layout-aware slot addresses and injects slot CRC or
+                        payload corruption inside the managed parameter EEPROM
+                        window. Enable it only on test firmware with disposable
+                        persistent data.
+
+                config AUTOGEN_PM_TEST_NVM_COMPACT_PAYLOAD
+                    bool "Enable compact-payload NVM manual tests"
+                    default n
+                    depends on AUTOGEN_PM_TEST_ALLOW_DESTRUCTIVE
+                    depends on AUTOGEN_PM_USING_NVM
+                    depends on AUTOGEN_PM_NVM_SCALAR
+                    depends on AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND
+                    depends on AUTOGEN_PM_NVM_RECORD_LAYOUT_COMPACT_PAYLOAD
+                    depends on RT_USING_FINSH
+                    help
+                        Build the par_nvm_compact_payload MSH helper for
+                        board-level validation of the compact-payload scalar NVM
+                        layout on an AT24CXX backend. The helper prints variable
+                        record addresses and injects slot CRC, size descriptor,
+                        or payload corruption. Enable it only on test firmware
+                        with disposable persistent data.
+
+                config AUTOGEN_PM_TEST_NVM_FIXED_PAYLOAD_ONLY
+                    bool "Enable fixed-payload-only NVM manual tests"
+                    default n
+                    depends on AUTOGEN_PM_TEST_ALLOW_DESTRUCTIVE
+                    depends on AUTOGEN_PM_USING_NVM
+                    depends on AUTOGEN_PM_NVM_SCALAR
+                    depends on AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND
+                    depends on AUTOGEN_PM_NVM_RECORD_LAYOUT_FIXED_PAYLOAD_ONLY
+                    depends on RT_USING_FINSH
+                    help
+                        Build the par_nvm_fixed_payload_only MSH helper for
+                        board-level validation of the fixed-payload-only scalar
+                        NVM layout on an AT24CXX backend. The helper prints
+                        persisted-order slot addresses and injects slot CRC or
+                        payload corruption. Enable it only on test firmware with
+                        disposable persistent data.
+
+                config AUTOGEN_PM_TEST_NVM_GROUPED_PAYLOAD_ONLY
+                    bool "Enable grouped-payload-only NVM manual tests"
+                    default n
+                    depends on AUTOGEN_PM_TEST_ALLOW_DESTRUCTIVE
+                    depends on AUTOGEN_PM_USING_NVM
+                    depends on AUTOGEN_PM_NVM_SCALAR
+                    depends on AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND
+                    depends on AUTOGEN_PM_NVM_RECORD_LAYOUT_GROUPED_PAYLOAD_ONLY
+                    depends on RT_USING_FINSH
+                    help
+                        Build the par_nvm_grouped_payload_only MSH helper for
+                        board-level validation of the grouped-payload-only
+                        scalar NVM layout on an AT24CXX backend. The helper
+                        prints grouped-band slot addresses and injects slot CRC
+                        or payload corruption. Enable it only on test firmware
+                        with disposable persistent data.
+
                 config AUTOGEN_PM_TEST_AUTO_RUN
                     bool "Run parameter tests automatically after boot"
                     default n

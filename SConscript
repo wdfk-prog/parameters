@@ -70,6 +70,37 @@ if GetDepend('AUTOGEN_PM_USING_TESTS'):
         parameters/tests/par_test_flash_ee_fal.c
         ''')
 
+    if GetDepend('AUTOGEN_PM_TEST_NVM_RAW_HELPER'):
+        src += Split('''
+        parameters/tests/par_test_nvm_raw.c
+        ''')
+
+    if GetDepend('AUTOGEN_PM_TEST_NVM_FIXED_SLOT_WITH_SIZE'):
+        src += Split('''
+        parameters/tests/par_test_nvm_fixed_slot_with_size.c
+        ''')
+
+
+    if GetDepend('AUTOGEN_PM_TEST_NVM_FIXED_SLOT_NO_SIZE'):
+        src += Split('''
+        parameters/tests/par_test_nvm_fixed_slot_no_size.c
+        ''')
+
+    if GetDepend('AUTOGEN_PM_TEST_NVM_COMPACT_PAYLOAD'):
+        src += Split('''
+        parameters/tests/par_test_nvm_compact_payload.c
+        ''')
+
+    if GetDepend('AUTOGEN_PM_TEST_NVM_FIXED_PAYLOAD_ONLY'):
+        src += Split('''
+        parameters/tests/par_test_nvm_fixed_payload_only.c
+        ''')
+
+    if GetDepend('AUTOGEN_PM_TEST_NVM_GROUPED_PAYLOAD_ONLY'):
+        src += Split('''
+        parameters/tests/par_test_nvm_grouped_payload_only.c
+        ''')
+
 if GetDepend('AUTOGEN_PM_LAYOUT_SOURCE_SCRIPT'):
     src += Split('''
     parameters/generated/par_layout_static.c
