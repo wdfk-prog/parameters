@@ -75,6 +75,11 @@ if GetDepend('AUTOGEN_PM_USING_TESTS'):
         parameters/tests/par_test_nvm_raw.c
         ''')
 
+    if GetDepend('AUTOGEN_PM_TEST_NVM_OBJECT_HELPER'):
+        src += Split('''
+        parameters/tests/par_test_nvm_object.c
+        ''')
+
     if GetDepend('AUTOGEN_PM_TEST_NVM_FIXED_SLOT_WITH_SIZE'):
         src += Split('''
         parameters/tests/par_test_nvm_fixed_slot_with_size.c
