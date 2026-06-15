@@ -52,6 +52,7 @@ if GetDepend('AUTOGEN_PM_USING_TESTS'):
 
     path += [
         cwd + '/parameters/tests',
+        cwd + '/parameters/tests/schema_evolution',
     ]
 
     if GetDepend('AUTOGEN_PM_TEST_USING_RAM_CONFIG'):
@@ -104,6 +105,12 @@ if GetDepend('AUTOGEN_PM_USING_TESTS'):
     if GetDepend('AUTOGEN_PM_TEST_NVM_GROUPED_PAYLOAD_ONLY'):
         src += Split('''
         parameters/tests/par_test_nvm_grouped_payload_only.c
+        ''')
+
+    if GetDepend('AUTOGEN_PM_TEST_NVM_SCHEMA_EVOLUTION'):
+        src += Split('''
+        parameters/tests/par_test_schema_evolution.c
+        parameters/tests/schema_evolution/par_schema_evolution_core.c
         ''')
 
 if GetDepend('AUTOGEN_PM_LAYOUT_SOURCE_SCRIPT'):

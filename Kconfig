@@ -797,6 +797,7 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
                         Enable it only on test firmware with disposable
                         persistent data.
 
+
                 config AUTOGEN_PM_TEST_NVM_FIXED_SLOT_NO_SIZE
                     bool "Enable fixed-slot-no-size NVM manual tests"
                     default n
@@ -865,6 +866,26 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
                         prints grouped-band slot addresses and injects slot CRC
                         or payload corruption. Enable it only on test firmware
                         with disposable persistent data.
+
+                config AUTOGEN_PM_TEST_NVM_SCHEMA_EVOLUTION
+                    bool "Enable NVM schema-evolution manual tests"
+                    default n
+                    depends on AUTOGEN_PM_TEST_ALLOW_DESTRUCTIVE
+                    depends on AUTOGEN_PM_USING_NVM
+                    depends on AUTOGEN_PM_USING_TABLE_ID_CHECK
+                    depends on AUTOGEN_PM_ENABLE_ID
+                    depends on AUTOGEN_PM_NVM_SCALAR
+                    depends on AUTOGEN_PM_NVM_OBJECT
+                    depends on AUTOGEN_PM_ENABLE_TYPE_OBJECT
+                    depends on AUTOGEN_PM_ENABLE_TYPE_STR
+                    depends on AUTOGEN_PM_ENABLE_TYPE_BYTES
+                    depends on RT_USING_FINSH
+                    help
+                        Build the par_nvm_schema MSH helper used by V1/V2
+                        schema-evolution acceptance images. The helper writes
+                        known non-default values with a V1 fixture and verifies
+                        compatible append or managed rebuild behavior after a
+                        V2 fixture boots on the same disposable NVM contents.
 
                 config AUTOGEN_PM_TEST_AUTO_RUN
                     bool "Run parameter tests automatically after boot"

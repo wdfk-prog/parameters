@@ -1,0 +1,6 @@
+group,section,condition,enum,id,type,name,min,max,default,unit,access,read_roles,write_roles,persistent,desc,comment
+SCHEMA_EVOLUTION,Fixture,,ePAR_SCHEMA_BASE_U8,60006,U8,Schema Base U8,0,100,11,,RW,ALL,ALL,1,Base persistent U8 retained across compatible upgrades.,schema evolution fixture
+SCHEMA_EVOLUTION,Fixture,,ePAR_SCHEMA_INSERT_I16,60012,I16,Schema Insert I16,-50,50,0,,RW,ALL,ALL,1,Inserted scalar before the previous tail scalar.,schema evolution fixture
+SCHEMA_EVOLUTION,Fixture,,ePAR_SCHEMA_TAIL_U16,60007,U16,Schema Tail U16,0,5000,1000,,RW,ALL,ALL,1,Tail persistent U16 used by deletion and type-change fixtures.,schema evolution fixture
+SCHEMA_EVOLUTION,Fixture,(1 == PAR_CFG_ENABLE_TYPE_STR),ePAR_SCHEMA_NAME_STR,60008,STR,Schema Name STR,0,8,v1,,RW,ALL,ALL,1,Base persistent string object retained across compatible upgrades.,schema evolution fixture
+SCHEMA_EVOLUTION,Fixture,(1 == PAR_CFG_ENABLE_TYPE_BYTES),ePAR_SCHEMA_BLOB_BYTES,60009,BYTES,Schema Blob BYTES,4,4,0x10 0x20 0x30 0x40,,RW,ALL,ALL,1,Base persistent byte object retained across compatible upgrades.,schema evolution fixture
