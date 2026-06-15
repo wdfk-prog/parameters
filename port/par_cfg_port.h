@@ -16,6 +16,7 @@
 #ifndef _PAR_CFG_PORT_H_
 #define _PAR_CFG_PORT_H_
 
+#include <rtconfig.h>
 #include <rtthread.h>
 
 /**
@@ -74,6 +75,18 @@ extern "C"
 #else
 #define PAR_CFG_DEBUG_EN (0)
 #endif /* defined(AUTOGEN_PM_USING_DEBUG) */
+
+/**
+ * @brief Enable log-level prefixes from AUTOGEN_PM_LOG_LEVEL_PREFIX.
+ *
+ * @details When enabled, PAR_*_PRINT wrappers prepend INFO/DEBUG/WARN/ERROR
+ * markers before forwarding the message to the selected log backend.
+ */
+#ifdef AUTOGEN_PM_LOG_LEVEL_PREFIX
+#define PAR_CFG_LOG_LEVEL_PREFIX_EN (1)
+#else
+#define PAR_CFG_LOG_LEVEL_PREFIX_EN (0)
+#endif /* defined(AUTOGEN_PM_LOG_LEVEL_PREFIX) */
 
 /**
  * @brief Enable RT_ASSERT-backed checks from AUTOGEN_PM_USING_ASSERT.
@@ -671,19 +684,33 @@ extern "C"
 /**
  * @brief Size of the parameter-owned EEPROM window.
  *
- * @details The RTT AT24CXX backend uses the memory geometry exposed by the
- * AT24CXX package directly instead of duplicating size configuration here.
+ * @details
+ * If AUTOGEN_PM_RTT_AT24_SIZE is configured to 0, the backend uses all
+ * remaining EEPROM space from PAR_CFG_RTT_AT24_BASE_ADDR to the end of the
+ * AT24CXX memory space.
  */
 #ifndef PAR_CFG_RTT_AT24_SIZE
-#define PAR_CFG_RTT_AT24_SIZE ((uint32_t)AT24CXX_MAX_MEM_ADDRESS)
+#if defined(AUTOGEN_PM_RTT_AT24_SIZE) && (AUTOGEN_PM_RTT_AT24_SIZE > 0)
+#define PAR_CFG_RTT_AT24_SIZE ((uint32_t)AUTOGEN_PM_RTT_AT24_SIZE)
+#else
+#define PAR_CFG_RTT_AT24_SIZE ((uint32_t)AT24CXX_MAX_MEM_ADDRESS - (uint32_t)PAR_CFG_RTT_AT24_BASE_ADDR)
+#endif /* defined(AUTOGEN_PM_RTT_AT24_SIZE) && (AUTOGEN_PM_RTT_AT24_SIZE > 0) */
 #endif /* !defined(PAR_CFG_RTT_AT24_SIZE) */
 
 /**
- * @brief Chunk size used when erase is emulated by writing 0xFF.
+ * @brief Configured chunk size used by the RTT AT24CXX erase emulation.
+ *
+ * @details
+ * A value of 0 means that the RTT AT24CXX backend should use the AT24CXX
+ * hardware page size.
  */
-#ifndef PAR_STORE_RTT_AT24_ERASE_CHUNK
-#define PAR_STORE_RTT_AT24_ERASE_CHUNK ((uint32_t)AUTOGEN_PM_RTT_AT24_ERASE_CHUNK)
-#endif /* !defined(PAR_STORE_RTT_AT24_ERASE_CHUNK) */
+#ifndef PAR_CFG_RTT_AT24_ERASE_CHUNK
+#ifdef AUTOGEN_PM_RTT_AT24_ERASE_CHUNK
+#define PAR_CFG_RTT_AT24_ERASE_CHUNK AUTOGEN_PM_RTT_AT24_ERASE_CHUNK
+#else
+#define PAR_CFG_RTT_AT24_ERASE_CHUNK 0
+#endif /* AUTOGEN_PM_RTT_AT24_ERASE_CHUNK */
+#endif /* !defined(PAR_CFG_RTT_AT24_ERASE_CHUNK) */
 #endif /* defined(AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND) */
 
 /**

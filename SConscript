@@ -43,6 +43,17 @@ path = [
     cwd + '/parameters/generated',
 ]
 
+if GetDepend('AUTOGEN_PM_USING_TESTS'):
+    src += Split('''
+    parameters/tests/par_test_common.c
+    parameters/tests/par_test_runner.c
+    parameters/tests/par_test_msh.c
+    ''')
+
+    path += [
+        cwd + '/parameters/tests',
+    ]
+
 if GetDepend('AUTOGEN_PM_LAYOUT_SOURCE_SCRIPT'):
     src += Split('''
     parameters/generated/par_layout_static.c

@@ -29,6 +29,15 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
             help
                 Enable package INFO/DEBUG/WARN/ERROR output.
 
+        config AUTOGEN_PM_LOG_LEVEL_PREFIX
+            bool "Prefix package logs with level markers"
+            default y
+            depends on AUTOGEN_PM_USING_DEBUG
+            help
+                Add [INFO], [DEBUG], [WARN], and [ERROR] prefixes in the
+                common PAR_*_PRINT macro layer. Disable this when the selected
+                backend already emits an equivalent level marker.
+
         config AUTOGEN_PM_USING_ASSERT
             bool "Enable RT_ASSERT checks"
             default n
@@ -601,6 +610,35 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
                     adapter.
 
         endif
+
+        menu "Runtime tests"
+
+            config AUTOGEN_PM_USING_TESTS
+                bool "Enable parameter runtime tests"
+                default n
+                help
+                    Build CI-friendly runtime tests and the optional par_test
+                    msh command. Test suites are compiled only when their
+                    individual options are enabled.
+
+            if AUTOGEN_PM_USING_TESTS
+
+                config AUTOGEN_PM_TEST_AUTO_RUN
+                    bool "Run parameter tests automatically after boot"
+                    default n
+                    help
+                        Run all enabled runtime-test suites after application
+                        initialization. Intended for CI or HIL images.
+
+                config AUTOGEN_PM_TEST_FAIL_FAST
+                    bool "Stop runtime tests on first failure"
+                    default n
+                    help
+                        Stop the active suite after the first failed case.
+
+            endif
+
+        endmenu
 
         menu "MSH shell tool"
 
