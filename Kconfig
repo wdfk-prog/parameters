@@ -403,6 +403,7 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
         choice
             prompt "Parameter storage backend"
             default AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND if AUTOGEN_PM_TEST_USING_AT24CXX
+            default AUTOGEN_PM_USING_FLASH_EE_BACKEND if AUTOGEN_PM_TEST_USING_FLASH_EE_FAL
             default AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND
             depends on AUTOGEN_PM_NVM_NEEDS_SCALAR_BACKEND
             help
@@ -531,6 +532,7 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
 
             choice
                 prompt "Flash emulated EEPROM physical port"
+                default AUTOGEN_PM_FLASH_EE_PORT_FAL if AUTOGEN_PM_TEST_USING_FLASH_EE_FAL
                 default AUTOGEN_PM_FLASH_EE_PORT_FAL
                 help
                     Select the physical flash adapter used by the generic
@@ -618,6 +620,7 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
 
             config AUTOGEN_PM_FLASH_EE_FAL_PARTITION_NAME
                 string "FAL partition name"
+                default "pm_ee_test" if AUTOGEN_PM_TEST_USING_FLASH_EE_FAL
                 default "autogen_pm"
                 depends on AUTOGEN_PM_FLASH_EE_PORT_FAL
                 help
@@ -711,6 +714,29 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
                         The storage backend is selected through the "Parameter
                         storage backend" choice; the default backend is AT24CXX
                         when this test option is enabled.
+
+                config AUTOGEN_PM_TEST_USING_FLASH_EE_FAL
+                    bool "Enable Flash EE real FAL partition tests"
+                    default n
+                    select AUTOGEN_PM_USING_NVM
+                    select AUTOGEN_PM_NVM_SCALAR
+                    help
+                        Validate the flash-emulated EEPROM backend only on a
+                        real FAL partition. This is the maintained board-level
+                        Flash EE runtime suite; the old fake-flash suite is no
+                        longer compiled by the RT-Thread package build.
+
+                        This suite intentionally erases and rewrites the
+                        configured Flash EE FAL partition, so reserve a dedicated
+                        partition such as "pm_ee_test" and do not share it with
+                        the filesystem, logs, or production parameter storage.
+
+                        Enabling this option is for disposable board-test
+                        firmware. The storage backend choice defaults to Flash
+                        EE and the physical port choice defaults to FAL when this
+                        option is enabled. The FAL port choice selects
+                        RT_USING_FAL; enable FAL_PART_HAS_TABLE_CFG separately
+                        when the board uses a static fal_cfg.h partition table.
 
                 config AUTOGEN_PM_TEST_AUTO_RUN
                     bool "Run parameter tests automatically after boot"

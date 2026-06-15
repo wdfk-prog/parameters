@@ -64,6 +64,12 @@ if GetDepend('AUTOGEN_PM_USING_TESTS'):
         parameters/tests/par_test_at24cxx.c
         ''')
 
+
+    if GetDepend('AUTOGEN_PM_TEST_USING_FLASH_EE_FAL'):
+        src += Split('''
+        parameters/tests/par_test_flash_ee_fal.c
+        ''')
+
 if GetDepend('AUTOGEN_PM_LAYOUT_SOURCE_SCRIPT'):
     src += Split('''
     parameters/generated/par_layout_static.c
