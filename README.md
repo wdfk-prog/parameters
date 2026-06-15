@@ -25,7 +25,10 @@
 - [Architecture](parameters/docs/architecture.md) describes the runtime model, layout, validation, ID lookup, and NVM split.
 - [API reference](parameters/docs/api-reference.md) groups public APIs by responsibility.
 - [Object parameters](parameters/docs/object-parameters.md) explains fixed-capacity string, bytes, and array rows.
+- [Fixed-slot-with-size NVM manual hardware test](parameters/tests/docs/nvm-fixed-slot-with-size-manual-test.md) covers AT24CXX backend, persistent CSV configuration, reboot checks, and power-loss acceptance flow.
+- [Object NVM manual hardware test](parameters/tests/docs/nvm-object-manual-test.md) covers object persistence Kconfig/CSV profiles, MSH validation commands, reboot recovery checks, and acceptance criteria.
 - [Flash-ee backend design](parameters/docs/flash-ee-backend-design.md) documents the portable flash-emulated EEPROM backend.
+- [Test overview](parameters/tests/README.md) indexes runtime tests, manual NVM tests, generator tests, and missing test backlog items.
 
 ## Integration entry points
 

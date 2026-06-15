@@ -40,6 +40,9 @@ See [Upstream relationship](./docs/upstream.md) for the import baseline and main
 | CSV generator | [docs/csv-generator.md](./docs/csv-generator.md) | [docs/csv-generator.zh-CN.md](./docs/csv-generator.zh-CN.md) |
 | Object parameters | [docs/object-parameters.md](./docs/object-parameters.md) | [docs/object-parameters.zh-CN.md](./docs/object-parameters.zh-CN.md) |
 | Flash-ee backend | [docs/flash-ee-backend-design.md](./docs/flash-ee-backend-design.md) | [docs/flash-ee-backend-design.zh-CN.md](./docs/flash-ee-backend-design.zh-CN.md) |
+| Test overview | [tests/README.md](./tests/README.md) | [tests/README.zh-CN.md](./tests/README.zh-CN.md) |
+| Fixed-slot NVM manual hardware test | [tests/docs/nvm-fixed-slot-with-size-manual-test.md](./tests/docs/nvm-fixed-slot-with-size-manual-test.md) | [tests/docs/nvm-fixed-slot-with-size-manual-test.zh-CN.md](./tests/docs/nvm-fixed-slot-with-size-manual-test.zh-CN.md) |
+| Object NVM manual hardware test | [tests/docs/nvm-object-manual-test.md](./tests/docs/nvm-object-manual-test.md) | [tests/docs/nvm-object-manual-test.zh-CN.md](./tests/docs/nvm-object-manual-test.zh-CN.md) |
 | Upstream relationship | [docs/upstream.md](./docs/upstream.md) | [docs/upstream.zh-CN.md](./docs/upstream.zh-CN.md) |
 
 ## Quick integration
@@ -91,6 +94,7 @@ The `F32` APIs are available only when `PAR_CFG_ENABLE_TYPE_F32` is enabled.
 .
 ├── README.md
 ├── docs/
+├── tests/
 ├── generated/
 ├── include/
 ├── schema/

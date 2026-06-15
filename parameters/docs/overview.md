@@ -14,6 +14,8 @@ The repository contains a portable parameter manager core and documentation for 
 | --- | --- | --- |
 | Add the module to a firmware build | [Getting started](./getting-started.md) | [API reference](./api-reference.md) |
 | Integrate as an RT-Thread package | [RT-Thread package](./rt-thread-package.md) | [Flash-ee backend design](./flash-ee-backend-design.md) |
+| Accept fixed-slot scalar NVM on hardware | [Fixed-slot-with-size NVM manual hardware test](../tests/docs/nvm-fixed-slot-with-size-manual-test.md) | [RT-Thread package](./rt-thread-package.md) |
+| Accept object NVM on hardware | [Object NVM manual hardware test](../tests/docs/nvm-object-manual-test.md) | [Object parameters](./object-parameters.md) |
 | Understand internal ownership and data flow | [Architecture](./architecture.md) | [Object parameters](./object-parameters.md) |
 | Maintain the parameter table | [CSV generator](./csv-generator.md) | [Architecture](./architecture.md) |
 | Review upstream provenance | [Upstream relationship](./upstream.md) | [Architecture](./architecture.md) |
@@ -27,6 +29,9 @@ The repository contains a portable parameter manager core and documentation for 
 - [CSV generator](./csv-generator.md): CSV fields, ID ranges, lock file, generated layout files, and regeneration workflow.
 - [Object parameters](./object-parameters.md): fixed-capacity object model, storage pool, dedicated APIs, and object persistence constraints.
 - [Flash-ee backend design](./flash-ee-backend-design.md): flash-emulated EEPROM model, bank switching, record visibility, and adapter contracts.
+- [Test overview](../tests/README.md): runtime tests, manual NVM tests, generator tests, and missing test backlog items.
+- [Fixed-slot-with-size NVM manual hardware test](../tests/docs/nvm-fixed-slot-with-size-manual-test.md): Kconfig/CSV profiles, destructive AT24CXX MSH commands, reboot checks, and acceptance criteria for scalar fixed-slot NVM.
+- [Object NVM manual hardware test](../tests/docs/nvm-object-manual-test.md): Kconfig/CSV profiles, object payload persistence commands, object block corruption injection, reboot checks, and acceptance criteria.
 - [Upstream relationship](./upstream.md): import baseline, local extension policy, and synchronization rules.
 
 ## Documentation structure
@@ -42,6 +47,9 @@ flowchart TD
     Overview --> CSV[docs/csv-generator.md]
     Overview --> Obj[docs/object-parameters.md]
     Overview --> Flash[docs/flash-ee-backend-design.md]
+    Overview --> TestOverview[tests/README.md]
+    TestOverview --> NVMTest[tests/docs/nvm-fixed-slot-with-size-manual-test.md]
+    TestOverview --> ObjNVMTest[tests/docs/nvm-object-manual-test.md]
 ```
 
 ## Maintenance rule

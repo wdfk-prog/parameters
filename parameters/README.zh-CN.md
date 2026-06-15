@@ -40,6 +40,9 @@
 | CSV 生成器 | [docs/csv-generator.md](./docs/csv-generator.md) | [docs/csv-generator.zh-CN.md](./docs/csv-generator.zh-CN.md) |
 | 对象参数 | [docs/object-parameters.md](./docs/object-parameters.md) | [docs/object-parameters.zh-CN.md](./docs/object-parameters.zh-CN.md) |
 | Flash-ee 后端 | [docs/flash-ee-backend-design.md](./docs/flash-ee-backend-design.md) | [docs/flash-ee-backend-design.zh-CN.md](./docs/flash-ee-backend-design.zh-CN.md) |
+| 测试总览 | [tests/README.md](./tests/README.md) | [tests/README.zh-CN.md](./tests/README.zh-CN.md) |
+| Fixed-slot NVM 硬件手动测试 | [tests/docs/nvm-fixed-slot-with-size-manual-test.md](./tests/docs/nvm-fixed-slot-with-size-manual-test.md) | [tests/docs/nvm-fixed-slot-with-size-manual-test.zh-CN.md](./tests/docs/nvm-fixed-slot-with-size-manual-test.zh-CN.md) |
+| Object NVM 硬件手动测试 | [tests/docs/nvm-object-manual-test.md](./tests/docs/nvm-object-manual-test.md) | [tests/docs/nvm-object-manual-test.zh-CN.md](./tests/docs/nvm-object-manual-test.zh-CN.md) |
 | 上游关系 | [docs/upstream.md](./docs/upstream.md) | [docs/upstream.zh-CN.md](./docs/upstream.zh-CN.md) |
 
 ## 快速集成
@@ -91,6 +94,7 @@ static void app_init(void)
 .
 ├── README.md
 ├── docs/
+├── tests/
 ├── generated/
 ├── include/
 ├── schema/

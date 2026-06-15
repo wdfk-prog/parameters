@@ -17,6 +17,8 @@
 | 理解内部所有权和数据流 | [架构](./architecture.zh-CN.md) | [对象参数](./object-parameters.zh-CN.md) |
 | 维护参数表 | [CSV 生成器](./csv-generator.zh-CN.md) | [架构](./architecture.zh-CN.md) |
 | 审查上游来源 | [上游关系](./upstream.zh-CN.md) | [架构](./architecture.zh-CN.md) |
+| 验收 AT24CXX fixed-slot NVM | [Fixed-slot-with-size NVM 硬件手动测试](../tests/docs/nvm-fixed-slot-with-size-manual-test.zh-CN.md) | [CSV 生成器](./csv-generator.zh-CN.md) |
+| 验收 object NVM | [Object NVM 硬件手动测试](../tests/docs/nvm-object-manual-test.zh-CN.md) | [对象参数](./object-parameters.zh-CN.md) |
 
 ## 文档集合
 
@@ -27,6 +29,9 @@
 - [CSV 生成器](./csv-generator.zh-CN.md)：CSV 字段、ID 范围、锁文件、生成布局文件和重新生成流程。
 - [对象参数](./object-parameters.zh-CN.md)：定长容量对象模型、存储池、专用 API 和对象持久化约束。
 - [Flash-ee 后端设计](./flash-ee-backend-design.zh-CN.md)：flash 模拟 EEPROM 模型、bank 切换、记录可见性和适配器契约。
+- [测试总览](../tests/README.zh-CN.md)：索引运行时测试、NVM 手动测试、生成器测试和待补测试项。
+- [Fixed-slot-with-size NVM 硬件手动测试](../tests/docs/nvm-fixed-slot-with-size-manual-test.zh-CN.md)：说明 AT24CXX 后端上的 scalar persistent CSV 配置、Kconfig、MSH 命令、reboot 和掉电验收流程。
+- [Object NVM 硬件手动测试](../tests/docs/nvm-object-manual-test.zh-CN.md)：说明 object persistent CSV 配置、Kconfig、payload 持久化命令、object block 损坏注入、reboot 和验收流程。
 - [上游关系](./upstream.zh-CN.md)：导入基线、本地扩展策略和同步规则。
 
 ## 文档结构
@@ -42,6 +47,9 @@ flowchart TD
     Overview --> CSV[docs/csv-generator.zh-CN.md]
     Overview --> Obj[docs/object-parameters.zh-CN.md]
     Overview --> Flash[docs/flash-ee-backend-design.zh-CN.md]
+    Overview --> TestOverview[tests/README.zh-CN.md]
+    TestOverview --> NVMTest[tests/docs/nvm-fixed-slot-with-size-manual-test.zh-CN.md]
+    TestOverview --> ObjNVMTest[tests/docs/nvm-object-manual-test.zh-CN.md]
 ```
 
 ## 维护规则

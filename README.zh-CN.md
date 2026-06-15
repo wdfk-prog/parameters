@@ -25,7 +25,10 @@
 - [架构](parameters/docs/architecture.zh-CN.md) 描述运行时模型、布局、校验、ID 查找和 NVM 拆分。
 - [API 参考](parameters/docs/api-reference.zh-CN.md) 按职责分组说明公共 API。
 - [对象参数](parameters/docs/object-parameters.zh-CN.md) 说明定长容量字符串、字节缓冲区和数组参数行。
+- [Object NVM 硬件手动测试](parameters/tests/docs/nvm-object-manual-test.zh-CN.md) 说明 object persistence 的 Kconfig/CSV 配置、MSH 验证命令、reboot 恢复检查和验收标准。
 - [Flash-ee 后端设计](parameters/docs/flash-ee-backend-design.zh-CN.md) 说明可移植 flash 模拟 EEPROM 后端。
+- [测试总览](parameters/tests/README.zh-CN.md) 索引运行时测试、NVM 手动测试、生成器测试和待补测试项。
+- [Fixed-slot-with-size NVM 硬件手动测试](parameters/tests/docs/nvm-fixed-slot-with-size-manual-test.zh-CN.md) 说明 AT24CXX 后端、CSV persistent 配置、reboot/掉电验收流程。
 - [上游关系](parameters/docs/upstream.zh-CN.md) 说明本仓库与 `GeneralEmbeddedCLibraries/parameters` 的导入基线和独立维护原因。
 
 ## 集成入口
