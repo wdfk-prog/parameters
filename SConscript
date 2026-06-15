@@ -59,6 +59,11 @@ if GetDepend('AUTOGEN_PM_USING_TESTS'):
         parameters/tests/par_test_ram_config.c
         ''')
 
+    if GetDepend('AUTOGEN_PM_TEST_USING_AT24CXX'):
+        src += Split('''
+        parameters/tests/par_test_at24cxx.c
+        ''')
+
 if GetDepend('AUTOGEN_PM_LAYOUT_SOURCE_SCRIPT'):
     src += Split('''
     parameters/generated/par_layout_static.c

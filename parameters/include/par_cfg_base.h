@@ -159,6 +159,47 @@
 #endif /* !defined(PAR_CFG_PORT_HOOK_EN) */
 
 /**
+ * @brief Enable log-level prefixes inserted by PAR_*_PRINT wrappers.
+ *
+ * @details Set to 1 to prepend INFO/DEBUG/WARN/ERROR markers in the common
+ * macro layer. Set to 0 when the platform log backend already emits an
+ * equivalent level marker.
+ */
+#ifndef PAR_CFG_LOG_LEVEL_PREFIX_EN
+#define PAR_CFG_LOG_LEVEL_PREFIX_EN (1)
+#endif /* !defined(PAR_CFG_LOG_LEVEL_PREFIX_EN) */
+
+/**
+ * @brief Log-level prefixes inserted by PAR_*_PRINT wrappers.
+ *
+ * @details Keep the level marker in the common macro layer so call sites do
+ * not need to duplicate INFO/DEBUG/WARN/ERROR text in every format string.
+ */
+#if (1 == PAR_CFG_LOG_LEVEL_PREFIX_EN)
+#ifndef PAR_CFG_LOG_INFO_PREFIX
+#define PAR_CFG_LOG_INFO_PREFIX  "[INFO] "
+#endif /* !defined(PAR_CFG_LOG_INFO_PREFIX) */
+#ifndef PAR_CFG_LOG_DEBUG_PREFIX
+#define PAR_CFG_LOG_DEBUG_PREFIX "[DEBUG] "
+#endif /* !defined(PAR_CFG_LOG_DEBUG_PREFIX) */
+#ifndef PAR_CFG_LOG_WARN_PREFIX
+#define PAR_CFG_LOG_WARN_PREFIX  "[WARN] "
+#endif /* !defined(PAR_CFG_LOG_WARN_PREFIX) */
+#ifndef PAR_CFG_LOG_ERROR_PREFIX
+#define PAR_CFG_LOG_ERROR_PREFIX "[ERROR] "
+#endif /* !defined(PAR_CFG_LOG_ERROR_PREFIX) */
+#else
+#undef PAR_CFG_LOG_INFO_PREFIX
+#undef PAR_CFG_LOG_DEBUG_PREFIX
+#undef PAR_CFG_LOG_WARN_PREFIX
+#undef PAR_CFG_LOG_ERROR_PREFIX
+#define PAR_CFG_LOG_INFO_PREFIX  ""
+#define PAR_CFG_LOG_DEBUG_PREFIX ""
+#define PAR_CFG_LOG_WARN_PREFIX  ""
+#define PAR_CFG_LOG_ERROR_PREFIX ""
+#endif /* (1 == PAR_CFG_LOG_LEVEL_PREFIX_EN) */
+
+/**
  * @brief Debug communication port macros.
  */
 #if (0 == PAR_CFG_USE_PORT_HOOKS)
@@ -178,10 +219,10 @@
 #ifndef PAR_CFG_DIRECT_ERROR_LOG
 #define PAR_CFG_DIRECT_ERROR_LOG(...) PAR_CFG_DIRECT_LOG(__VA_ARGS__)
 #endif /* !defined(PAR_CFG_DIRECT_ERROR_LOG) */
-#define PAR_INFO_PRINT(...) PAR_CFG_DIRECT_INFO_LOG(__VA_ARGS__)
-#define PAR_DBG_PRINT(...)  PAR_CFG_DIRECT_DEBUG_LOG(__VA_ARGS__)
-#define PAR_WARN_PRINT(...) PAR_CFG_DIRECT_WARN_LOG(__VA_ARGS__)
-#define PAR_ERR_PRINT(...)  PAR_CFG_DIRECT_ERROR_LOG(__VA_ARGS__)
+#define PAR_INFO_PRINT(...) PAR_CFG_DIRECT_INFO_LOG(PAR_CFG_LOG_INFO_PREFIX __VA_ARGS__)
+#define PAR_DBG_PRINT(...)  PAR_CFG_DIRECT_DEBUG_LOG(PAR_CFG_LOG_DEBUG_PREFIX __VA_ARGS__)
+#define PAR_WARN_PRINT(...) PAR_CFG_DIRECT_WARN_LOG(PAR_CFG_LOG_WARN_PREFIX __VA_ARGS__)
+#define PAR_ERR_PRINT(...)  PAR_CFG_DIRECT_ERROR_LOG(PAR_CFG_LOG_ERROR_PREFIX __VA_ARGS__)
 #else
 #define PAR_INFO_PRINT(...) \
     {                       \
@@ -202,10 +243,10 @@
 #endif /* (1 == PAR_CFG_DEBUG_EN) */
 #else
 #if (1 == PAR_CFG_DEBUG_EN)
-#define PAR_INFO_PRINT(...) PAR_PORT_LOG_INFO(__VA_ARGS__)
-#define PAR_DBG_PRINT(...)  PAR_PORT_LOG_DEBUG(__VA_ARGS__)
-#define PAR_WARN_PRINT(...) PAR_PORT_LOG_WARN(__VA_ARGS__)
-#define PAR_ERR_PRINT(...)  PAR_PORT_LOG_ERROR(__VA_ARGS__)
+#define PAR_INFO_PRINT(...) PAR_PORT_LOG_INFO(PAR_CFG_LOG_INFO_PREFIX __VA_ARGS__)
+#define PAR_DBG_PRINT(...)  PAR_PORT_LOG_DEBUG(PAR_CFG_LOG_DEBUG_PREFIX __VA_ARGS__)
+#define PAR_WARN_PRINT(...) PAR_PORT_LOG_WARN(PAR_CFG_LOG_WARN_PREFIX __VA_ARGS__)
+#define PAR_ERR_PRINT(...)  PAR_PORT_LOG_ERROR(PAR_CFG_LOG_ERROR_PREFIX __VA_ARGS__)
 #else
 #define PAR_INFO_PRINT(...) \
     {                       \

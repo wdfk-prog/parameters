@@ -36,6 +36,25 @@
 #define PAR_STORE_RTT_AT24_WINDOW_END ((uint32_t)PAR_CFG_RTT_AT24_BASE_ADDR + (uint32_t)PAR_CFG_RTT_AT24_SIZE)
 
 /**
+ * @brief Effective chunk size used when erase is emulated by writing 0xFF.
+ *
+ * @details
+ * If PAR_CFG_RTT_AT24_ERASE_CHUNK is configured to 0, the backend uses the
+ * AT24CXX hardware page size. The effective chunk is limited to one EEPROM
+ * page so that erase emulation never depends on cross-page write behavior.
+ */
+#ifndef PAR_STORE_RTT_AT24_ERASE_CHUNK
+#if (PAR_CFG_RTT_AT24_ERASE_CHUNK > 0)
+#define PAR_STORE_RTT_AT24_ERASE_CHUNK ((uint32_t)PAR_CFG_RTT_AT24_ERASE_CHUNK)
+#else
+#define PAR_STORE_RTT_AT24_ERASE_CHUNK ((uint32_t)AT24CXX_PAGE_BYTE)
+#endif /* PAR_CFG_RTT_AT24_ERASE_CHUNK > 0 */
+#endif /* !defined(PAR_STORE_RTT_AT24_ERASE_CHUNK) */
+
+RT_STATIC_ASSERT(par_rtt_at24_erase_chunk_nonzero, (PAR_STORE_RTT_AT24_ERASE_CHUNK > 0u));
+RT_STATIC_ASSERT(par_rtt_at24_erase_chunk_in_page, (PAR_STORE_RTT_AT24_ERASE_CHUNK <= (uint32_t)AT24CXX_PAGE_BYTE));
+
+/**
  * @brief Compile-time validation for the configured EEPROM window.
  *
  * @details

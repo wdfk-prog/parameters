@@ -402,6 +402,7 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
 
         choice
             prompt "Parameter storage backend"
+            default AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND if AUTOGEN_PM_TEST_USING_AT24CXX
             default AUTOGEN_PM_USING_RTT_AT24CXX_BACKEND
             depends on AUTOGEN_PM_NVM_NEEDS_SCALAR_BACKEND
             help
@@ -498,17 +499,31 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
                 hex "Parameter EEPROM window base offset"
                 default 0x0
                 help
-                    Set the start offset, in bytes, of the parameter-owned EEPROM window.
-                    The window size is taken from AT24CXX_MAX_MEM_ADDRESS exposed by
-                    the AT24CXX package.
+                    Set the start offset, in bytes, of the parameter-owned
+                    EEPROM window.
+
+            config AUTOGEN_PM_RTT_AT24_SIZE
+                hex "Parameter EEPROM window size"
+                default 0x0
+                help
+                    Set the size, in bytes, of the parameter-owned EEPROM
+                    window.
+
+                    Use 0x0 to make the backend use all remaining EEPROM space
+                    from AUTOGEN_PM_RTT_AT24_BASE_ADDR to
+                    AT24CXX_MAX_MEM_ADDRESS.
 
             config AUTOGEN_PM_RTT_AT24_ERASE_CHUNK
-                int "EEPROM erase emulation chunk size"
-                default 32
-                range 1 1024
+                int "AT24CXX emulated erase chunk size"
+                default 0
                 help
-                    Set the byte chunk used when the backend emulates erase by
-                    writing 0xFF into EEPROM.
+                    Set the chunk size used when EEPROM erase is emulated by
+                    writing 0xFF.
+
+                    Use 0 to automatically use the AT24CXX hardware page size
+                    reported by AT24CXX_PAGE_BYTE.
+
+                    Non-zero values must not exceed the AT24CXX page size.
 
         endif
 
@@ -679,6 +694,23 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
                         runtime tests. Keep this enabled when CI should validate
                         STR, BYTES, ARR_U8, ARR_U16, and ARR_U32 RAM object
                         paths together with scalar parameters.
+
+                config AUTOGEN_PM_TEST_USING_AT24CXX
+                    bool "Enable AT24CXX persistence tests"
+                    default n
+                    select AUTOGEN_PM_USING_NVM
+                    select AUTOGEN_PM_NVM_SCALAR
+                    select AUTOGEN_PM_ENABLE_ID
+                    select PKG_USING_AT24CXX
+                    help
+                        Validate the AT24CXX-backed persistence path through
+                        public parameter APIs.
+
+                        This option enables scalar NVM persistence and parameter
+                        ID support required by the AT24CXX persistence tests.
+                        The storage backend is selected through the "Parameter
+                        storage backend" choice; the default backend is AT24CXX
+                        when this test option is enabled.
 
                 config AUTOGEN_PM_TEST_AUTO_RUN
                     bool "Run parameter tests automatically after boot"
