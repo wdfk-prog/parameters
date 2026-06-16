@@ -31,9 +31,15 @@ static const par_test_suite_t * const g_par_test_suites[] = {
 #if defined(AUTOGEN_PM_TEST_USING_AT24CXX)
     &g_par_test_suite_at24,
 #endif /* defined(AUTOGEN_PM_TEST_USING_AT24CXX) */
+#if defined(AUTOGEN_PM_TEST_USING_EEPROM_HOST)
+    &g_par_test_suite_eeprom_host,
+#endif /* defined(AUTOGEN_PM_TEST_USING_EEPROM_HOST) */
 #if defined(AUTOGEN_PM_TEST_USING_FLASH_EE_FAL)
     &g_par_test_suite_flash_ee_fal,
 #endif /* defined(AUTOGEN_PM_TEST_USING_FLASH_EE_FAL) */
+#if defined(AUTOGEN_PM_TEST_USING_FLASH_EE_HOST)
+    &g_par_test_suite_flash_ee_host,
+#endif /* defined(AUTOGEN_PM_TEST_USING_FLASH_EE_HOST) */
     NULL,
 };
 

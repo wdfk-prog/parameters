@@ -1,0 +1,92 @@
+name: ci-host-sim
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+jobs:
+  host-sim:
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        backend:
+          - fake_eeprom
+          - fake_flash_ee
+        layout:
+          - fixed_slot_with_size
+          - fixed_slot_no_size
+          - compact_payload
+          - fixed_payload_only
+          - grouped_payload_only
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc python3
+
+      - name: Configure host simulator
+        run: |
+          cmake -S parameters/tests/host -B build/host-sim -G Ninja \
+            -DPAR_HOST_BACKEND=${{ matrix.backend }} \
+            -DPAR_HOST_NVM_LAYOUT=${{ matrix.layout }}
+
+      - name: Build host simulator
+        run: cmake --build build/host-sim
+
+      - name: List suites
+        run: ./build/host-sim/par_host_test list | tee build/host-sim/list.log
+
+      - name: Run host suites
+        env:
+          PAR_HOST_NVM_IMAGE: build/host-sim/nvm-${{ matrix.backend }}-${{ matrix.layout }}.bin
+        run: |
+          ./build/host-sim/par_host_test all | tee build/host-sim/test.log
+          python3 parameters/tests/host/check_par_test_log.py build/host-sim/test.log \
+            --require-result all \
+            --require-pass-suite ram \
+            --require-pass-suite ${{ matrix.backend == 'fake_flash_ee' && 'flash_ee_host' || 'eeprom_host' }}
+
+      - name: Run Flash EE power-cut seed phase
+        if: matrix.backend == 'fake_flash_ee' && matrix.layout == 'fixed_slot_with_size'
+        env:
+          PAR_HOST_NVM_IMAGE: build/host-sim/nvm-${{ matrix.backend }}-${{ matrix.layout }}-fault.bin
+          PAR_HOST_FLASH_EE_FAULT_PHASE: seed
+        run: |
+          ./build/host-sim/par_host_test flash_ee_host | tee build/host-sim/fault-seed.log
+          python3 parameters/tests/host/check_par_test_log.py build/host-sim/fault-seed.log \
+            --require-result flash_ee_host \
+            --require-result all \
+            --require-pass-suite flash_ee_host \
+            --require-pass-case flash_ee_host:fault_program_prefix_seed
+
+      - name: Run Flash EE power-cut recovery phase
+        if: matrix.backend == 'fake_flash_ee' && matrix.layout == 'fixed_slot_with_size'
+        env:
+          PAR_HOST_NVM_IMAGE: build/host-sim/nvm-${{ matrix.backend }}-${{ matrix.layout }}-fault.bin
+          PAR_HOST_FLASH_EE_FAULT_PHASE: recover
+        run: |
+          ./build/host-sim/par_host_test flash_ee_host | tee build/host-sim/fault-recover.log
+          python3 parameters/tests/host/check_par_test_log.py build/host-sim/fault-recover.log \
+            --require-result flash_ee_host \
+            --require-result all \
+            --require-pass-suite flash_ee_host \
+            --require-pass-case flash_ee_host:fault_program_prefix_recover
+
+      - name: Run schema evolution fixtures
+        if: matrix.backend == 'fake_eeprom'
+        run: python3 -m unittest parameters/tests/test_schema_evolution_fixtures.py
+
+      - name: Upload host-sim logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-sim-${{ matrix.backend }}-${{ matrix.layout }}
+          path: |
+            build/host-sim/*.log
+            build/host-sim/*.bin

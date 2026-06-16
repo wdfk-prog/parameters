@@ -408,12 +408,26 @@ extern const par_test_suite_t g_par_test_suite_ram;
 extern const par_test_suite_t g_par_test_suite_at24;
 #endif /* defined(AUTOGEN_PM_TEST_USING_AT24CXX) */
 
+#if defined(AUTOGEN_PM_TEST_USING_EEPROM_HOST)
+/**
+ * @brief Host fake EEPROM persistence validation suite.
+ */
+extern const par_test_suite_t g_par_test_suite_eeprom_host;
+#endif /* defined(AUTOGEN_PM_TEST_USING_EEPROM_HOST) */
+
 #if defined(AUTOGEN_PM_TEST_USING_FLASH_EE_FAL)
 /**
  * @brief Flash-ee real FAL partition validation suite.
  */
 extern const par_test_suite_t g_par_test_suite_flash_ee_fal;
 #endif /* defined(AUTOGEN_PM_TEST_USING_FLASH_EE_FAL) */
+
+#if defined(AUTOGEN_PM_TEST_USING_FLASH_EE_HOST)
+/**
+ * @brief Flash-ee host fake-flash validation suite.
+ */
+extern const par_test_suite_t g_par_test_suite_flash_ee_host;
+#endif /* defined(AUTOGEN_PM_TEST_USING_FLASH_EE_HOST) */
 
 #ifdef __cplusplus
 }

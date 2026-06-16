@@ -68,6 +68,7 @@ if GetDepend('AUTOGEN_PM_USING_TESTS'):
 
     if GetDepend('AUTOGEN_PM_TEST_USING_FLASH_EE_FAL'):
         src += Split('''
+        parameters/tests/par_test_flash_ee_common.c
         parameters/tests/par_test_flash_ee_fal.c
         ''')
 
