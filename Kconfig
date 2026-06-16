@@ -976,7 +976,7 @@ if PKG_USING_AUTOGEN_PARAMETER_MANAGER
 
     config PKG_AUTOGEN_PARAMETER_MANAGER_PATH
         string
-        default "/packages/peripherals/autogen_parameter_manager"
+        default "/packages/misc/autogen_parameter_manager"
 
     choice
         prompt "Version"
