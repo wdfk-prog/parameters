@@ -13,6 +13,7 @@ The repository contains a portable parameter manager core and documentation for 
 | Reader goal | Start here | Then read |
 | --- | --- | --- |
 | Add the module to a firmware build | [Getting started](./getting-started.md) | [API reference](./api-reference.md) |
+| Compare with FlashDB or EasyFlash | [Difference from FlashDB and EasyFlash](./flashdb-easyflash-comparison.md) | [Flash-ee backend design](./flash-ee-backend-design.md) |
 | Integrate as an RT-Thread package | [RT-Thread package](./rt-thread-package.md) | [Flash-ee backend design](./flash-ee-backend-design.md) |
 | Accept fixed-slot scalar NVM on hardware | [Fixed-slot-with-size NVM manual hardware test](../tests/docs/nvm-fixed-slot-with-size-manual-test.md) | [RT-Thread package](./rt-thread-package.md) |
 | Accept object NVM on hardware | [Object NVM manual hardware test](../tests/docs/nvm-object-manual-test.md) | [Object parameters](./object-parameters.md) |
@@ -23,6 +24,7 @@ The repository contains a portable parameter manager core and documentation for 
 ## Document set
 
 - [Getting started](./getting-started.md): integration checklist, configuration choices, generation workflow, and first runtime calls.
+- [Difference from FlashDB and EasyFlash](./flashdb-easyflash-comparison.md): product-positioning boundary against FlashDB, EasyFlash, and the package-local flash-ee backend.
 - [RT-Thread package](./rt-thread-package.md): Kconfig/SCons expectations, port layer, MSH tooling, and RT-Thread NVM backend choices.
 - [Architecture](./architecture.md): data ownership, generated artifacts, validation, ID lookup, layout policy, persistence boundaries, and port boundaries.
 - [API reference](./api-reference.md): public APIs grouped by lifecycle, scalar access, object access, metadata, registration, and NVM.
@@ -41,6 +43,7 @@ flowchart TD
     Root[README.md] --> Overview[docs/overview.md]
     Root --> Upstream[docs/upstream.md]
     Overview --> Start[docs/getting-started.md]
+    Overview --> Compare[docs/flashdb-easyflash-comparison.md]
     Overview --> RTT[docs/rt-thread-package.md]
     Overview --> Arch[docs/architecture.md]
     Overview --> API[docs/api-reference.md]

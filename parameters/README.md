@@ -34,6 +34,7 @@ See [Upstream relationship](./docs/upstream.md) for the import baseline and main
 | --- | --- | --- |
 | Documentation overview | [docs/overview.md](./docs/overview.md) | [docs/overview.zh-CN.md](./docs/overview.zh-CN.md) |
 | Getting started | [docs/getting-started.md](./docs/getting-started.md) | [docs/getting-started.zh-CN.md](./docs/getting-started.zh-CN.md) |
+| Difference from FlashDB/EasyFlash | [docs/flashdb-easyflash-comparison.md](./docs/flashdb-easyflash-comparison.md) | [docs/flashdb-easyflash-comparison.zh-CN.md](./docs/flashdb-easyflash-comparison.zh-CN.md) |
 | RT-Thread package | [docs/rt-thread-package.md](./docs/rt-thread-package.md) | [docs/rt-thread-package.zh-CN.md](./docs/rt-thread-package.zh-CN.md) |
 | Architecture | [docs/architecture.md](./docs/architecture.md) | [docs/architecture.zh-CN.md](./docs/architecture.zh-CN.md) |
 | API reference | [docs/api-reference.md](./docs/api-reference.md) | [docs/api-reference.zh-CN.md](./docs/api-reference.zh-CN.md) |

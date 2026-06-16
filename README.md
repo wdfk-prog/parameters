@@ -16,11 +16,16 @@
 └── parameters/                     # Portable Device Parameters module
 ```
 
+## Positioning against FlashDB and EasyFlash
+
+`autogen_parameter_manager` is a parameter-table manager, not a general-purpose Flash KV/TSDB database and not an IAP/log storage library. Use it when firmware needs typed parameter definitions, generated IDs/layouts, metadata, validation, and optional managed persistence tied to a fixed product schema. See [Difference from FlashDB and EasyFlash](parameters/docs/flashdb-easyflash-comparison.md) for the detailed boundary.
+
 ## Documentation
 
 - [Module README](parameters/README.md) is the primary integration entry point.
 - [Documentation overview](parameters/docs/overview.md) maps reader goals to the detailed documents.
 - [Getting started](parameters/docs/getting-started.md) covers required files, build inputs, and first-use examples.
+- [Difference from FlashDB and EasyFlash](parameters/docs/flashdb-easyflash-comparison.md) explains the package boundary against common Flash storage libraries.
 - [CSV parameter generator](parameters/docs/csv-generator.md) covers CSV schema maintenance, Python requirements, validation, ID allocation, and generated layout files.
 - [Architecture](parameters/docs/architecture.md) describes the runtime model, layout, validation, ID lookup, and NVM split.
 - [API reference](parameters/docs/api-reference.md) groups public APIs by responsibility.

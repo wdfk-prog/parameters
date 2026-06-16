@@ -13,6 +13,7 @@
 | 目标 | 起点 | 后续阅读 |
 | --- | --- | --- |
 | 将模块加入固件构建 | [快速开始](./getting-started.zh-CN.md) | [API 参考](./api-reference.zh-CN.md) |
+| 对比 FlashDB 或 EasyFlash | [与 FlashDB 和 EasyFlash 的区别](./flashdb-easyflash-comparison.zh-CN.md) | [Flash-ee 后端设计](./flash-ee-backend-design.zh-CN.md) |
 | 作为 RT-Thread 软件包集成 | [RT-Thread 软件包](./rt-thread-package.zh-CN.md) | [Flash-ee 后端设计](./flash-ee-backend-design.zh-CN.md) |
 | 理解内部所有权和数据流 | [架构](./architecture.zh-CN.md) | [对象参数](./object-parameters.zh-CN.md) |
 | 维护参数表 | [CSV 生成器](./csv-generator.zh-CN.md) | [架构](./architecture.zh-CN.md) |
@@ -23,6 +24,7 @@
 ## 文档集合
 
 - [快速开始](./getting-started.zh-CN.md)：集成检查表、配置选择、生成流程和首次运行时调用。
+- [与 FlashDB 和 EasyFlash 的区别](./flashdb-easyflash-comparison.zh-CN.md)：说明本软件包与 FlashDB、EasyFlash 和包内 flash-ee 后端的产品定位边界。
 - [RT-Thread 软件包](./rt-thread-package.zh-CN.md)：Kconfig/SCons 预期、移植层、MSH 工具和 RT-Thread NVM 后端选择。
 - [架构](./architecture.zh-CN.md)：数据所有权、生成产物、校验、ID 查找、布局策略、持久化边界和移植边界。
 - [API 参考](./api-reference.zh-CN.md)：按生命周期、标量访问、对象访问、元数据、注册和 NVM 分组的公共 API。
@@ -41,6 +43,7 @@ flowchart TD
     Root[README.md] --> Overview[docs/overview.zh-CN.md]
     Root --> Upstream[docs/upstream.zh-CN.md]
     Overview --> Start[docs/getting-started.zh-CN.md]
+    Overview --> Compare[docs/flashdb-easyflash-comparison.zh-CN.md]
     Overview --> RTT[docs/rt-thread-package.zh-CN.md]
     Overview --> Arch[docs/architecture.zh-CN.md]
     Overview --> API[docs/api-reference.zh-CN.md]

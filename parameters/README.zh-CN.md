@@ -34,6 +34,7 @@
 | --- | --- | --- |
 | 文档总览 | [docs/overview.md](./docs/overview.md) | [docs/overview.zh-CN.md](./docs/overview.zh-CN.md) |
 | 快速开始 | [docs/getting-started.md](./docs/getting-started.md) | [docs/getting-started.zh-CN.md](./docs/getting-started.zh-CN.md) |
+| 与 FlashDB/EasyFlash 的区别 | [docs/flashdb-easyflash-comparison.md](./docs/flashdb-easyflash-comparison.md) | [docs/flashdb-easyflash-comparison.zh-CN.md](./docs/flashdb-easyflash-comparison.zh-CN.md) |
 | RT-Thread 软件包 | [docs/rt-thread-package.md](./docs/rt-thread-package.md) | [docs/rt-thread-package.zh-CN.md](./docs/rt-thread-package.zh-CN.md) |
 | 架构 | [docs/architecture.md](./docs/architecture.md) | [docs/architecture.zh-CN.md](./docs/architecture.zh-CN.md) |
 | API 参考 | [docs/api-reference.md](./docs/api-reference.md) | [docs/api-reference.zh-CN.md](./docs/api-reference.zh-CN.md) |

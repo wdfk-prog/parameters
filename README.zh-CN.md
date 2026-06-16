@@ -16,11 +16,16 @@
 └── parameters/                     # 可移植 Device Parameters 模块
 ```
 
+## 与 FlashDB 和 EasyFlash 的定位区别
+
+`autogen_parameter_manager` 是参数表管理器，不是通用 Flash KV/TSDB 数据库，也不是 IAP/日志存储库。它适合用于固定产品参数的类型定义、生成 ID/布局、元数据、校验和可选受控持久化。详细边界见 [与 FlashDB 和 EasyFlash 的区别](parameters/docs/flashdb-easyflash-comparison.zh-CN.md)。
+
 ## 文档
 
 - [模块 README](parameters/README.zh-CN.md) 是参数模块的主要集成入口。
 - [文档总览](parameters/docs/overview.zh-CN.md) 按读者目标映射到详细文档。
 - [快速开始](parameters/docs/getting-started.zh-CN.md) 说明必要文件、构建输入和首次使用示例。
+- [与 FlashDB 和 EasyFlash 的区别](parameters/docs/flashdb-easyflash-comparison.zh-CN.md) 说明本软件包与常见 Flash 存储库的职责边界。
 - [CSV 参数生成器](parameters/docs/csv-generator.zh-CN.md) 说明 CSV schema 维护、Python 要求、校验、ID 分配和生成布局文件。
 - [架构](parameters/docs/architecture.zh-CN.md) 描述运行时模型、布局、校验、ID 查找和 NVM 拆分。
 - [API 参考](parameters/docs/api-reference.zh-CN.md) 按职责分组说明公共 API。
